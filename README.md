@@ -113,7 +113,7 @@ cd frontend && npm run dev
 | `LLM_DEMO_DEMO_INTERVAL_MS` | Model Routing 批量演示默认间隔（ms） | `500` |
 | `LLM_DEMO_F5_MGMT_HOST` | F5 iControl 管理 IP | `172.16.20.198` |
 | `LLM_DEMO_F5_MGMT_USERNAME` | F5 管理账号 | `admin` |
-| `LLM_DEMO_F5_MGMT_PASSWORD` | F5 管理密码 | `f5selab2018` |
+| `LLM_DEMO_F5_MGMT_PASSWORD` | F5 管理密码 | `CHANGE_ME`（部署时在 `/etc/llm-router-demo/env` 填写，勿写入文档） |
 | `LLM_DEMO_F5_MGMT_PARTITION` | LTM 分区名 | `Common` |
 | `LLM_DEMO_F5_MGMT_VERIFY_TLS` | 是否校验 F5 管理口 TLS | `false` |
 | `LLM_DEMO_TBLB_SCHEDULER_HOST` | TBLB Scheduler 服务 IP | `127.0.0.1` |
