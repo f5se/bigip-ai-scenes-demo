@@ -8,8 +8,8 @@
 #   BUILD_FRONTEND=1   (default 1; set 0 if frontend/dist already in clone)
 set -euo pipefail
 
-REPO_URL="${REPO_URL:-}"
-INSTALL_DIR="${INSTALL_DIR:-/home/myf5/llm_router_demo_App}"
+REPO_URL="${REPO_URL:-https://github.com/f5se/bigip-ai-scenes-demo}"
+INSTALL_DIR="${INSTALL_DIR:-/home/myf5/bigip-ai-scenes-demo}"
 APP_USER="${APP_USER:-myf5}"
 BUILD_FRONTEND="${BUILD_FRONTEND:-1}"
 
