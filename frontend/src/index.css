@@ -1,0 +1,69 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --glass-border: rgba(0, 183, 198, 0.25);
+  --glass-bg: rgba(15, 23, 42, 0.75);
+}
+
+@layer components {
+  .glass-card {
+    @apply rounded-xl border border-cyan-500/20 bg-slate-900/70 backdrop-blur-sm shadow-lg shadow-cyan-950/20;
+  }
+
+  .section-title {
+    @apply text-sm font-semibold uppercase tracking-wider text-cyan-400;
+  }
+
+  .btn-primary {
+    @apply rounded-lg bg-gradient-to-r from-cyan-600 to-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:from-cyan-500 hover:to-blue-500 disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  .btn-secondary {
+    @apply rounded-lg border border-slate-600 bg-slate-800/80 px-4 py-2 text-sm font-medium text-slate-200 transition hover:border-cyan-500/50 hover:bg-slate-700/80 disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  .btn-stop {
+    @apply rounded-lg bg-gradient-to-r from-rose-600 to-orange-600 px-4 py-2 text-sm font-medium text-white transition hover:from-rose-500 hover:to-orange-500 disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  .input-field {
+    @apply w-full rounded-lg border border-slate-600 bg-slate-800/80 px-3 py-2 text-sm text-slate-100 placeholder-slate-500 focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500;
+  }
+
+  .agent-node-breathe {
+    animation: agent-breathe 1.6s ease-in-out infinite;
+    box-shadow: 0 0 12px rgba(34, 211, 238, 0.35);
+  }
+
+  .agent-flow-dot {
+    animation: agent-flow 0.9s ease-in-out infinite;
+  }
+}
+
+@keyframes agent-breathe {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.85;
+    transform: scale(1.03);
+  }
+}
+
+@keyframes agent-flow {
+  0% {
+    transform: translate(-120%, -50%);
+    opacity: 0.2;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate(120%, -50%);
+    opacity: 0.2;
+  }
+}

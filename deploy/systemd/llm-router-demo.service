@@ -1,0 +1,25 @@
+[Unit]
+Description=F5 LLM Router Demo (FastAPI + built frontend)
+Documentation=file:///home/myf5/llm_router_demo_App/README.md
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=myf5
+Group=myf5
+WorkingDirectory=/home/myf5/llm_router_demo_App
+EnvironmentFile=-/etc/llm-router-demo/env
+Environment=PYTHONPATH=/home/myf5/llm_router_demo_App
+Environment=PORT=8080
+ExecStart=/home/myf5/llm_router_demo_App/scripts/run.sh
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=30
+
+# Hardening (adjust if you bind custom paths)
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,37 @@
+{
+  "rules": [
+    {
+      "model_pattern": "deepseek-chat",
+      "match_type": "exact",
+      "currency": "Yuan",
+      "input_price_per_1m_tokens": 3,
+      "output_price_per_1m_tokens": 6,
+      "cache_read_price_per_1m_tokens": 0.03,
+      "cache_write_price_per_1m_tokens": 0.04,
+      "price_version": "v1",
+      "priority": 10
+    },
+    {
+      "model_pattern": "deepseek-",
+      "match_type": "prefix",
+      "currency": "Yuan",
+      "input_price_per_1m_tokens": 1,
+      "output_price_per_1m_tokens": 2,
+      "cache_read_price_per_1m_tokens": 0.02,
+      "cache_write_price_per_1m_tokens": 0.02,
+      "price_version": "v1",
+      "priority": 20
+    },
+    {
+      "model_pattern": "*",
+      "match_type": "wildcard",
+      "currency": "Yuan",
+      "input_price_per_1m_tokens": 2,
+      "output_price_per_1m_tokens": 3,
+      "cache_read_price_per_1m_tokens": 0.2,
+      "cache_write_price_per_1m_tokens": 0.3,
+      "price_version": "v1",
+      "priority": 1000
+    }
+  ]
+}

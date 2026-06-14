@@ -1,0 +1,23 @@
+[Unit]
+Description=F5 LLM Observability Adapter (Prometheus metrics)
+Documentation=file:///home/myf5/llm_router_demo_App/adapter_service/README.md
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=myf5
+Group=myf5
+WorkingDirectory=/home/myf5/llm_router_demo_App/adapter_service
+EnvironmentFile=-/etc/llm-router-adapter/env
+Environment=PORT=8090
+ExecStart=/home/myf5/llm_router_demo_App/scripts/run-adapter.sh
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=30
+
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

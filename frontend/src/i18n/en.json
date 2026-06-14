@@ -1,0 +1,842 @@
+{
+  "app": {
+    "title": "F5 ADC For AI Demo",
+    "subtitle": "Showcase F5 BIG-IP capabilities for Agentic AI and LLM scenarios",
+    "language": "Language",
+    "fullscreen": "Fullscreen",
+    "exitFullscreen": "Exit fullscreen",
+    "home": "Home",
+    "comingSoon": "Coming soon",
+    "comingSoonHint": "Full interactive demo will be available in a future release",
+    "startDemo": "Start demo",
+    "runSingle": "Send single request",
+    "running": "Demo running…",
+    "healthCheck": "Check VS connectivity",
+    "healthOk": "VS reachable",
+    "healthFail": "VS unreachable",
+    "viewSource": "View Mermaid source",
+    "hideSource": "Hide source",
+    "rawJson": "Raw JSON",
+    "expectedPool": "Expected Pool",
+    "elapsed": "Elapsed",
+    "status": "HTTP status",
+    "responseSummary": "Response summary",
+    "routingNote": "Routing vs backend layer",
+    "routingNoteBody": "F5 routes unknown models to the __default__ Pool via Data Group. The inference backend may still return 400 (model_mismatch)—routing succeeded but backend model validation failed.",
+    "cases": {
+      "deepseek": "DeepSeek hit",
+      "gpt4o": "GPT-4o hit",
+      "gemini": "Gemini hit",
+      "invalid": "Invalid model (backend validation)"
+    }
+  },
+  "modelRewrite": {
+    "title": "F5 rewrote the model name",
+    "request": "Request model",
+    "response": "Backend model",
+    "hint": "Data Group field2 replaces the model in the request body before forwarding. The response JSON model field reflects the rewritten value, which differs from what the client sent."
+  },
+  "sceneIntro": {
+    "label": "Scene overview",
+    "whyItMatters": "Why this matters to the business",
+    "architecture": "Architecture",
+    "businessArchitecture": "Business View",
+    "technicalArchitecture": "Technical View",
+    "collapseArchitecture": "Collapse diagram",
+    "expandArchitecture": "Expand diagram",
+    "techFeatures": "Solution technical highlights"
+  },
+  "nav": {
+    "scenes": "Scenes",
+    "scene1": "Scene 1: LLM Router",
+    "scene2": "Scene 2: Observability",
+    "scene3": "Scene 3: Optimization and Control",
+    "scene4": "Scene 4: LLM Security",
+    "modelRouting": "Model Based Routing",
+    "contextRouting": "Context Size Routing",
+    "agentRouting": "Agent/Subagent Routing",
+    "retryFallback": "Retry & Fallback",
+    "obsTokens": "Token usage",
+    "obsMetrics": "Model metrics",
+    "tblb": "LLM Router + Intelligent Inference Scheduling (TBLB)",
+    "modelAllowlist": "Model allow/block one-click control",
+    "maxTokensLimit": "max_tokens ceiling control",
+    "mcpToolsInsight": "MCP Tools Call Insight",
+    "mcpToolsControl": "MCP Tools Call Control",
+    "systemPrompt": "System prompt hardening",
+    "guardrails": "LLM Guardrail integration",
+    "tmosMinVersion": "(TMOS Ver ≥ v21)",
+    "planned": "Planned",
+    "available": "Live demo"
+  },
+  "home": {
+    "pickScene": "Choose a demo scene",
+    "scene1Desc": "One LLM entry: model routing, context-size steering, retry & fallback",
+    "scene2Desc": "Token usage, per-model metrics, and LLM traffic observability",
+    "scene3Desc": "Optimize and control inference: TBLB scheduling, model allow/block, max_tokens ceiling, MCP tool gateway (planned)",
+    "scene4Desc": "System prompt hardening and LLM Guardrail integration at the gateway"
+  },
+  "scenes": {
+    "llmRouter": {
+      "title": "LLM Router",
+      "tagline": "Single entry, intelligent dispatch to multiple inference pools",
+      "introStory": "Enterprises front multiple inference stacks with one BIG-IP VS and one OpenAI-compatible URL. iRuleLX parses each request, selects a pool from the routing table, upgrades by context size when needed, and will retry or fall back when backends fail.",
+      "overviewNote": "All four sub-features are live: model routing, context-size routing, agent routing, and Retry/Fallback resilience.",
+      "bullets": [
+        "Model Based Routing: map model names to inference Pools",
+        "Context Size Routing: steer by serialized messages size across small/large Pools",
+        "Agent/Subagent Routing: specialized agents, one API—F5 routes by agent identity to the right pool",
+        "Retry & Fallback: retry or switch to backup Pools on failure"
+      ]
+    },
+    "observability": {
+      "title": "LLM Observability",
+      "tagline": "LLM observability aligned with the live Prometheus pipeline",
+      "introStory": "This demo now mirrors the real collection and computation path: BIG-IP iRuleLX emits structured events, the Adapter receives `/events`, performs request_id dedup, pricing, and metric aggregation, exposes `/metrics` for Prometheus scrape, and Grafana renders live dashboards for requests, tokens, latency, retry/fallback, and cost.",
+      "overviewNote": "The interaction area below shows lightweight dashboard sketches that match Grafana panels. Use the button to open the live board.",
+      "bullets": [
+        "Collection path: iRuleLX structured events -> Adapter normalization/pricing -> Prometheus scrape -> Grafana visualization",
+        "Core metrics: RPS, error ratio, Retry/Fallback ratio, TTFT/Latency quantiles, Prompt/Completion tokens, and cost",
+        "Dashboard filters match live variables: model, pool, member, client_ip, and price_version"
+      ],
+      "interactionTitle": "Grafana Dashboard Sketch",
+      "interactionSubtitle": "Embedded mini diagrams are illustrative; use Grafana for real-time details",
+      "openGrafana": "Open Live Grafana Dashboard",
+      "linkHint": "Target: localhost:3001 (last 5 minutes, auto-refresh every 10s)",
+      "mockPanels": {
+        "traffic": "Request & Error Trend",
+        "quality": "Latency & TTFT",
+        "cost": "Tokens & Cost"
+      }
+    },
+    "retryFallback": {
+      "title": "Retry & Fallback",
+      "tagline": "When the primary pool fails, retry or steer to a backup without client changes",
+      "introStory": "Inference clusters can be briefly unavailable during upgrades, maintenance, upstream throttling, or sudden failures. When apps point directly at a single backend, one outage becomes a user-visible error or long wait. Retry and Fallback adds a second safety net at the gateway: when the primary pool struggles, traffic is retried or steered to a backup pool—apps keep the same API URL and gain higher continuity without code changes.",
+      "bullets": [
+        "Brief primary-pool glitches often mean a slightly longer wait—not an immediate failure—reducing perceived outages from infrastructure noise",
+        "When the primary pool stays down, traffic can fall back to a preconfigured backup pool so critical work continues within the failure window",
+        "Retry and fallback policies live in one gateway configuration—apps need not each implement their own retry logic or drift on policy",
+        "Stacks with model routing, context upgrade, and agent steering for a full “routing + resilience” gateway story"
+      ],
+      "techFeatures": [
+        "With Retry enabled, iRuleLX Orchestrator runs an attempt queue: limited retries on the primary pool (5xx/429), then fallback pool",
+        "Each attempt goes through Layered VS sideband; TCP LB_FAILED triggers in-pool reselect; exhausted members trigger cross-pool fallback via iRule",
+        "Demo A: model=testmodel triggers status-code retry—watch request counter delta and final fallback to pool_llm_default",
+        "Demo B: dead member 7999 in pool_deepseek-chat reselects to 8005; all members offline triggers cross-pool fallback"
+      ],
+      "explain": [
+        "Status-code scenario: request model=testmodel, hit pool_testmode, then retry and fallback to pool_llm_default",
+        "If fallback pool is also unavailable, BIG-IP may return x-llm-retry-terminal=1 with upstream_error",
+        "TCP scenario: pool_deepseek-chat has dead member 7999 and healthy member 8005, system should reselect to 8005",
+        "After forcing 8005 offline, requests should fallback to default pool"
+      ],
+      "opsNote": "Auto-preparing member states",
+      "opsNoteBody": "The interactive demo uses F5 iControl REST to prepare member states before each run, so prior test residue does not break the scenario."
+    },
+    "obsTraffic": {
+      "title": "Simulated traffic (feed Grafana)",
+      "subtitle": "Send random requests to the LLM gateway VS (same model list as Model Based Routing). Concurrency defaults to 5 (max 10). Both sub-scenes share one run—you cannot start twice.",
+      "durationMinutes": "Duration (minutes)",
+      "concurrency": "Concurrency",
+      "streamModeLabel": "Streaming",
+      "streamModeActive": "Stream mode",
+      "streamMode": {
+        "non_stream": "All non-streaming",
+        "stream": "All streaming",
+        "mixed": "Auto mix (~half streaming)"
+      },
+      "start": "Start simulated traffic",
+      "stop": "Stop simulation",
+      "sent": "Sent",
+      "errors": "Errors",
+      "remaining": "Remaining",
+      "lastError": "Last error",
+      "lockedByOther": "A simulation is already running in \"{{scene}}\". Stop it or wait until it finishes.",
+      "runningInOther": "Started from \"{{scene}}\"; both pages stay in sync—you can stop from here"
+    },
+    "obsTokens": {
+      "title": "Token usage",
+      "tagline": "See how much each team spends on AI—fuel FinOps and budget control",
+      "introStory": "After rolling out Copilot and AI assistants at scale, leadership asks: how many tokens did each team use, what did it cost, and is the trend under control? Without unified observability, finance reconciles vendor consoles one by one—hard to charge back or warn before overrun. This scene shows how the F5 gateway feeds every LLM call’s token usage and cost into one dashboard for FinOps and ops to drill down by model, department, and application.",
+      "bullets": [
+        "Pull scattered backend usage into one dashboard for department and application chargeback and budget management",
+        "Track per-model token trends in real time and catch spikes or abuse before the month-end bill surprise",
+        "Separate prompt vs completion tokens to see whether cost comes from long inputs or verbose outputs—and tune accordingly",
+        "Cost by price_version keeps historical spend comparable when model pricing or contracts change"
+      ],
+      "techFeatures": [
+        "iRuleLX emits structured llm_request_completed events with model/pool/member/usage fields on each finished request",
+        "Observability Adapter ingests /events, deduplicates, prices via pricing_rules.json, and writes Prometheus counters",
+        "Core metrics: llm_prompt_tokens_total, llm_completion_tokens_total, llm_cost_total with model/pool/member/client_ip labels",
+        "Grafana drills down with shared variables; this page can start simulated traffic to refresh metrics"
+      ],
+      "plannedIntro": "The in-page view is a lightweight sketch; open Grafana for live values.",
+      "planned": [
+        "Suggested panel: prompt/completion token throughput (tokens/s)",
+        "Suggested panel: total cost rate and per-model cost rate",
+        "Suggested panel: Top-N spend by model/pool/member"
+      ],
+      "interactionTitle": "Tokens & Cost Sketch",
+      "interactionSubtitle": "Sketches are for orientation; use Grafana for full filtering and real-time data",
+      "openGrafana": "Open Grafana (Tokens/Cost)",
+      "linkHint": "Defaults to last 5 minutes with model/pool/member/client_ip/price_version variables"
+    },
+    "obsMetrics": {
+      "title": "Model metrics",
+      "tagline": "When users say “AI feels slow”—find which model and which server",
+      "introStory": "When users report slowness or frequent errors, ops must quickly tell which model, pool, or server is at fault. Backend logs alone rarely tie routing decisions to performance. This scene shows how F5 exports request volume, error rates, time-to-first-token, end-to-end latency, and retry/fallback behavior into one metric stream so Grafana can surface bottlenecks and stability risks at a glance.",
+      "bullets": [
+        "Drill from “it feels slow” to a specific model, pool, or member—shorter mean time to diagnose",
+        "Watch success, retry, and fallback rates together to separate backend performance from routing/resilience triggers",
+        "TTFT vs end-to-end latency shows whether delay is queue/generation or network/gateway overhead",
+        "Filter by client_ip, model, pool, and more for capacity planning, SLA review, and peak-hour operations"
+      ],
+      "techFeatures": [
+        "Adapter exports llm_requests_total (with status label) plus retry/fallback counters from iRuleLX structured events",
+        "Latency via histograms: llm_ttft_ms_bucket (first token) and llm_latency_ms_bucket (end-to-end)",
+        "Grafana computes p95 and similar percentiles with model/pool/member/client_ip filters",
+        "Same Adapter source as the Tokens sub-scene—traffic, performance, and cost on one dashboard"
+      ],
+      "plannedIntro": "This page explains metric structure; Grafana provides live trend analysis.",
+      "planned": [
+        "Suggested panel: total request rate and per-model request rate",
+        "Suggested panel: error ratio, retry ratio, and fallback ratio",
+        "Suggested panel: TTFT p95 vs Latency p95 comparison"
+      ],
+      "interactionTitle": "Metrics Sketch",
+      "interactionSubtitle": "Sketches show metric categories; live values are in Grafana",
+      "openGrafana": "Open Grafana (Metrics)",
+      "linkHint": "Use dashboard variables to switch model, pool, member, and price version"
+    },
+    "trafficMgmt": {
+      "title": "Optimization and Control",
+      "tagline": "Optimize inference resource use and control agent tool access at the unified gateway",
+      "introStory": "After LLM Router picks a pool, two optimization and control needs remain: avoid hot GPUs inside a model pool, and safely connect agents to many MCP tool servers in Agentic AI workloads. Optimization and Control covers both—TBLB for intelligent in-pool inference scheduling, and MCP Tools Call Insight / Control for observability and policy-governed tool access (planned).",
+      "overviewNote": "TBLB, model allow/block, and max_tokens ceiling demos are live; MCP Tools Call Insight / Control are planned placeholders.",
+      "bullets": [
+        "Intelligent inference scheduling (TBLB): after Router picks a pool, steer to the best GPU member from live metrics",
+        "Model allow/block list: model admission at the unified gateway—prevent agents from calling costly or unapproved models",
+        "max_tokens ceiling: iRule Layer 0 caps per-request max_tokens to stop agents from requesting excessive generation length",
+        "MCP Tools Call Control (planned): unified MCP tool access, auth, rate limits, and routing policy at the gateway"
+      ]
+    },
+    "tblb": {
+      "title": "LLM Router + Intelligent Inference Scheduling (TBLB)",
+      "tagline": "Router selects the right model pool; TBLB selects the best GPU member in that pool",
+      "introStory": "After routing by model, many GPUs often serve the same pool. Classic round-robin or least-connections cannot see long queues or full KV caches—users hit the same model entry yet may land on the busiest card, so responses feel uneven. After Router picks the pool, TBLB reads live queue and cache metrics on each GPU and steers each request to the lightest member expected to respond fastest—avoiding hot GPUs without users changing URLs, improving peak stability and consistency.",
+      "bullets": [
+        "With multiple GPUs behind one model entry, steer away from the longest queues and fullest caches—fewer “sometimes fast, sometimes forever” moments",
+        "Apps keep one model name and gateway URL; scaling GPUs stays transparent to upstream teams",
+        "At peak, send new work to freer inference nodes—less hot-GPU overload and better overall utilization",
+        "Layers with Router pool choice and Retry/Fallback: Router picks capability class; TBLB picks which server inside the pool"
+      ],
+      "techFeatures": [
+        "LLM Router steers by model to pools such as pool_gpt-4o, pool_gemini-1.5-pro, and pool_deepseek-chat",
+        "gpt-4o and gemini-1.5-pro pools run TBLB Scheduler on vLLM/SGLang queue, cache, and in-flight metrics",
+        "Scheduler S1/S2 algorithms weight metrics into per-member percent and pick the best GPU per request",
+        "pool_deepseek-chat uses standard pool LB (no TBLB); connection failure triggers in-pool reselect, coordinated with Router retry/fallback"
+      ]
+    },
+    "modelAllowlist": {
+      "title": "Model allow/block one-click control",
+      "tagline": "Govern which models may be used at the unified gateway—stop agents from calling costly or unapproved models",
+      "introStory": "After rolling out Copilot, coding agents, and other AI apps, enterprises often operate multiple purchased or self-hosted models with different permissions and cost budgets by team and use case. If every app or agent can freely set the model name on each request, teams may bypass approval and invoke flagship models—driving runaway spend, compliance violations, and vendor-policy conflicts. Platform teams need model admission at the unified LLM gateway: only approved models enter the inference path; unauthorized or high-risk models are rejected, and policy changes should apply centrally without redeploying every application. Model allow/block control validates the model field on every request at the gateway—like checking a badge before entry: no badge, no access.",
+      "bullets": [
+        "Stop agents and apps from arbitrarily choosing expensive, unpurchased, or unapproved models—control inference cost and vendor compliance at the source",
+        "Maintain model admission policy centrally on the gateway—add, retire, or temporarily block a model once and it applies everywhere, without changing each business app",
+        "Reject unauthorized requests before they reach inference—avoid wasted GPU capacity and accidental use of high-privilege models on sensitive workloads"
+      ],
+      "techFeatures": [
+        "iRule Layer 0 (ir_openai_api.tcl): parse model from JSON body, lookup dg_openai_model_list",
+        "Data Group values are allow or block; misses use DEFAULT_MODEL_ACTION (block in this demo)",
+        "BLOCK mode returns HTTP 403 with OpenAI-compatible error JSON",
+        "Same System Prompt VS (172.16.30.124:8000); allow list includes demo-model, gpt-5.2-codex, gpt-5.3-codex"
+      ],
+      "explain": [
+        "Left panel shows datagroup rules and policy preview; send a request to see allow or block on the right",
+        "demo-model, gpt-5.2-codex, and gpt-5.3-codex are allow in dg_openai_model_list—expect HTTP 200",
+        "Any model not explicitly allowed (e.g. gpt-4o) hits default block—expect HTTP 403",
+        "If results differ, verify JSON Profile + iRule on the VS and datagroup matches this demo config"
+      ],
+      "policyNote": "Expected demo datagroup",
+      "policyNoteBody": "dg_openai_model_list: demo-model / gpt-5.2-codex / gpt-5.3-codex → allow; DEFAULT_MODEL_ACTION = block. Only these models may proceed; others are stopped at iRule Layer 0.",
+      "curlAllow": "Allow example (demo-model)",
+      "curlBlock": "Block example (unauthorized model)",
+      "opsTip": "Ops tip: tmsh modify ltm data-group internal dg_openai_model_list records add { demo-model { data allow } gpt-5.2-codex { data allow } gpt-5.3-codex { data allow } }; DEFAULT_MODEL_ACTION is set in iRule variables."
+    },
+    "maxTokensLimit": {
+      "title": "max_tokens ceiling control",
+      "tagline": "Cap per-request generation length at the gateway—stop agents from setting excessive max_tokens",
+      "introStory": "Agents and Copilots can set max_tokens on each request to cap how many tokens the model may generate. Without governance, a single call with thousands or tens of thousands of max_tokens can burn GPU capacity and budget and slow shared inference clusters. Enterprises need a unified “per-request generation budget” at the LLM gateway—requests above MAX_TOKENS_LIMIT are rejected before they reach inference (alternatively, max_tokens may be automatically clamped to the limit and allowed through), with policy applied centrally.",
+      "bullets": [
+        "Stop agents from setting excessive max_tokens on a single request—control inference cost and GPU usage at the source",
+        "Set the ceiling once at the gateway—business apps do not need their own validation logic",
+        "Over-limit requests are rejected at iRule Layer 0 (or max_tokens may be auto-clamped to the limit and forwarded)—avoid wasted compute and protect backend stability"
+      ],
+      "techFeatures": [
+        "iRule Layer 0 (ir_openai_api.tcl): parse max_tokens from JSON body and compare to MAX_TOKENS_LIMIT",
+        "Demo MAX_TOKENS_LIMIT = 4096; default BLOCK mode returns HTTP 403 when exceeded (optional: rewrite max_tokens to the limit and forward)",
+        "Same iRule Layer 0 as model admission; demo uses demo-model (allow in dg_openai_model_list)",
+        "Shares System Prompt VS (172.16.30.124:8000) and JSON Profile"
+      ],
+      "explain": [
+        "Click “Run compare demo”: sends max_tokens=2048 (compliant) and 8192 (overflow) in parallel—side-by-side allow vs 403 (this demo uses BLOCK; optional auto-clamp mode available)",
+        "2048 ≤ 4096 should return HTTP 200; 8192 > 4096 should return HTTP 403 in BLOCK mode (or auto-clamp max_tokens and allow)",
+        "Use custom max_tokens or “at limit / over by 1” quick buttons for boundary tests",
+        "If the overflow card is not 403, verify F5 iRule MAX_TOKENS_LIMIT=4096 and demo-model model admission"
+      ],
+      "policyNote": "Expected demo policy",
+      "policyNoteBody": "MAX_TOKENS_LIMIT = 4096; model = demo-model (allow). max_tokens ≤ 4096 allowed; > 4096 returns 403 at iRule Layer 0 (or max_tokens may be auto-clamped to 4096 and forwarded). This demo uses BLOCK reject mode.",
+      "curlAllow": "Allow example (max_tokens=2048)",
+      "curlBlock": "Block example (max_tokens=8192)",
+      "opsTip": "Ops tip: MAX_TOKENS_LIMIT is set in iRule variables; over-limit may BLOCK with 403 or optionally auto-clamp max_tokens to the limit and forward."
+    },
+    "mcpToolsInsight": {
+      "title": "MCP Tools Call Insight",
+      "tagline": "Visibility into MCP tool-call volume, distribution, and health",
+      "introStory": "After Agentic AI rollouts, platform teams need answers: which agents call which MCP tools, whether volume is abnormal, where failures cluster, and whether peaks create hotspots. Without unified observability, logs stay scattered across MCP servers. MCP Tools Call Insight collects structured tool-call events at the F5 gateway, aggregates them through the Adapter, and surfaces dashboards in Prometheus / Grafana by tool, agent, and tenant.",
+      "bullets": [
+        "Capture latency, status, tool name, and agent identity for every MCP tool call in one place",
+        "Reuse the Observability Adapter + Prometheus + Grafana stack for side-by-side model and tool analysis",
+        "Trend call volume, success rate, and P95 latency by tool type, business line, and environment",
+        "Give security and compliance teams a traceable view of who called which tool and when"
+      ],
+      "techFeatures": [
+        "F5 gateway emits structured audit events from MCP JSON-RPC sessions (tool, agent, status, latency)",
+        "Adapter ingests tool-call events and exports Prometheus metrics (volume, error rate, latency quantiles)",
+        "Grafana dashboards drill down by tool / agent / tenant and correlate with LLM inference metrics",
+        "Planned: same collection path as llm_request_completed events to reduce ops overhead"
+      ],
+      "plannedIntro": "MCP Tools Call Insight interactive demo is planned; this page is a capability placeholder and architecture overview.",
+      "planned": [
+        "Demo the collection path from F5 gateway through Adapter to Grafana",
+        "Dashboards for call volume, success rate, and latency by tool and agent",
+        "Placeholder for cross-linking with token usage and model metrics dashboards"
+      ]
+    },
+    "mcpToolsControl": {
+      "title": "MCP Tools Call Control",
+      "tagline": "Unified MCP tool access and call policy at the gateway",
+      "introStory": "Agentic AI apps often call databases, knowledge bases, ticketing, code repos, and more via MCP. If every agent wires its own tool URLs and credentials, integration fragments and policy enforcement becomes hard. MCP Tools Call Control proxies MCP traffic at the F5 entry—routing, auth, rate limits, and fail-close—so agents see one gateway while the enterprise governs which tools are exposed and how they are called.",
+      "bullets": [
+        "Agents and Copilots use one MCP gateway URL for approved tool servers—less integration and credential sprawl",
+        "Central auth, quotas, and rate limits at the gateway for compliant tool use",
+        "Route tool traffic by business line, environment, or agent identity for multi-tenant and staged rollouts",
+        "Fail-close and health-check policies keep unhealthy MCP servers from breaking agent workflows"
+      ],
+      "techFeatures": [
+        "F5 Virtual Server as MCP (HTTP/SSE) entry, proxying JSON-RPC sessions between agents and MCP server pools",
+        "Data Group or policy table maps tool name / server id → backend MCP server pool",
+        "Gateway enforces token auth, rate limits, and tool allowlists",
+        "Planned: Streamable HTTP / SSE long-lived sessions with member-level load balancing"
+      ],
+      "plannedIntro": "MCP Tools Call Control interactive demo is planned; this page is a capability placeholder and architecture overview.",
+      "planned": [
+        "Demo routing and auth when an agent calls multiple MCP servers via F5",
+        "Placeholder for tool allowlists, quota limits, and fail-close policy",
+        "MCP server health checks and in-pool member failover illustration"
+      ]
+    },
+    "security": {
+      "title": "LLM Security",
+      "tagline": "Harden system prompts and integrate guardrails before traffic hits inference",
+      "introStory": "Enterprise Copilot rollouts need protection against prompt injection and policy bypass. The gateway can inject or validate system prompts and call guardrail APIs before requests reach backends.",
+      "overviewNote": "System prompt hardening and LLM Guardrail integration both have interactive demos.",
+      "bullets": [
+        "System prompt hardening: enforce corporate system instructions",
+        "LLM Guardrail integration: content safety scan with gateway-side reject",
+        "Audit logs for policy hits and blocks"
+      ]
+    },
+    "systemPrompt": {
+      "title": "System prompt hardening",
+      "tagline": "Ensure every request carries compliant system instructions users cannot override",
+      "introStory": "Enterprise Copilot apps must answer within approved policy and compliance frames. When system prompts live on the client, they can be tampered with, omitted, or overridden by user messages—models drift off corporate policy. System prompt hardening injects or validates enterprise system instructions at the gateway so every inference call runs under the same policy.",
+      "bullets": [
+        "Every inference request carries approved enterprise system instructions—no client omission or tampering compliance gap",
+        "Users cannot bypass corporate safety and brand voice via crafted messages—lower prompt-injection and policy drift risk",
+        "Policy updates ship centrally at the gateway—business apps need not redeploy route-by-route for global effect",
+        "Policy hits and blocks feed the audit trail for regulated industries such as finance and healthcare"
+      ],
+      "techFeatures": [
+        "F5 v21 JSON Profile fires JSON_REQUEST; iRule merges and rewrites system-role messages",
+        "Three-layer XML wrapper: admin_prompts / untrusted user_prompts / final_guardrails (BIG-IP mandatory-rules block, iRule tag name)",
+        "Dynamic nonce tags (demo fixed to F5) block fake closing tags in user-supplied system prompts",
+        "Aligned with ir_openai_api.tcl: F5 BIG-IP mandatory enforcement rules can force YAML over Markdown in user_prompts"
+      ],
+      "explain": [
+        "Client sends untrusted system messages; F5 wraps them into one system blob on JSON_REQUEST",
+        "Mock LLM (demo-model @ 8011) parses the BIG-IP mandatory-rules block (final_guardrails_F5) and returns deterministic YAML",
+        "Format preset: user asks for Markdown, BIG-IP mandatory rules require YAML — response should be YAML",
+        "Injection preset: forged admin_prompts tags stay inside user_prompts_F5; mandatory rules still win"
+      ],
+      "formatNote": "Format enforcement demo",
+      "formatNoteBody": "Even when user system says \"use Markdown\", F5 BIG-IP mandatory enforcement rules (e.g. You MUST answer in yaml format) take priority; Mock LLM returns YAML.",
+      "nonceNote": "Nonce anti-injection",
+      "nonceNoteBody": "Demo uses NONCE_RANDOM=0 and NONCE_LENGTH=1 (suffix F5). Attackers cannot predict tag names; fake </user_prompts> cannot close the real wrapper.",
+      "curlExample": "curl example",
+      "opsTip": "F5 logs: tail -f /var/log/ltm | grep JSON_REQUEST; set DEBUG_PROMPTS=1 to see before/after system text."
+    },
+    "guardrails": {
+      "title": "LLM Guardrail integration",
+      "tagline": "Gate user input at your unified AI entry—violations stop at the edge, compliant traffic flows through",
+      "introStory": "When enterprises offer Copilot, intelligent support, or knowledge Q&A, a single policy-violating user prompt can trigger regulatory exposure, brand risk, and audit findings. If every application wires its own guardrail, policies diverge, integration cost multiplies, and security teams lose a single view of violations. Guardrails at the F5 unified gateway puts content safety in one place: every LLM call is checked against corporate policy before it reaches a model—rules that match are rejected immediately; compliant requests still get normal model answers, without per-app security rewrites.",
+      "bullets": [
+        "Stop harmful or policy-violating user input at the unified entry before it reaches the model and spreads compliance risk",
+        "One corporate guardrail policy covers all Copilot and business apps—central updates take effect everywhere, cutting duplicate integration",
+        "Compliant conversations get normal responses; violations get a uniform rejection—user experience and security boundaries together",
+        "Block and allow outcomes leave an audit trail for security and compliance teams—trends, investigations, and alerting"
+      ],
+      "techFeatures": [
+        "Dual-VS design: Gateway VS (vs_guardrail_oob_gateway :8000) for clients; Egress VS (vs_guardrail_ssl_egress :8031) with Server SSL to Guardrail",
+        "Gateway iRule SIDEBAND to guardrail_egress_dest, POST {\"input\":\"...\"} to /backend/v1/scans, parse result.outcome",
+        "passed/cleared: force stream:false then forward Default Pool; flagged: return OpenAI block JSON (HTTP 200)",
+        "Settings in Data Group guardrail_oob_config: token, host, timeout, enable_request_scan—hot-reloadable"
+      ],
+      "explain": [
+        "Client POST /v1/chat/completions to Gateway VS; iRule extracts message text from JSON body",
+        "Sideband via Egress VS → pool_guardrail_aigr → HTTPS (SNI=us1.calypsoai.app) to Guardrail Scan API",
+        "On pass: rewrite body (stream→false) and forward Default Pool; on flagged: block without upstream forward",
+        "Demo default VS 172.16.30.120:8000, requests sent via local proxy with stream:true—compare block vs allow prompts"
+      ],
+      "blockNote": "Blocked response signature",
+      "blockNoteBody": "When Guardrail returns flagged, Gateway responds HTTP 200 with OpenAI chat.completion JSON; choices[0].message.content cites F5 AI Guardrail policy violation—the request never hits the backend LLM pool.",
+      "passNote": "Allowed response signature",
+      "passNoteBody": "On passed/cleared Gateway forwards to the Default Pool. If the client sent stream:true, the gateway forces non-stream before forward; the demo proxy consumes SSE and reports chunk count.",
+      "proxyWhy": "Browsers cannot reach lab VS addresses directly; the demo uses the local Python proxy, same as Model Based Routing and other sub-scenes.",
+      "curlExample": "curl example (block-class prompt)",
+      "opsTip": "F5 logs: tail -f /var/log/ltm | grep guardrail_oob; ensure guardrail_api_token and guardrail_egress_dest in the Data Group are correct."
+    },
+    "modelRouting": {
+      "title": "Model Based Routing",
+      "tagline": "One public front door—a smart operator that sends each AI model request to the right inference cluster",
+      "introStory": "Enterprises often run GPT, Claude, DeepSeek, and internal models in parallel—built by different teams, billed under different contracts, with different compliance boundaries. When every application points to its own backend URL, traffic is scattered: onboarding a new model means changing many apps, and operations cannot see who uses which model or where spend goes. Model Based Routing gives the business one AI gateway entry: apps call with familiar model names and the gateway steers each request to the right inference cluster—no per-app “model name → backend address” matrix to maintain.",
+      "bullets": [
+        "Marketing, engineering, and support can each use the right model while all apps share one gateway URL—pick a model name and reach the matching inference service",
+        "New models and route changes are managed centrally at the gateway, not by redeploying every application—faster from procurement to production use",
+        "All model traffic passes one entry point, enabling usage reporting by department and application for chargeback, quotas, and compliance audit",
+        "Business teams keep calling with familiar model names; internal mapping and cutover stay transparent at the gateway, lowering integration and ops cost when many models coexist"
+      ],
+      "techFeatures": [
+        "Entry Virtual Server uses HTTP Profile plus iRuleLX (ILX Profile) to parse requests and make routing decisions at the gateway",
+        "Route map lives in a BIG-IP Data Group: key = request model, value = target Pool [, rewrite model [, extra field]]",
+        "__default__ key points to a fallback Pool when no rule matches, so unknown models still land predictably",
+        "Optional field2: rewrite the model field in the JSON body before forward so client aliases decouple from backend model names (demo highlights successful rewrites in violet)"
+      ],
+      "explain": [
+        "VS requires HTTP Profile and ILX Profile",
+        "Data Group value: field1[,field2[,field3]] — field1 is Pool, field2 is optional model rewrite",
+        "__default__ key is the fallback Pool when no match",
+        "When field2 applies, a 200 response model field may differ from the request model"
+      ],
+      "modelRewriteNote": "Model name rewrite (field2)",
+      "modelRewriteNoteBody": "When the Data Group value is \"Pool,backendModel\", iRuleLX updates the model field in the JSON body before forwarding. If the response is 200 and response model ≠ request model, the result card highlights the rewrite in violet.",
+      "curlSuccess": "Successful route example (deepseek-chat)",
+      "curlFail": "Backend model mismatch example",
+      "opsTip": "On BIG-IP: tail -f /var/log/ltm | grep llm_router",
+      "proxyWhy": "This demo proxies requests via Python to avoid browser CORS and unify timeouts/errors. The interactive panel calls /v1/chat/completions as an example only—it does not mean production clients must use that API shape."
+    },
+    "contextRouting": {
+      "title": "Context Size Routing",
+      "tagline": "The longer the working chat gets, the heavier the lift—quietly upgrade from quick answers to a large-context specialist",
+      "introStory": "In IDEs, ticket systems, and knowledge Q&A, users start with short questions, then paste logs, documents, or spreadsheets—the conversation keeps growing. Always using a lightweight engine leads to fast replies until a long paste suddenly slows or truncates; always using a large-context engine wastes money on small talk. Context Size Routing steers by this request’s conversation weight at the gateway: routine chat on an economical pool, long-document work on a large-context pool—same model entry for users, smoother experience and smarter spend.",
+      "bullets": [
+        "From “fix one line” to “paste the full stack trace”—same business API; the gateway upgrades to inference that can carry long context",
+        "Avoid the cliff where smooth chat suddenly times out or goes off-topic after one long paste",
+        "Light resources for short turns; expensive large-context capacity only when the payload truly needs it—FinOps-friendly by scenario",
+        "Stacks with model routing: recognize the business model first, then split by conversation length—like production’s “same brand, different load”"
+      ],
+      "techFeatures": [
+        "On top of Model Based Routing, Data Group field3 supports Size|threshold|large-context Pool|large-context model",
+        "Threshold compares serialized messages array byte length; demo uses 5k = 5×1024 = 5120 bytes",
+        "Under threshold: field1 pool + field2 model; over threshold: switch to field3 large pool/model",
+        "Multi-turn chats accumulate bytes per request; crossing the threshold switches pools without client parameter changes"
+      ],
+      "explain": [
+        "DG example: /Common/pool_deepseek-chat,deepseek-chat,Size|5k|pool_deepseek_v4|deepseek-v4-flash",
+        "5k in field3 means 5×1024=5120 bytes threshold on serialized messages array",
+        "Under threshold: field1 Pool + field2 model; over: largePool + largeModel",
+        "Multi-turn chats accumulate context; crossing 5k triggers Pool/model switch"
+      ],
+      "thresholdNote": "5k threshold and steering",
+      "dgExample": "DG key deepseek-chat → value /Common/pool_deepseek-chat,deepseek-chat,Size|5k|pool_deepseek_v4|deepseek-v4-flash",
+      "calcNote": "Use the slider to set target messages bytes. Multiturn sim sends before/after 5k requests with side-by-side highlighted results."
+    },
+    "agentRouting": {
+      "title": "Agent/Subagent Based Routing",
+      "tagline": "Many agents, different strengths—one API; F5 routes each role to the right pool",
+      "introStory": "More enterprises orchestrate complex work with multiple AI agents. In an “AI coding assistant,” the supervisor coordinates the flow, the planner reads specs, the coder generates code, and testing and security scanning each need different strengths—each role should land on different inference resources. If every sub-agent keeps its own API URL and routing rules, the orchestration platform grows heavy and traffic/cost governance fragments. Agent Routing lets all agents share one API and gateway entry while declaring which agent is calling; F5 steers to the right pool—long context for planning, flagship models for coding, lightweight pools for security scan—balancing product flexibility with centralized operations.",
+      "bullets": [
+        "Multi-agent orchestration maintains one API address; each role calls with an identity tag—lower integration and credential sprawl",
+        "Planning, coding, testing, and scanning need different model strengths—the gateway matches resources at forward time without per-agent backend URLs",
+        "Expose one enterprise alias such as EnterpriseAgentModel; internal per-pool model mapping stays transparent for upgrades and swaps",
+        "All agent traffic through one entry enables audit (“which role used which model”), quotas, and centralized route policy changes"
+      ],
+      "techFeatures": [
+        "Agent identity map lives in BIG-IP Data Group (llm_agent_pool_map), same mechanism as Model Based Routing",
+        "Identity from HTTP header (x-Agent-Identity), system message name, or model field set to the role name",
+        "Demo roles: superviser / planner / coder / tester / scanner, each routed to a different LTM pool",
+        "With header or system.name, field2 rewrite can expose EnterpriseAgentModel outward while forwarding each pool’s backend model name"
+      ],
+      "explain": [
+        "Business view: the orchestrator focuses on tasks and collaboration; model-to-pool mapping lives in BIG-IP Data Group (llm_agent_pool_map)",
+        "Technical view: F5 extracts identity from x-Agent-Identity, system message name, or model field (superviser / planner / coder / tester / scanner)",
+        "With header or system.name, clients may send EnterpriseAgentModel; F5 rewrites to the backend model the target pool expects",
+        "The interaction panel animates each sub-agent → F5 VS → pool; purple cards indicate an internal model rewrite"
+      ],
+      "modelRewriteNote": "One outward model name, correct model in each pool",
+      "modelRewriteNoteBody": "Same as Model Based Routing: agents can call with a shared alias; F5 rewrites the JSON model before forwarding so each pool receives the name its backend accepts—no per-agent model string sprawl.",
+      "identityNote": "How one API tells agents apart",
+      "identityNoteBody": "Orchestrators need not swap URLs per role—only declare who is calling. The demo supports header (x-Agent-Identity), system message name, or model field as the role tag; F5 routes to the matching pool.",
+      "curlExample": "curl -iX POST http://172.16.30.121:8000/v1/chat/completions \\\n  -H \"Content-Type: application/json\" \\\n  -H \"x-Agent-Identity: coder\" \\\n  -d '{\"model\":\"EnterpriseAgentModel\",\"messages\":[{\"role\":\"user\",\"content\":\"hello\"}]}'"
+    }
+  },
+  "agentRouting": {
+    "loadFailed": "Failed to load agent routing config",
+    "userPrompt": "Simulated user task",
+    "identityMode": "Agent identity mode",
+    "requestModel": "Request model",
+    "startDev": "Start development",
+    "running": "Multi-agent workflow running…",
+    "topologyTitle": "Subagent → F5 VS → Pool topology",
+    "topologyHint": "After Start development, each sub-agent pulses in turn while requests flow through F5 VS to the mapped Pool (dashed lines).",
+    "poolHit": "Routed",
+    "agents": {
+      "superviser": "Supervisor SubAgent",
+      "planner": "Planner SubAgent",
+      "coder": "Coding SubAgent",
+      "tester": "Testing SubAgent",
+      "scanner": "Security Scanner SubAgent"
+    },
+    "modes": {
+      "header": "HTTP Header (x-Agent-Identity)",
+      "headerHint": "model is EnterpriseAgentModel; identity in header",
+      "system_name": "system message name field",
+      "system_nameHint": "model is EnterpriseAgentModel; identity in system.name",
+      "model_field": "model field is identity",
+      "model_fieldHint": "put superviser / planner / coder etc. in model",
+      "random": "Random (per agent)",
+      "randomHint": "On each test start, each sub-agent gets a random identity method, fixed for that run"
+    },
+    "perAgentModeTitle": "Identity mode per agent (this run)",
+    "continuous": {
+      "title": "Continuous simulation",
+      "subtitle": "Randomly rotate sub-agents sending requests to the F5 VS for the configured duration (Grafana / Prometheus traffic)",
+      "durationMinutes": "Duration (minutes)",
+      "start": "Start continuous sim",
+      "stop": "Stop simulation",
+      "sent": "Sent",
+      "errors": "Errors",
+      "remaining": "Remaining",
+      "lastAgent": "Last agent",
+      "alreadyRunning": "Continuous simulation is already running; stop it first"
+    }
+  },
+  "contextSize": {
+    "targetVs": "Target Virtual Server",
+    "modelFixed": "Demo model (fixed)",
+    "targetMessagesBytes": "Target messages array bytes (F5 calcContextSize)",
+    "previewCalc": "Estimated {{bytes}} B",
+    "tierSmall": "Small context ≤5k",
+    "tierLarge": "Large context >5k",
+    "messagesBytes": "Messages bytes",
+    "underExplain": "Under 5k — expect pool_deepseek-chat",
+    "overExplain": "Over 5k — expect pool_deepseek_v4",
+    "expectedRoute": "Expected F5 route",
+    "responseModel": "Response model",
+    "switchedTitle": "Switched to large-context model",
+    "turnCount": "~{{count}} dialogue turns",
+    "sendSized": "Send sized request",
+    "simulateMultiturn": "Simulate multiturn crossing 5k",
+    "multiturnTitle": "Continuous chat: before → after threshold",
+    "underThreshold": "≤5k: small context (deepseek-chat)",
+    "overThreshold": ">5k: large context (deepseek-v4-flash)",
+    "singleShot": "Single adjustable-size request",
+    "noResults": "Adjust slider or click a button to start",
+    "multiturnHint": "Preview: ticket-style multiturn chat ~{{under}} B ({{underTurns}} msgs), ~{{over}} B after log paste ({{overTurns}} msgs)",
+    "result": "Routing result",
+    "workScenarioTitle": "Scenario: live IDE chat while debugging the LLM gateway",
+    "workScenarioDesc": "Profile setup, Data Group, follow-ups, then pasting LTM logs—context grows until one request crosses 5k.",
+    "timelineTitle": "Context growth per message (cumulative bytes)",
+    "thresholdLine": "Threshold {{bytes}} B",
+    "roleUser": "User",
+    "roleAssistant": "Assistant",
+    "roleSystem": "System",
+    "showChat": "Show conversation excerpt in this request",
+    "hideChat": "Hide conversation excerpt",
+    "dialogueRounds": "~{{count}} dialogue rounds",
+    "messageCount": "{{count}} messages total",
+    "crossingArrow": "↓ User pastes full ticket logs; request context exceeds 5k → large Pool",
+    "triggerUnder": "Snapshot: after multiturn troubleshooting, still ≤5k before log paste",
+    "triggerOver": "Snapshot: log attachment pushes serialized messages over 5k"
+  },
+  "retryFallback": {
+    "hintAutoPrepare": "Each action first prepares member state automatically (enable/force offline), then sends the demo request.",
+    "empty": "Run a scenario using the controls on the left.",
+    "actions": {
+      "refreshCounter": "Refresh counter",
+      "runStatusRetry": "Run 5xx/429 Retry demo",
+      "runTcpReselect": "Run TCP auto-reselect demo",
+      "forceOfflineAndRun": "Force offline 8005 and verify fallback"
+    },
+    "status": {
+      "title": "Scenario A: 5xx/429 triggers Retry + Fallback",
+      "desc": "Send model=testmodel; expect pool_testmode first, then fallback to pool_llm_default after retries.",
+      "currentCounter": "Current counter before run ({{member}})",
+      "result": "Status-code retry result",
+      "memberRequestCounter": "Requests counter on pool_testmode member {{member}}",
+      "highlightFallback": "Requests counter growth on pool_testmode member {{member}} indicates about {{delta}} retries; final response content shows it was served by pool_llm_default, confirming retry followed by fallback.",
+      "retryTerminalHit": "Terminal retry detected (x-llm-retry-terminal=1): both primary and fallback pools unavailable.",
+      "fallbackToDefault": "Request finally fell back to pool_llm_default (detected via default_model mismatch).",
+      "unexpected": "Unexpected result; check F5 config and pool member states."
+    },
+    "tcp": {
+      "title": "Scenario B: TCP failure triggers fallback",
+      "desc": "First verify auto-reselect from dead 7999 to healthy 8005, then force offline 8005 and observe fallback.",
+      "caseReselectTitle": "Button 1: Run TCP auto-reselect demo (in-pool reselection)",
+      "caseReselectDesc": "This test simulates a member that appears selectable to F5 but does not actually serve traffic: in pool_deepseek-chat, member 7999 has no listener, causing TCP connection failure. F5 performs in-pool member reselection and switches traffic to a healthy member.",
+      "caseReselectExpected": "Expected validation: requests finally return from member 8005 (server_port=8005), proving in-pool reselection instead of cross-pool fallback.",
+      "caseFallbackTitle": "Button 2: Force offline 8005 and verify fallback (cross-pool fallback)",
+      "caseFallbackDesc": "This test forces member 8005 offline so all members in pool_deepseek-chat become unavailable. Once in-pool reselection is exhausted, policy triggers fallback to the default pool (pool_llm_default).",
+      "caseFallbackExpected": "Expected validation: final response indicates pool_llm_default (or terminal retry/upstream_error), confirming cross-pool fallback.",
+      "reselectResult": "TCP reselect result",
+      "fallbackResult": "Fallback result after force offline",
+      "expectedPort": "Expected all requests to end on server_port={{port}}",
+      "fallbackToDefault": "Fallback to default pool detected (default_model mismatch).",
+      "terminalFallback": "Terminal retry response detected (all members unavailable / terminal header).",
+      "memberStateBefore": "Member state before run (pool_deepseek-chat)",
+      "memberStateAfter": "Member state after force offline (pool_deepseek-chat)",
+      "stabilityWait": "Pool member just recovered — waiting for stability (3s)…"
+    },
+    "debug": {
+      "missingPort": "Attempt(s) {{attempts}} missing server_port; observed ports: [{{ports}}]"
+    }
+  },
+  "tblbDemo": {
+    "interactionTitle": "TBLB member scheduling demo",
+    "retryFallback": {
+      "title": "Retry & Fallback (logic in this scenario)",
+      "subtitle": "Router and TBLB work in layers: pick a pool, then a member, then escalate on failure. This describes behavior only—not internal implementation.",
+      "step1Title": "Router picks a pool",
+      "step1Body": "Based on model (and context / agent rules), traffic is steered to a target pool, e.g. pool_gpt-4o.",
+      "step2Title": "Pick a member inside the pool",
+      "step2Body": "TBLB-enabled pools: Scheduler picks the best member from queue/cache metrics. Other pools: standard pool load balancing.",
+      "step3Title": "Connection failure → reselect within pool",
+      "step3Body": "If the chosen member is TCP-unreachable (LB_FAILED), F5 tries another member in the same pool before crossing pools.",
+      "step4Title": "5xx / 429 or members exhausted → Router retry + cross-pool fallback",
+      "step4Body": "HTTP status codes trigger limited Router retries; if the primary pool still fails, traffic falls back to the configured default pool (e.g. pool_llm_default).",
+      "sameAsRouterTitle": "Router-layer Retry / Fallback demo is separate from the TBLB demo above",
+      "sameAsRouterBody": "Steps 3 (in-pool reselect) and 4 (5xx retry + cross-pool fallback) are demonstrated in Scene 1 · LLM Router → Retry & Fallback—same VS, same pools, same demo buttons. This page only covers TBLB member scheduling (step 2) and does not duplicate those tests.",
+      "goToRouterDemo": "Go to LLM Router · Retry & Fallback demo →",
+      "footnote": "TBLB’s difference is metric-driven routing in step 2. Steps 3–4 are provided by Router + LTM regardless of whether TBLB is enabled."
+    },
+    "testCount": "Test count",
+    "runDemo": "Run test ({{count}} requests)",
+    "optgroupTblb": "{{pool}} · TBLB enabled",
+    "optgroupNoTblb": "{{pool}} · standard LB (no TBLB)",
+    "optionTblb": "{{model}} · smart member pick",
+    "selectHintTblb": "This pool has TBLB: Scheduler theoretical share appears on the right for comparison with actual server_port distribution.",
+    "selectHintNoTblb": "This pool has no TBLB; only actual server_port distribution from standard pool LB is shown.",
+    "hint": "After selecting a model, Scheduler theoretical share loads on the right. Run test refreshes Scheduler first, then sends the configured requests for server_port comparison below.",
+    "noResults": "Loading config…",
+    "schedulerTarget": "TBLB Scheduler",
+    "triggerMemberLoad": "Change inference server load",
+    "triggerEndpoints": "Triggered member endpoints",
+    "triggerEndpointsCollapse": "Collapse",
+    "triggerEndpointsExpand": "Expand",
+    "triggerNoMembers": "Scheduler returned no pool members; cannot trigger load update",
+    "triggerFailed": "Failed to trigger member load update",
+    "triggerRunning": "Sending trigger_update to each member…",
+    "cooldownHint": "Load update triggered; wait {{sec}}s before Run test (Scheduler metrics need time to refresh)",
+    "runDemoCooldown": "Wait {{sec}}s…",
+    "refreshScheduler": "Refresh Scheduler",
+    "schedulerDistribution": "Scheduler theoretical member share (percent)",
+    "schedulerEndpointDirect": "TBLB Scheduler (direct)",
+    "schedulerEndpointProxy": "Demo app proxy (used by this page)",
+    "schedulerLoading": "Querying Scheduler…",
+    "schedulerError": "Scheduler query failed",
+    "schedulerEmpty": "Scheduler returned an empty member list",
+    "compareHint": "Violet bars are Scheduler theoretical share; the card below shows actual server_port share for comparison. More total requests bring the actual distribution closer to the theoretical values.",
+    "tblbEnabled": "TBLB enabled",
+    "tblbDisabled": "TBLB not enabled",
+    "progress": "Progress",
+    "successCount": "OK",
+    "errorCount": "Failed",
+    "actualDistribution": "Actual test member share (server_port)",
+    "modelRewriteApplied": "The request model was rewritten per routing rules (Data Group field2) before forwarding to the target pool.",
+    "portLabel": "member :{{port}}",
+    "portUnknown": "server_port not found",
+    "portError": "request failed",
+    "noPortData": "No server_port in successful responses; ensure the inference backend returns this field.",
+    "explain": [
+      "Selecting a model queries Scheduler `/pools/{name}/Common/status` for theoretical member percent",
+      "Actual server_port share over the test count is compared against Scheduler values",
+      "pool_gpt-4o and pool_gemini-1.5-pro use TBLB; pool_deepseek-chat uses standard pool LB with no Scheduler panel"
+    ],
+    "explainNote": "server_port in the JSON body identifies which pool member handled the request."
+  },
+  "systemPromptDemo": {
+    "targetVs": "Target Virtual Server",
+    "selectPreset": "Demo scenario",
+    "presetFormatOverride": "Format conflict (Markdown vs YAML)",
+    "presetFormatOverrideDesc": "User system asks for Markdown; F5 BIG-IP mandatory enforcement rules require YAML.",
+    "presetInjection": "Prompt injection attack",
+    "presetInjectionDesc": "Forged admin_prompts tags in system — validates nonce wrapper containment of untrusted content.",
+    "presetBenign": "Benign request (control)",
+    "presetBenignDesc": "Normal enterprise system; wrapper active without breaking intent.",
+    "systemField": "Client system message (untrusted)",
+    "userField": "User message",
+    "model": "model",
+    "mockPort": "Mock LLM port",
+    "sendRequest": "Send demo request",
+    "noResult": "Pick a scenario and send a demo request to see F5 wrapper behavior",
+    "configLoadFailed": "Failed to load demo config",
+    "previewTitle": "F5 wrapper preview (local algorithm aligned with ir_openai_api.tcl)",
+    "previewLoading": "Generating wrapper preview…",
+    "previewIdle": "Edit system/user messages to see before/after wrapper diff",
+    "clientSystem": "Original client system",
+    "wrappedSystem": "Expected F5-wrapped system",
+    "flowTitle": "Request pipeline",
+    "flowClient": "Client",
+    "flowF5": "F5 JSON_REQUEST",
+    "flowLlm": "Mock LLM",
+    "flowOutcome": "YAML response",
+    "resultTitle": "Demo result",
+    "resultPass": "Policy applied",
+    "resultFail": "Unexpected outcome",
+    "badgeYaml": "YAML format",
+    "badgePolicy": "BIG-IP mandatory rules applied",
+    "badgeInjection": "Injection contained",
+    "emptyContent": "No assistant content — check F5 VS and pool member on port 8011",
+    "showRequest": "Show raw request",
+    "tagOuter": "Outer wrapper",
+    "tagAdmin": "Admin persona",
+    "tagUser": "User input (untrusted)",
+    "tagMandatoryRules": "F5 BIG-IP mandatory enforcement rules",
+    "legend": {
+      "mandatory-key": "Key mandatory rule for this scenario (e.g. YAML format / hierarchy override)",
+      "mandatory-block": "Other content in the BIG-IP mandatory-rules block",
+      "user-conflict": "User system instruction overridden by mandatory rules",
+      "user-contained": "Untrusted/injected content isolated by nonce wrapper",
+      "admin-block": "Admin persona (admin_prompts)"
+    }
+  },
+  "modelAllowlistDemo": {
+    "targetVs": "Target Virtual Server (System Prompt VS)",
+    "datagroupTitle": "Current Data Group rules (iRule Layer 0)",
+    "colModel": "model",
+    "colAction": "action",
+    "defaultRow": "(miss) default action",
+    "modelInput": "Simulated request model name",
+    "modelPlaceholder": "e.g. demo-model, gpt-5.2-codex, or gpt-4o",
+    "quickAllow": "One-click: {{model}} (expect allow)",
+    "quickBlock": "One-click: {{model}} (expect block)",
+    "policyPreview": "Policy preview",
+    "policyDetail": "model={{model}} → {{action}} (source: {{source}})",
+    "sourceDatagroup": "datagroup hit",
+    "sourceDefault": "DEFAULT_MODEL_ACTION",
+    "sendTest": "Send test request",
+    "testPrompt": "Introduce yourself in one sentence.",
+    "configLoadFailed": "Failed to load model allowlist config",
+    "resultPlaceholder": "Enter a model and send a request to see iRule Layer 0 allow or 403 block",
+    "resultAllowed": "iRule Layer 0 allow — request forwarded",
+    "resultBlocked": "iRule Layer 0 block — model not authorized",
+    "modelLabel": "Request model",
+    "expectedAction": "Expected policy",
+    "mismatchHint": "Actual result differs from datagroup expectation—check F5 VS, iRule, and dg_openai_model_list",
+    "showRequest": "Show raw request",
+    "flowClient": "Client",
+    "flowF5": "JSON Profile + iRule",
+    "flowCheck": "iRule Layer 0 model check",
+    "flowOutcome": "Allow / 403"
+  },
+  "maxTokensDemo": {
+    "targetVs": "Target Virtual Server (System Prompt VS)",
+    "modelNote": "Demo model (passed model admission)",
+    "layerNote": "iRule Layer",
+    "gaugeTitle": "max_tokens vs ceiling",
+    "gaugeActiveValue": "Selected",
+    "gaugeCompliant": "Compliant preset (2048)",
+    "gaugeOverflow": "Overflow preset (8192)",
+    "gaugeLimitLine": "Limit {{limit}}",
+    "customInput": "Custom max_tokens",
+    "quickCompliant": "Compliant {{value}}",
+    "quickOverflow": "Overflow {{value}}",
+    "quickAtLimit": "At limit {{value}}",
+    "quickOverLimit": "Over by 1 ({{value}})",
+    "policyPreview": "Policy preview",
+    "policyDetail": "max_tokens={{value}}, limit={{limit}} → {{action}}",
+    "runCompare": "Run compare demo",
+    "runCustom": "Send custom test",
+    "testPrompt": "Introduce yourself in one sentence.",
+    "configLoadFailed": "Failed to load max_tokens config",
+    "resultPlaceholder": "Click “Run compare demo” for side-by-side compliant allow vs overflow 403",
+    "compareHint": "VS {{host}}:{{port}} · model={{model}}",
+    "caseCompliant": "Controlled allow (compliant)",
+    "caseOverflow": "Over-limit block",
+    "caseCustomAllow": "Custom · expect allow",
+    "caseCustomBlock": "Custom · expect block",
+    "expectedAction": "Expected policy",
+    "limitRef": "Limit {{limit}}",
+    "resultAllowed": "iRule Layer 0 allow — request forwarded",
+    "resultBlocked": "iRule Layer 0 block — max_tokens exceeded",
+    "allowedHint": "max_tokens did not exceed MAX_TOKENS_LIMIT; request reached the inference backend.",
+    "blockedHint": "max_tokens exceeded MAX_TOKENS_LIMIT; F5 returned 403 at iRule Layer 0 without forwarding (policy may alternatively auto-clamp max_tokens to the limit and allow the request).",
+    "cardPending": "Waiting for demo…",
+    "mismatchHint": "Actual result differs from policy expectation—check F5 MAX_TOKENS_LIMIT and model admission",
+    "showRequest": "Show JSON actually sent to VS"
+  },
+  "guardrailDemo": {
+    "targetVs": "Target Virtual Server",
+    "selectPrompt": "Select test prompt",
+    "promptBlocked": "Block-class prompt",
+    "promptAllowed": "Allow-class prompt",
+    "userPrompt": "User input",
+    "model": "model",
+    "streamEnabled": "stream: true",
+    "sendRequest": "Send test request",
+    "noResult": "Pick a prompt and click Send test request to see guardrail scan outcome",
+    "blockedTitle": "Guardrail blocked — request did not reach inference",
+    "blockedHint": "After Sideband scan returns flagged, F5 Gateway replies with OpenAI-compatible block JSON (HTTP 200) without forwarding to the Default Pool.",
+    "passedTitle": "Guardrail passed — request forwarded to inference",
+    "passedHint": "Scan outcome is passed/cleared; Gateway forwards to the Default Pool and the inference service responds normally.",
+    "passedStreamHint": "Client sent stream:true; Gateway forces stream:false after scan pass before forward; proxy consumed SSE and reports chunk count.",
+    "streamChunks": "SSE chunks",
+    "flowTitle": "Request processing pipeline",
+    "flowClient": "Client",
+    "flowGateway": "Gateway VS",
+    "flowScan": "Guardrail scan",
+    "flowOutcome": "Allow / Block",
+    "flowHint": "Gateway iRule Sideband → Egress VS → HTTPS to Calypso AI /backend/v1/scans, then forward or block based on outcome.",
+    "showRawRequest": "Show raw request",
+    "hideRawRequest": "Hide raw request",
+    "willSend": "Will send"
+  },
+  "demo": {
+    "targetVs": "Target Virtual Server",
+    "host": "IP address",
+    "port": "Port",
+    "selectModel": "Select model",
+    "batchDemo": "Run batch demo ({{count}} cases)",
+    "unmappedModels": "Unmapped / fallback test",
+    "interval": "Interval (ms)",
+    "noResults": "Click Start demo to see routing results",
+    "singleRequest": "Single request",
+    "connectionFailed": "Cannot reach VS—check network and IP/port",
+    "timeout": "Request timed out",
+    "forbiddenHost": "Target host is not in allowed private ranges"
+  },
+  "status": {
+    "success": "Success",
+    "error": "Failed",
+    "pending": "Pending",
+    "active": "Running"
+  },
+  "memberGuard": {
+    "message": "{{pool}} member {{member}} is currently disabled; demo requests may fail.",
+    "stateHint": "F5 state={{state}}, session={{session}}",
+    "enable": "Enable member",
+    "enabling": "Enabling…"
+  }
+}

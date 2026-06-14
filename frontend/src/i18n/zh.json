@@ -1,0 +1,843 @@
+{
+  "app": {
+    "title": "F5 ADC For AI 场景演示",
+    "subtitle": "展现 F5 BIG-IP 面向 Agentic AI 与 LLM 场景能力",
+    "language": "语言",
+    "fullscreen": "全屏演示",
+    "exitFullscreen": "退出全屏",
+    "home": "首页",
+    "comingSoon": "功能开发中",
+    "comingSoonHint": "该子功能将在后续版本提供完整交互演示",
+    "startDemo": "开始演示",
+    "runSingle": "发送单条请求",
+    "running": "演示进行中…",
+    "healthCheck": "检查 VS 连通性",
+    "healthOk": "VS 可达",
+    "healthFail": "VS 不可达",
+    "viewSource": "查看 Mermaid 源码",
+    "hideSource": "隐藏源码",
+    "rawJson": "原始 JSON",
+    "expectedPool": "预期 Pool",
+    "elapsed": "耗时",
+    "status": "HTTP 状态",
+    "responseSummary": "响应摘要",
+    "routingNote": "路由层 vs 后端层",
+    "routingNoteBody": "F5 根据 Data Group 将未知 model 路由到 __default__ Pool；后端推理服务可能仍返回 400（model_mismatch），这表示路由成功但后端模型校验失败。",
+    "cases": {
+      "deepseek": "DeepSeek 命中",
+      "gpt4o": "GPT-4o 命中",
+      "gemini": "Gemini 命中",
+      "invalid": "无效 model（后端校验失败）"
+    }
+  },
+  "modelRewrite": {
+    "title": "F5 已改写 model 名称",
+    "request": "请求 model",
+    "response": "后端实际 model",
+    "hint": "Data Group 的 field2 在转发前将 body 中的 model 替换为后端接受的名称；响应 JSON 的 model 字段反映改写后的值，与客户端原始请求不同。"
+  },
+  "sceneIntro": {
+    "label": "场景介绍",
+    "whyItMatters": "为什么企业需要这个能力",
+    "architecture": "架构",
+    "businessArchitecture": "业务视角",
+    "technicalArchitecture": "技术视角",
+    "collapseArchitecture": "收起架构图",
+    "expandArchitecture": "展开架构图",
+    "techFeatures": "方案技术特性"
+  },
+  "nav": {
+    "scenes": "演示场景",
+    "scene1": "场景一：LLM Router",
+    "scene2": "场景二：Observability",
+    "scene3": "场景三：Optimization and Control",
+    "scene4": "场景四：LLM 安全",
+    "modelRouting": "Model Based Routing",
+    "contextRouting": "Context Size Routing",
+    "agentRouting": "Agent/Subagent Routing",
+    "retryFallback": "Retry 与 Fallback",
+    "obsTokens": "Tokens用量与成本",
+    "obsMetrics": "模型性能Metrics",
+    "tblb": "LLM Router + 智能推理调度（TBLB）",
+    "modelAllowlist": "模型黑白名单一键控制",
+    "maxTokensLimit": "max_tokens 上限控制",
+    "mcpToolsInsight": "MCP Tools调用Insight",
+    "mcpToolsControl": "MCP Tools调用管控",
+    "systemPrompt": "System prompt 加固",
+    "guardrails": "LLM Guardrail接入",
+    "tmosMinVersion": "(TMOS Ver ≥ v21)",
+    "planned": "规划中",
+    "available": "可演示"
+  },
+  "home": {
+    "pickScene": "选择演示场景",
+    "scene1Desc": "统一 LLM 入口：按模型分诊、按对话长度分流、故障重试与兜底",
+    "scene2Desc": "LLM 流量 Token 用量、模型级 Metrics 与可观测分析",
+    "scene3Desc": "推理资源优化与流量管控：智能推理调度（TBLB）、模型黑白名单、max_tokens 上限、MCP 工具网关（规划中）",
+    "scene4Desc": "System prompt 加固与 LLM Guardrail 接入，保障模型调用安全"
+  },
+  "scenes": {
+    "llmRouter": {
+      "title": "LLM Router",
+      "tagline": "统一入口，按模型与上下文智能分发到多推理池",
+      "introStory": "企业把多套大模型推理能力挂在 BIG-IP 统一 VS 后面，对外只暴露一个 OpenAI 兼容地址。路由层在 iRuleLX 中解析请求、查表选池，必要时按上下文大小升级模型，并在后端不可用时执行重试与 Fallback。",
+      "overviewNote": "下方四个子功能均可现场演示：按模型路由、按上下文路由、按 Agent 身份路由、以及 Retry/Fallback 故障韧性。",
+      "bullets": [
+        "Model Based Routing：按 model 名称映射到不同推理 Pool",
+        "Context Size Routing：按 messages 体积在大小上下文 Pool 间切换",
+        "Agent/Subagent Routing：多 Agent 各司其职、共用统一 API，由 F5 按身份路由到不同推理池",
+        "Retry 与 Fallback：主 Pool 失败时自动重试或切换备用池"
+      ]
+    },
+    "observability": {
+      "title": "LLM Observability",
+      "tagline": "基于真实 Prometheus 采集链路的 LLM 可观测展示",
+      "introStory": "当前演示已采用真实采集与计算架构：BIG-IP iRuleLX 输出结构化事件，Adapter 在 /events 接收后执行 request_id 去重、价格计算与指标聚合，并通过 /metrics 暴露给 Prometheus 抓取，最终在 Grafana 统一展示请求、Token、时延、重试与费用等看板。",
+      "overviewNote": "下方交互区展示与 Grafana 看板一致的简化示意，点击按钮可直接跳转到实时仪表盘。",
+      "bullets": [
+        "采集链路：iRuleLX 结构化事件 -> Adapter 标准化与费用计算 -> Prometheus 抓取 -> Grafana 展示",
+        "核心指标：RPS、错误率、Retry/Fallback 比率、TTFT/Latency 分位、Prompt/Completion Tokens、Cost",
+        "多维筛选：model、pool、member、client_ip、price_version，与当前看板变量保持一致"
+      ],
+      "interactionTitle": "Grafana 看板预览示意",
+      "interactionSubtitle": "界面内展示简图，详细数据请进入 Grafana 实时查看",
+      "openGrafana": "打开 Grafana 实时看板",
+      "linkHint": "目标地址：localhost:3001（默认近 5 分钟，10s 自动刷新）",
+      "mockPanels": {
+        "traffic": "请求与错误趋势",
+        "quality": "时延与首包时间",
+        "cost": "Token 与费用"
+      }
+    },
+    "retryFallback": {
+      "title": "Retry 与 Fallback",
+      "tagline": "主推理池不可用时，自动重试或切换到备用池，保障业务连续性",
+      "introStory": "生产环境中，推理集群可能因版本升级、硬件维护、上游限流或突发故障短暂不可用。若业务应用直接对接单一后端，一次故障就会传导为用户可见的错误或长时间等待。Retry 与 Fallback 在网关层为 AI 服务增加「第二层保障」：主推理池出现问题时自动重试或切换到备用池，客户端仍使用同一个 API 地址，无需改造应用即可获得更高的业务连续性。",
+      "bullets": [
+        "主推理服务短暂抖动时，用户侧往往只需多等待片刻，而非直接看到失败——降低因基础设施波动导致的业务中断感知",
+        "主池持续不可用时可自动切换到预置的备用推理池，保障关键业务在故障窗口期仍能有限度地提供服务",
+        "重试与兜底策略在网关统一配置，各业务系统无需各自实现重试逻辑，降低研发重复建设与策略不一致风险",
+        "可与模型分流、上下文升级、Agent 路由等能力叠加，形成「选路 + 韧性」的完整网关方案"
+      ],
+      "techFeatures": [
+        "启用 Retry 后，iRuleLX Orchestrator 维护尝试队列：主 Pool 有限次重试（5xx/429），失败后切 Fallback Pool",
+        "每次尝试经 Layered VS sideband 转发；TCP 连接失败时 Pool 内 LB reselect，成员耗尽后 iRule 触发跨 Pool fallback",
+        "演示场景 A：model=testmodel 触发状态码 Retry，观察请求计数 delta 与最终 fallback 到 pool_llm_default",
+        "演示场景 B：pool_deepseek-chat 中 7999 不可连时 Pool 内 reselect 到 8005；全池 offline 后跨 Pool fallback"
+      ],
+      "explain": [
+        "状态码场景：请求 model=testmodel，命中 pool_testmode 后触发 Retry，最终 fallback 到 pool_llm_default",
+        "若 fallback 池也不可用，BIG-IP 可能返回 x-llm-retry-terminal=1 与 upstream_error",
+        "TCP 场景：pool_deepseek-chat 中 7999 端口不可连、8005 正常，系统会自动 reselect 到 8005",
+        "将 8005 force offline 后，再次请求将走 fallback 到默认池"
+      ]
+      ,
+      "opsNote": "演示自动准备成员状态",
+      "opsNoteBody": "交互区会先通过 F5 iControl REST 自动确保关键成员可用，再执行请求，避免被历史测试状态影响结果。"
+    },
+    "obsTraffic": {
+      "title": "模拟访问（驱动 Grafana 数据）",
+      "subtitle": "向 LLM 网关 VS 随机发送请求（模型列表同 Model Based Routing）；可设并发数（默认 5，最大 10）。两个子场景共享同一次模拟，不可重复启动。",
+      "durationMinutes": "持续时长（分钟）",
+      "concurrency": "并发数",
+      "streamModeLabel": "流式请求",
+      "streamModeActive": "流式模式",
+      "streamMode": {
+        "non_stream": "全部非流式",
+        "stream": "全部流式",
+        "mixed": "自动随机（约一半流式）"
+      },
+      "start": "启动模拟访问",
+      "stop": "停止模拟",
+      "sent": "已发送",
+      "errors": "异常总计",
+      "remaining": "剩余",
+      "lastError": "最近错误",
+      "lockedByOther": "当前已在「{{scene}}」子场景中运行模拟，请先停止或等待结束",
+      "runningInOther": "模拟由「{{scene}}」子场景启动，两个页面状态同步；可在此页点击停止"
+    },
+    "obsTokens": {
+      "title": "Tokens 用量统计",
+      "tagline": "看清各团队 AI 花了多少 Token、多少钱——支撑 FinOps 与预算管控",
+      "introStory": "企业大规模推广 Copilot 与 AI 助手后，管理层最关心的问题往往是：各团队用了多少 Token、花了多少钱、趋势是否在可控范围内。若缺少统一观测，只能到各模型厂商后台分别对账，难以做部门分摊与预算预警。本场景展示 F5 网关如何将每次 LLM 调用的 Token 用量与费用实时汇入统一看板，让 FinOps 与运维按模型、部门、应用维度洞察消耗。",
+      "bullets": [
+        "将分散在各推理后端的用量数据收敛到统一看板，支撑按部门、按应用的成本分摊与预算管理",
+        "实时掌握各模型 Token 消耗趋势，在异常增长或滥用行为出现前及时预警，避免月底账单「惊吓」",
+        "Prompt 与 Completion Token 分开统计，帮助判断是输入过长还是输出冗余导致成本上升，指导业务优化",
+        "费用可按价格版本（price_version）计算，模型调价或合同变更时仍可追溯历史成本口径"
+      ],
+      "techFeatures": [
+        "iRuleLX 在请求完成时输出结构化事件 llm_request_completed，携带 model/pool/member/usage 等字段",
+        "Observability Adapter 在 /events 接收事件，去重后按 pricing_rules.json 计算费用并写入 Prometheus Counter",
+        "核心指标：llm_prompt_tokens_total、llm_completion_tokens_total、llm_cost_total，支持 model/pool/member/client_ip 标签",
+        "Grafana 看板通过统一变量下钻；本页可启动模拟流量驱动指标刷新"
+      ],
+      "plannedIntro": "页面内为简化示意，点击按钮进入 Grafana 查看实时数据。",
+      "planned": [
+        "推荐面板：输入/输出 Token 吞吐（tokens/s）",
+        "推荐面板：按模型费用速率与总费用速率",
+        "推荐面板：按 model/pool/member 的 Top-N 消耗排行"
+      ],
+      "interactionTitle": "Tokens & Cost 简图示意",
+      "interactionSubtitle": "示意仅用于导览，详图与筛选请在 Grafana 中查看",
+      "openGrafana": "打开 Grafana（Tokens/Cost）",
+      "linkHint": "默认近 5 分钟窗口，支持 model/pool/member/client_ip/price_version 变量"
+    },
+    "obsMetrics": {
+      "title": "模型 Metrics",
+      "tagline": "当用户说「AI 变慢了」——快速定位是哪个模型、哪台服务器出了问题",
+      "introStory": "当用户反馈「AI 变慢了」或「经常出错」时，运维需要快速判断问题出在哪个模型、哪套资源池、哪台服务器。仅靠后端日志往往难以关联路由决策与性能表现。本场景展示 F5 如何将请求量、错误率、首包时延、端到端时延及 Retry/Fallback 行为导出为统一指标，帮助团队在 Grafana 中一眼定位性能瓶颈与稳定性风险。",
+      "bullets": [
+        "从「用户体感变慢」快速下钻到具体模型、资源池乃至成员，缩短故障定位与排障时间",
+        "同步观察请求成功率、重试率与兜底率，区分是后端性能问题还是路由/韧性机制触发导致",
+        "首包时延（TTFT）与端到端时延分开展示，判断延迟来自排队生成还是网络与网关开销",
+        "按 client_ip、model、pool 等多维过滤，支撑容量规划、SLA 评估与高峰时段运维决策"
+      ],
+      "techFeatures": [
+        "Adapter 从 iRuleLX 结构化事件导出 llm_requests_total（含 status 标签）及 retry/fallback 计数",
+        "时延指标基于 Histogram：llm_ttft_ms_bucket（首 Token 时间）、llm_latency_ms_bucket（端到端）",
+        "Grafana 可计算 p95 等分位数，按 model/pool/member/client_ip 联合过滤定位异常",
+        "与 Tokens 子场景共用同一 Adapter 数据源，流量、性能、成本可在同一看板关联分析"
+      ],
+      "plannedIntro": "页面内为指标结构导览，实时趋势请在 Grafana 面板查看。",
+      "planned": [
+        "推荐面板：总请求速率、按模型请求速率",
+        "推荐面板：错误率、Retry 率、Fallback 率",
+        "推荐面板：TTFT p95 与 Latency p95 对比"
+      ],
+      "interactionTitle": "Metrics 简图示意",
+      "interactionSubtitle": "示意图展示指标类型，实时值以 Grafana 为准",
+      "openGrafana": "打开 Grafana（Metrics）",
+      "linkHint": "同一看板可通过变量切换模型、池、成员与价格版本"
+    },
+    "trafficMgmt": {
+      "title": "Optimization and Control",
+      "tagline": "在统一网关之上优化推理资源利用，并管控 Agent 与工具调用",
+      "introStory": "企业完成 LLM Router 选池之后，仍面临两类优化与管控诉求：同一模型池内如何避开热点 GPU、提升推理效率；Agentic AI 场景下如何安全、可控地接入大量 MCP 工具服务。Optimization and Control 场景聚焦这两层能力——TBLB 负责池内智能推理调度，MCP Tools调用Insight 与 MCP Tools调用管控 分别负责工具调用的可观测洞察与网关侧策略管控（规划中）。",
+      "overviewNote": "「TBLB」「模型黑白名单」「max_tokens 上限控制」可现场演示；「MCP Tools 调用 Insight / 管控」为规划占位。",
+      "bullets": [
+        "智能推理调度（TBLB）：Router 选池后，按 GPU 实时指标在池内选出最优推理成员",
+        "模型黑白名单：在统一网关按 model 准入控制，防止 Agent 越权调用高成本或未审批模型",
+        "max_tokens 上限：网关 iRule Layer 0 限制单次请求 max_tokens，防止 Agent 设置过大生成长度",
+        "MCP Tools调用管控（规划中）：在网关层统一执行 MCP 工具接入、鉴权、限流与路由策略"
+      ]
+    },
+    "tblb": {
+      "title": "LLM Router + 智能推理调度（TBLB）",
+      "tagline": "先由 Router 选对模型资源池，再由 TBLB 在池内选出当前最优 GPU",
+      "introStory": "企业按模型建好资源池后，同一模型背后往往有多台 GPU 同时服务。传统轮询或最少连接并不知道哪台正在排长队、哪台 KV 缓存已满——用户明明访问的是同一个 model 入口，却可能恰好落在最忙的那张卡上，体感忽快忽慢。TBLB 在 Router 已选好模型池之后，根据各 GPU 的实时排队与缓存指标，为每条请求挑选当前负载最轻、响应预期最快的成员，让用户无感地避开热点 GPU，提升高峰时段的服务稳定性与响应一致性。",
+      "bullets": [
+        "同一模型入口背后多台 GPU 并存时，自动避开排队最长、缓存最满的节点，减少「有时极快、有时久等」的不稳定体验",
+        "研发与运维无需为每张 GPU 维护独立地址，业务仍使用统一模型名与网关入口，扩容 GPU 对上层透明",
+        "高峰时段将新请求导向更空闲的推理节点，降低热点 GPU 过载风险，提升整体吞吐与资源利用率",
+        "与 Router 的模型选池、Retry/Fallback 分层协作：Router 决定「去哪类能力」，TBLB 决定「池内交给哪台服务器」"
+      ],
+      "techFeatures": [
+        "LLM Router 先按 model 将流量分到 pool_gpt-4o / pool_gemini-1.5-pro / pool_deepseek-chat 等 Pool",
+        "gpt-4o 与 gemini-1.5-pro 池启用 TBLB Scheduler，持续读取 vLLM/SGLang 等引擎的排队、缓存、在途请求指标",
+        "Scheduler S1/S2 算法按指标加权计算各 member 的 percent，为每条请求选出当前最优 GPU",
+        "pool_deepseek-chat 为标准 Pool LB（无 TBLB）；连接失败时 Pool 内成员重选，与 Router Retry/Fallback 协同"
+      ]
+    },
+    "modelAllowlist": {
+      "title": "模型黑白名单一键控制",
+      "tagline": "在统一网关管控「能用哪些模型」，防止 Agent 越权调用高成本或未审批模型",
+      "introStory": "企业接入 Copilot、Coding Agent 等应用后，往往同时采购或自建多套大模型，并按部门、场景划分使用权限与成本预算。若业务应用或 Agent 可自行在请求里填写任意 model 名称，就可能绕过审批直接调用旗舰模型，带来费用失控、合规越权与供应商策略冲突等风险。平台团队需要在统一 LLM 网关处建立「模型准入」机制：只允许经审批的模型进入推理链路，对未授权或高风险模型一律拒绝，且策略调整应集中生效、无需各应用逐一套路发版。模型黑白名单一键控制即在网关入口校验每条请求的 model 字段，相当于为每次模型调用发放「工牌」——有牌才放行，无牌即拒。",
+      "bullets": [
+        "防止 Agent 或业务应用在请求中擅自指定昂贵、未采购或未审批的模型，从源头控制推理成本与供应商合规风险",
+        "模型准入策略在网关集中维护，新增/下线模型或临时封禁某型号时，运维一次调整即可全局生效，无需改动各业务代码",
+        "未授权请求在到达推理服务前即被拒绝，避免无效算力消耗与敏感业务误触高权限模型"
+      ],
+      "techFeatures": [
+        "iRule Layer 0（ir_openai_api.tcl）：解析 JSON body 的 model 字段，查 dg_openai_model_list",
+        "Data Group 记录值为 allow 或 block；未命中时使用 DEFAULT_MODEL_ACTION（演示环境为 block）",
+        "BLOCK 模式下拒绝请求返回 HTTP 403 及 OpenAI 兼容错误 JSON",
+        "与 System Prompt VS（172.16.30.124:8000）共用；白名单含 demo-model、gpt-5.2-codex、gpt-5.3-codex"
+      ],
+      "explain": [
+        "左侧展示当前 datagroup 规则与策略预览；填写 model 后发送，右侧显示放行或拦截结果",
+        "demo-model、gpt-5.2-codex、gpt-5.3-codex 在 dg_openai_model_list 中为 allow，应返回 200",
+        "任意未列入 allow 的 model（如 gpt-4o）走默认 block，应返回 403",
+        "若实际结果与预期不符，请确认 F5 VS 已挂载 JSON Profile + iRule，且 datagroup 与演示配置一致"
+      ],
+      "policyNote": "当前演示 datagroup 预期",
+      "policyNoteBody": "dg_openai_model_list：demo-model / gpt-5.2-codex / gpt-5.3-codex → allow；DEFAULT_MODEL_ACTION = block。仅上述 model 可进入后续推理链路，其他 model 在 iRule Layer 0 被拦截。",
+      "curlAllow": "放行示例（demo-model）",
+      "curlBlock": "拦截示例（未授权 model）",
+      "opsTip": "运维提示：tmsh modify ltm data-group internal dg_openai_model_list records add { demo-model { data allow } gpt-5.2-codex { data allow } gpt-5.3-codex { data allow } }；DEFAULT_MODEL_ACTION 在 iRule 变量中配置。"
+    },
+    "maxTokensLimit": {
+      "title": "max_tokens 上限控制",
+      "tagline": "在网关限制单次请求的生成长度上限，防止 Agent 设置过大 max_tokens 导致费用与算力浪费",
+      "introStory": "Agent 或 Copilot 在调用大模型时，可通过请求参数 max_tokens 指定单次最多生成多少 Token。若客户端自行填写数千甚至上万，可能在一次对话中消耗大量算力与费用，并拖慢共享推理集群的响应。企业需要在统一 LLM 网关上设定「单次生成预算」——超过 MAX_TOKENS_LIMIT 的请求在到达推理服务前即被拒绝（也可选将 max_tokens 自动修改为上限值后放行），策略集中配置、全局生效。",
+      "bullets": [
+        "防止 Agent 单次请求设置过大 max_tokens，从源头控制推理成本与 GPU 资源占用",
+        "网关统一设上限，各业务应用无需各自实现校验逻辑",
+        "超限请求在 iRule Layer 0 即被拒绝（也可选自动将 max_tokens 修改为上限值后放行），避免无效算力消耗并保护后端稳定性"
+      ],
+      "techFeatures": [
+        "iRule Layer 0（ir_openai_api.tcl）：解析 JSON body 的 max_tokens 字段，与 MAX_TOKENS_LIMIT 比较",
+        "演示环境 MAX_TOKENS_LIMIT = 4096；超限默认 BLOCK 模式返回 HTTP 403（也可选自动改写 max_tokens 为上限后转发）",
+        "与 model 准入检查同属 iRule Layer 0；演示使用 demo-model（已通过 dg_openai_model_list allow）",
+        "共用 System Prompt VS（172.16.30.124:8000）与 JSON Profile"
+      ],
+      "explain": [
+        "点击「运行对比演示」：并行发送 max_tokens=2048（合规）与 8192（超限），右侧并排展示放行 vs 403（本演示为 BLOCK 拒绝；也可选自动改写 max_tokens）",
+        "2048 ≤ 4096 应返回 HTTP 200；8192 > 4096 在 BLOCK 模式下应返回 HTTP 403（亦可改为自动截断 max_tokens 后放行）",
+        "可用自定义 max_tokens 或「恰好在上限 / 超 1」快捷按钮做边界测试",
+        "若右卡未 403，请确认 F5 iRule MAX_TOKENS_LIMIT=4096 且 demo-model 已通过模型准入"
+      ],
+      "policyNote": "当前演示策略预期",
+      "policyNoteBody": "MAX_TOKENS_LIMIT = 4096；model = demo-model（allow）。max_tokens ≤ 4096 放行；> 4096 在 iRule Layer 0 返回 403（也可选自动将 max_tokens 修改为 4096 后放行）。本演示采用 BLOCK 拒绝模式。",
+      "curlAllow": "放行示例（max_tokens=2048）",
+      "curlBlock": "拦截示例（max_tokens=8192）",
+      "opsTip": "运维提示：MAX_TOKENS_LIMIT 在 iRule 变量中配置；超限可 BLOCK 拒绝，也可选自动将 max_tokens 修改为上限值后转发。"
+    },
+    "mcpToolsInsight": {
+      "title": "MCP Tools调用Insight",
+      "tagline": "洞察 Agent 工具调用的规模、分布与运行健康度",
+      "introStory": "Agentic AI 上线后，运维与平台团队需要回答：哪些 Agent 在调用哪些 MCP 工具、调用量是否异常、失败集中在哪类工具、高峰时段是否存在热点。若缺少统一可观测性，只能逐台 MCP Server 翻日志，难以做容量规划与异常告警。MCP Tools调用Insight 在 F5 网关侧采集结构化工具调用事件，经 Adapter 聚合后进入 Prometheus / Grafana，形成按工具、Agent、租户维度的调用洞察看板。",
+      "bullets": [
+        "统一采集每次 MCP 工具调用的时延、状态、工具名与 Agent 身份，避免日志分散在各工具服务",
+        "与 Observability 场景共用 Adapter + Prometheus + Grafana 架构，模型推理与工具调用可在同一平台对比分析",
+        "支持按工具类型、业务线、环境查看调用量、成功率与 P95 时延趋势，辅助容量与成本评估",
+        "为安全与合规团队提供「谁在何时调用了什么工具」的可追溯视图"
+      ],
+      "techFeatures": [
+        "F5 网关在 MCP JSON-RPC 会话中输出结构化审计事件（工具名、Agent、状态码、时延等）",
+        "Adapter 接收工具调用事件并导出 Prometheus 指标（调用量、错误率、时延分位等）",
+        "Grafana 看板支持按 tool / agent / tenant 变量下钻，联动 LLM 推理指标做端到端分析",
+        "规划支持与现有 llm_request_completed 事件同链路采集，降低运维接入成本"
+      ],
+      "plannedIntro": "MCP Tools调用Insight 交互演示规划中，当前为能力占位与架构导览。",
+      "planned": [
+        "演示工具调用事件从 F5 网关到 Adapter / Grafana 的采集链路",
+        "按工具与 Agent 维度的调用量、成功率、时延看板示意",
+        "与 Tokens 用量、模型 Metrics 看板的联动分析占位说明"
+      ]
+    },
+    "mcpToolsControl": {
+      "title": "MCP Tools调用管控",
+      "tagline": "在网关层统一管控 MCP 工具接入与调用策略",
+      "introStory": "Agentic AI 应用往往需同时调用数据库、知识库、工单系统、代码仓库等多类 MCP 工具。若每个 Agent 自行对接不同工具地址与鉴权方式，集成复杂、安全风险高，也难以统一执行配额与访问策略。MCP Tools调用管控 在 F5 统一入口集中代理 MCP 协议流量，对工具服务做路由、鉴权、限流与 Fail-close 策略——Agent 只认一个网关地址，企业则在网关侧统一管控工具暴露范围与调用权限。",
+      "bullets": [
+        "Agent 与 Copilot 只需对接一个 MCP 网关地址，即可访问企业批准的工具服务集合，降低集成与密钥分散管理成本",
+        "在网关侧统一执行鉴权、配额与调用频率限制，满足 Agent 调用外部工具时的合规要求",
+        "可按业务线、环境或 Agent 身份将工具流量路由到不同 MCP Server 集群，支撑多租户与分级发布",
+        "Fail-close 与健康检查策略确保异常工具服务不会拖垮整体 Agent 工作流"
+      ],
+      "techFeatures": [
+        "F5 Virtual Server 作为 MCP 协议（HTTP/SSE）统一入口，代理 Agent 与后端 MCP Server 之间的 JSON-RPC 会话",
+        "Data Group 或策略表维护「工具名 / Server 标识 → 后端 MCP Server Pool」映射",
+        "网关层注入鉴权 Token 校验、调用频率限制与工具白名单策略",
+        "规划支持 Streamable HTTP / SSE 长连接场景下的连接保持与成员级负载均衡"
+      ],
+      "plannedIntro": "MCP Tools调用管控 交互演示规划中，当前为能力占位与架构导览。",
+      "planned": [
+        "演示 Agent 经 F5 网关调用多个 MCP Server 的路由与鉴权流程",
+        "工具白名单、配额限流与 Fail-close 策略占位说明",
+        "MCP Server 健康检查与池内成员切换示意"
+      ]
+    },
+    "security": {
+      "title": "LLM 安全",
+      "tagline": "在网关层加固 System prompt 并接入护栏，降低提示注入与违规内容风险",
+      "introStory": "企业上线 Copilot 类应用时，既要防止用户绕过 System prompt，也要拦截敏感数据外传与违规生成。在 F5 统一入口注入或校验 System prompt，并对接第三方护栏 API，可在到达推理服务前完成策略执行。",
+      "overviewNote": "System prompt 加固与 LLM Guardrail 接入均已提供交互演示。",
+      "bullets": [
+        "System prompt 加固：强制注入或校验企业级系统指令",
+        "LLM Guardrail 接入：对接内容安全扫描，违规请求在网关侧拒绝",
+        "审计日志记录策略命中与拦截原因"
+      ]
+    },
+    "systemPrompt": {
+      "title": "System prompt 加固",
+      "tagline": "确保每条请求携带合规的企业 System 指令，防止被用户消息覆盖或绕过",
+      "introStory": "企业 Copilot 类应用通常要求在既定政策与合规框架下回答用户问题。若 System prompt 由客户端自行携带，可能被篡改、遗漏或被用户消息覆盖，导致模型脱离企业管控。System prompt 加固在网关层对每条请求强制注入或校验企业级 System 指令，确保模型始终在统一政策下运行。",
+      "bullets": [
+        "确保每条推理请求都携带经审批的企业 System 指令，防止因客户端遗漏或篡改导致合规风险",
+        "用户无法通过构造消息绕过企业级安全与品牌话术要求，降低提示注入与策略漂移风险",
+        "策略变更在网关集中更新，各业务应用无需逐一套路发版即可全局生效",
+        "策略命中与拦截记录纳入审计链路，满足金融、医疗等行业的合规留痕要求"
+      ],
+      "techFeatures": [
+        "F5 v21 JSON Profile 触发 JSON_REQUEST 事件，iRule 合并并重写 messages 中的 system 角色",
+        "三层 XML wrapper：admin_prompts / user_prompts（不可信）/ final_guardrails（BIG-IP 强制规则区块，iRule 内部标签名）",
+        "动态 nonce 标签（Demo 固定 F5）防止用户在 system 中伪造闭合标签进行 prompt 注入",
+        "与 ir_openai_api.tcl 对齐：F5 BIG-IP 上强制规则要求可强制 YAML 输出，覆盖 user_prompts 中的 Markdown 要求"
+      ],
+      "explain": [
+        "客户端携带不可信 system 消息；F5 在 JSON_REQUEST 中合并为单一 wrapped system 再转发",
+        "Mock LLM（demo-model @ 8011）解析 BIG-IP 强制规则区块（final_guardrails_F5），确定性返回 YAML 格式回复",
+        "Preset「格式冲突」：用户要求 Markdown，BIG-IP 上强制规则要求 YAML — 响应应为 YAML",
+        "Preset「注入攻击」：伪造 admin_prompts 标签被包在 user_prompts_F5 内，强制规则仍生效"
+      ],
+      "formatNote": "格式管控演示",
+      "formatNoteBody": "即使用户 system 写「必须用 Markdown」，F5 BIG-IP 上强制规则要求（如 You MUST answer in yaml format）优先级更高，Mock LLM 将返回 YAML 结构。",
+      "nonceNote": "nonce 防注入",
+      "nonceNoteBody": "Demo 环境 NONCE_RANDOM=0、NONCE_LENGTH=1，标签后缀固定为 F5。攻击者无法预知标签名，伪造的 </user_prompts> 无法闭合真实 wrapper。",
+      "curlExample": "curl 示例",
+      "opsTip": "F5 日志：tail -f /var/log/ltm | grep JSON_REQUEST；DEBUG_PROMPTS=1 可查看改写前后 system 内容。"
+    },
+    "guardrails": {
+      "title": "LLM Guardrail接入",
+      "tagline": "在企业 AI 统一入口把关用户输入，违规不进模型、合规无感通过",
+      "introStory": "企业对外提供 Copilot、智能客服、知识问答等生成式 AI 服务时，用户输入一旦涉及暴力、欺诈、敏感违规等内容，就可能触发合规处罚、品牌舆情与监管问责。若各业务系统各自对接护栏，策略标准不一、改造成本高、审计也难以汇总。护栏接入将内容安全能力收敛到 F5 统一网关：全部 LLM 调用在到达推理模型前先经企业护栏策略校验——命中规则的当场拒绝，合规内容照常获得模型回复，业务侧无需为安全能力逐套改造。",
+      "bullets": [
+        "在统一入口拦截违规与有害用户输入，避免风险内容进入大模型后产生扩散与合规隐患",
+        "一套企业护栏策略覆盖全部 Copilot 与业务系统，策略更新集中生效，降低多应用重复集成的成本",
+        "合规对话照常响应、违规对话统一拒绝，业务体验与企业安全红线可以兼得",
+        "拦截与放行结果可留痕统计，便于安全与合规团队掌握违规趋势、支撑审计与告警响应"
+      ],
+      "techFeatures": [
+        "双 VS 架构：Gateway VS（vs_guardrail_oob_gateway :8000）面向客户端；Egress VS（vs_guardrail_ssl_egress :8031）经 Server SSL 出站至 Guardrail",
+        "Gateway iRule 通过 SIDEBAND 连接 guardrail_egress_dest，POST {\"input\":\"...\"} 至 /backend/v1/scans，解析 result.outcome",
+        "outcome 为 passed/cleared 时强制 stream:false 后转发 Default Pool；flagged 时返回 OpenAI 格式阻断 JSON（HTTP 200）",
+        "配置集中于 Data Group guardrail_oob_config：Token、Host、超时、enable_request_scan 等键值可热更新"
+      ],
+      "explain": [
+        "客户端 POST /v1/chat/completions 至 Gateway VS，iRule 从 JSON body 提取 messages 文本",
+        "Sideband 请求经 Egress VS → pool_guardrail_aigr → HTTPS（SNI=us1.calypsoai.app）送至 Guardrail Scan API",
+        "扫描通过：改写 body（stream→false）后转发 Default Pool；扫描 flagged：不转发，直接返回阻断 assistant 消息",
+        "演示默认 VS 172.16.30.120:8000，经本机代理发送 stream:true 请求，对比阻断与非阻断 prompt 的网关行为"
+      ],
+      "blockNote": "阻断响应特征",
+      "blockNoteBody": "Guardrail 返回 flagged 时，Gateway 以 HTTP 200 回复 OpenAI chat.completion JSON，choices[0].message.content 包含 “F5 AI Guardrail” 及策略违规说明，请求不会进入后端 LLM Pool。",
+      "passNote": "放行响应特征",
+      "passNoteBody": "扫描 passed/cleared 后 Gateway 将请求转发 Default Pool。若客户端请求 stream:true，网关会强制改为非流式再转发；演示代理会消费 SSE 并汇总 chunk 数量。",
+      "proxyWhy": "浏览器无法直接访问实验网段 VS，演示程序通过本机 Python 后端代理转发请求，与 Model Based Routing 等子场景一致。",
+      "curlExample": "curl 示例（阻断类 prompt）",
+      "opsTip": "F5 日志：tail -f /var/log/ltm | grep guardrail_oob；Data Group 键 guardrail_api_token、guardrail_egress_dest 需正确配置。"
+    },
+    "modelRouting": {
+      "title": "Model Based Routing",
+      "tagline": "一个对外入口，像「总机」一样把不同 AI 模型请求分到对的推理集群",
+      "introStory": "企业往往在不同部门、不同场景下并行使用 GPT、Claude、DeepSeek、自研模型等多套推理能力，各模型通常由不同团队建设、按不同合同计费，合规边界也各不相同。若每个业务系统各自对接不同的后端地址，流量入口分散——上线新模型要改遍所有应用，运维也看不清「谁在用哪个模型、费用花在哪里」。Model Based Routing 让企业只对外暴露一个 AI 网关入口：业务按习惯的模型名称发起请求，网关自动把流量送到正确的推理集群，应用侧无需维护「模型名 → 后端地址」的对照关系。",
+      "bullets": [
+        "市场部写文案、研发查代码、客服做问答——多套 AI 能力可并存，业务系统只需对接一个网关地址，按模型名即可触达对应推理服务",
+        "新模型上线或路由调整在网关集中完成，无需逐个业务系统改配置、发版，缩短从模型采购到业务可用的周期",
+        "全部模型流量经统一入口，便于按部门、按应用统计使用量，支撑成本分摊、配额管控与合规审计",
+        "业务侧可继续使用熟悉的模型名称对外调用，内部映射与切换由网关透明完成，降低多模型并存时的集成与运维负担"
+      ],
+      "techFeatures": [
+        "入口 Virtual Server 挂载 HTTP Profile 与 iRuleLX（ILX Profile），在网关层解析请求并执行路由决策",
+        "路由映射维护于 BIG-IP Data Group：键为请求中的 model，值为「目标 Pool [, 改写 model [, 扩展字段]]」",
+        "未命中映射时由 __default__ 键指向兜底 Pool，避免未知 model 无明确落点",
+        "field2 可选：转发前改写 JSON body 中的 model 字段，使客户端别名与后端实际模型名解耦（演示中改写成功时结果卡片紫色高亮）"
+      ],
+      "explain": [
+        "Virtual Server 挂载 HTTP Profile 与 ILX Profile",
+        "Data Group 值格式：field1[,field2[,field3]] — field1 为 Pool，field2 为可选 model 改写",
+        "__default__ 键用于未命中时的兜底 Pool",
+        "若 field2 配置且改写生效，200 响应中的 model 将与请求中的 model 不一致"
+      ],
+      "modelRewriteNote": "Model 名称改写（field2）",
+      "modelRewriteNoteBody": "当 Data Group 值为「Pool,后端model名」时，iRuleLX 在将请求转发到 Pool 前会修改 JSON body 中的 model 字段。演示时若响应 200 且响应 model ≠ 请求 model，结果卡片会以紫色高亮标出此次改写。",
+      "curlSuccess": "成功路由示例（deepseek-chat）",
+      "curlFail": "后端 model 校验失败示例",
+      "opsTip": "在 BIG-IP 上查看路由日志：tail -f /var/log/ltm | grep llm_router",
+      "proxyWhy": "演示应用通过 Python 后端代理请求，避免浏览器 CORS，并统一超时与错误处理。互动区以 /v1/chat/completions 为例发起调用，仅作演示入口示例，不代表生产侧必须使用该 API 形态。"
+    },
+    "contextRouting": {
+      "title": "Context Size Routing",
+      "tagline": "对话越长，自动换到「吃得下」长上下文的模型——像快递按重量换大车",
+      "introStory": "在 IDE、工单系统、知识库问答等真实场景里，用户往往先简短提问，随后粘贴日志、文档或表格，对话越积越长。若始终用同一套「轻量」推理能力处理，容易出现前面响应飞快、贴上长材料后突然变慢甚至截断的体验断裂；若一律上大上下文模型，短对话也在承担不必要的算力成本。Context Size Routing 让企业在网关层按「本轮请求携带的对话体量」自动选路：日常闲聊走经济型池，长文档分析走大上下文池——用户始终使用同一个模型入口，体感连贯，预算也更可控。",
+      "bullets": [
+        "研发在 IDE 里从「改一行代码」到「贴上整段报错日志继续排查」，业务接口不变，网关自动切换到能承载长上下文的推理能力",
+        "避免用户已习惯流畅对话后，因单次粘贴长文档而出现超时、截断或答非所问的体验落差",
+        "短对话优先使用轻量、经济的推理资源，仅在确需长上下文时才动用高成本大模型，利于 FinOps 按场景控费",
+        "与按模型分流可叠加使用：先识别业务模型，再按对话长度精细分流，贴近生产中「同品牌、不同负载」的复合决策"
+      ],
+      "techFeatures": [
+        "在 Model Based Routing 选池基础上，Data Group field3 支持 Size|阈值|大上下文 Pool|大上下文 model 格式",
+        "阈值比较对象为 messages 数组序列化后的字节长度；演示环境 5k 表示 5×1024=5120 字节",
+        "未超阈值：使用 field1 目标 Pool 与 field2 model；超出则切换至 field3 指定的大上下文 Pool/model",
+        "多轮对话会使单次请求字节数累积增长，跨越阈值时无需客户端改参，网关自动完成 Pool 切换"
+      ],
+      "explain": [
+        "Data Group 值示例：/Common/pool_deepseek-chat,deepseek-chat,Size|5k|pool_deepseek_v4|deepseek-v4-flash",
+        "field3 中 5k 表示 5×1024=5120 字节阈值，比较对象为 messages 数组序列化长度",
+        "未超阈值：使用 field1 Pool + field2 指定的 model；超出：切换 largePool 与 largeModel",
+        "多轮对话时上下文累积，单次请求字节数从 ≤5k 变为 >5k 会触发 Pool/模型切换"
+      ],
+      "thresholdNote": "5k 阈值与分流",
+      "dgExample": "DG 键 deepseek-chat → 值 /Common/pool_deepseek-chat,deepseek-chat,Size|5k|pool_deepseek_v4|deepseek-v4-flash",
+      "calcNote": "互动区滑块调节目标 messages 字节数；「模拟多轮对话」自动构造跨越 5k 前后的两次请求，右侧对比高亮小/大上下文路由结果。"
+    },
+    "agentRouting": {
+      "title": "Agent/Subagent Based Routing",
+      "tagline": "多 Agent 各干各的专长，却共用一套 API——由 F5 在网关里「认人分流」",
+      "introStory": "越来越多企业用多 Agent 编排完成复杂任务。以「AI 编程助手」为例：主调度负责协调流程，规划 Agent 要读懂需求文档，编码 Agent 需要强代码生成，测试与安全扫描 Agent 又各有专长——它们对模型的能力诉求不同，背后理应使用不同的推理资源。若每个 Subagent 各自配置 API 地址与路由规则，编排平台会变得臃肿，流量与成本也难以统一治理。Agent Routing 让所有 Agent 共用同一套 API 与网关入口，只在请求中声明「当前是哪个 Agent 在调用」，由 F5 自动路由到匹配的推理池——规划走长上下文池、编码走强模型池、安扫走轻量专项池，兼顾业务灵活性与运维集中管理。",
+      "bullets": [
+        "多 Agent 协同场景下，编排框架只需维护一套 API 地址，各角色按身份标识调用，降低集成与密钥管理复杂度",
+        "规划、编码、测试、安扫等角色能力诉求不同，由网关在转发层自动匹配最合适的推理资源，无需为每个 Agent 硬编码后端地址",
+        "企业可统一对外暴露 EnterpriseAgentModel 等别名，内部各池真实模型映射由网关透明完成，便于模型升级与替换",
+        "全部 Agent 流量经统一入口，便于审计「哪个角色调用了哪类模型」、设置配额，并在网关侧集中调整路由策略"
+      ],
+      "techFeatures": [
+        "Agent 身份映射维护于 BIG-IP Data Group（llm_agent_pool_map），与 Model Routing 的 Data Group 机制一致",
+        "身份识别支持三种方式：HTTP Header（x-Agent-Identity）、system 消息 name 字段、或 model 字段直接填写角色名",
+        "演示角色包括 superviser / planner / coder / tester / scanner，分别路由到不同 LTM Pool",
+        "Header 或 system.name 模式下可配合 field2 改写：对外统一 EnterpriseAgentModel，对内转发各池后端接受的模型名"
+      ],
+      "explain": [
+        "业务上：编排平台只关心任务分解与 Agent 协作；模型与 Pool 的对应关系集中在 BIG-IP Data Group（llm_agent_pool_map）维护",
+        "技术上：网关按 x-Agent-Identity、system 消息 name 或 model 字段提取身份（superviser / planner / coder / tester / scanner）",
+        "Header 或 system.name 模式下，对外 model 可统一为 EnterpriseAgentModel，由 F5 在转发前改写到后端接受的模型名",
+        "互动区动画展示各 Subagent 请求经 F5 VS 流入不同 Pool；若发生 model 改写，结果卡片会紫色高亮"
+      ],
+      "modelRewriteNote": "统一对外模型名，对内自动换真模型",
+      "modelRewriteNoteBody": "与 Model Based Routing 相同：业务 Agent 可用统一别名发起请求，F5 在转发到目标 Pool 前将 JSON 中的 model 改为该池后端实际接受的名称，避免每个 Subagent 硬编码多套 model 字符串。",
+      "identityNote": "如何在「一套 API」里区分不同 Agent",
+      "identityNoteBody": "编排系统不必为每个角色换 URL，只需在请求中声明身份。演示支持三种常见做法：HTTP Header（x-Agent-Identity）、对话里 system 角色的 name、或直接在 model 字段填写角色名——F5 识别后路由到对应 Pool。",
+      "curlExample": "curl -iX POST http://172.16.30.121:8000/v1/chat/completions \\\n  -H \"Content-Type: application/json\" \\\n  -H \"x-Agent-Identity: coder\" \\\n  -d '{\"model\":\"EnterpriseAgentModel\",\"messages\":[{\"role\":\"user\",\"content\":\"hello\"}]}'"
+    }
+  },
+  "agentRouting": {
+    "loadFailed": "加载 Agent 路由配置失败",
+    "userPrompt": "模拟用户任务",
+    "identityMode": "Agent 身份识别方式",
+    "requestModel": "请求 model",
+    "startDev": "开始开发",
+    "running": "多 Agent 协同开发中…",
+    "topologyTitle": "Subagent → F5 VS → Pool 拓扑",
+    "topologyHint": "点击「开始开发」后，各 Subagent 依次呼吸高亮，请求流经 F5 VS 并命中对应 Pool（虚线表示路由路径）。",
+    "poolHit": "已命中",
+    "agents": {
+      "superviser": "主调度 SubAgent",
+      "planner": "Planner SubAgent",
+      "coder": "Coding SubAgent",
+      "tester": "Testing SubAgent",
+      "scanner": "Coding Scanner SubAgent"
+    },
+    "modes": {
+      "header": "HTTP Header（x-Agent-Identity）",
+      "headerHint": "model 固定为 EnterpriseAgentModel，身份写在 Header",
+      "system_name": "system message 的 name 字段",
+      "system_nameHint": "model 固定为 EnterpriseAgentModel，身份写在 system.name",
+      "model_field": "model 字段即身份",
+      "model_fieldHint": "直接将 superviser / planner / coder 等写入 model",
+      "random": "随机（各 Agent 独立）",
+      "randomHint": "每次启动测试时为各 Subagent 随机分配一种识别方式，本次测试期间保持不变"
+    },
+    "perAgentModeTitle": "本次测试各 Agent 识别方式",
+    "continuous": {
+      "title": "持续模拟测试",
+      "subtitle": "在设定时长内随机轮询各 Subagent 向 F5 VS 发送请求，用于驱动 Grafana / Prometheus 观测数据",
+      "durationMinutes": "模拟时长（分钟）",
+      "start": "启动持续模拟",
+      "stop": "停止模拟",
+      "sent": "已发送",
+      "errors": "异常总计",
+      "remaining": "剩余",
+      "lastAgent": "最近 Agent",
+      "alreadyRunning": "持续模拟已在运行，请先停止"
+    }
+  },
+  "contextSize": {
+    "targetVs": "目标 Virtual Server",
+    "modelFixed": "演示 model（固定）",
+    "targetMessagesBytes": "目标 messages 数组字节数（与 F5 calcContextSize 一致）",
+    "previewCalc": "预估实际 {{bytes}} B",
+    "tierSmall": "小上下文 ≤5k",
+    "tierLarge": "大上下文 >5k",
+    "messagesBytes": "messages 字节数",
+    "underExplain": "未超过 5k 阈值，预期走 pool_deepseek-chat",
+    "overExplain": "超过 5k 阈值，预期切换 pool_deepseek_v4",
+    "expectedRoute": "预期 F5 路由",
+    "responseModel": "后端响应 model",
+    "switchedTitle": "已切换至大上下文模型",
+    "turnCount": "对话轮次约 {{count}} 轮",
+    "sendSized": "发送指定大小请求",
+    "simulateMultiturn": "模拟多轮对话跨越 5k",
+    "multiturnTitle": "连续对话：阈值前 → 阈值后",
+    "underThreshold": "≤5k：小上下文（deepseek-chat）",
+    "overThreshold": ">5k：大上下文（deepseek-v4-flash）",
+    "singleShot": "单次可调大小请求",
+    "noResults": "调节滑块或点击按钮开始演示",
+    "multiturnHint": "预览：工单式多轮排障对话，阈值前约 {{under}} B（{{underTurns}} 条消息），粘贴日志后约 {{over}} B（{{overTurns}} 条）",
+    "result": "路由结果",
+    "workScenarioTitle": "模拟场景：IDE 里边聊边排查 LLM 网关",
+    "workScenarioDesc": "从 Profile 配置、Data Group、多轮追问到粘贴 LTM 日志；messages 随对话累积，最后一轮附件使上下文越过 5k。",
+    "timelineTitle": "对话上下文累积（每步 messages 字节数）",
+    "thresholdLine": "阈值 {{bytes}} B",
+    "roleUser": "用户",
+    "roleAssistant": "助手",
+    "roleSystem": "系统",
+    "showChat": "展开本轮请求中的对话摘录",
+    "hideChat": "收起对话摘录",
+    "dialogueRounds": "业务对话约 {{count}} 轮",
+    "messageCount": "共 {{count}} 条消息",
+    "crossingArrow": "↓ 用户粘贴完整工单日志，单次请求上下文越过 5k，F5 切换大上下文 Pool",
+    "triggerUnder": "触发点：多轮排障对话后，最后一轮发送前仍 ≤5k",
+    "triggerOver": "触发点：附带 LTM/健康检查日志后，messages 序列化超过 5k"
+  },
+  "retryFallback": {
+    "hintAutoPrepare": "每次点击按钮都会先自动准备成员状态（enable/force offline），再发起演示请求。",
+    "empty": "点击左侧按钮执行对应场景。",
+    "actions": {
+      "refreshCounter": "刷新当前计数",
+      "runStatusRetry": "执行 5xx/429 Retry 演示",
+      "runTcpReselect": "执行 TCP 自动 reselect 演示",
+      "forceOfflineAndRun": "Force offline 8005 并验证 fallback"
+    },
+    "status": {
+      "title": "场景A：5xx/429 触发 Retry + Fallback",
+      "desc": "以 testmodel 发起请求，预期先命中 pool_testmode，再在重试后回退到 pool_llm_default。",
+      "currentCounter": "执行前当前计数（{{member}}）",
+      "result": "状态码重试结果",
+      "memberRequestCounter": "pool_testmode 成员 {{member}} 的 Requests 计数",
+      "highlightFallback": "从 pool_testmode 成员 {{member}} 的 Requests 前后统计数增长看，可说明系统进行了 {{delta}} 次重试；根据最终响应内容可见，实际响应来自 pool_llm_default，说明已执行重试并最终进行了 fallback。",
+      "retryTerminalHit": "已触发终止重试（x-llm-retry-terminal=1），说明主池与兜底池均不可用。",
+      "fallbackToDefault": "请求最终回退到 pool_llm_default（可从 default_model mismatch 判断）。",
+      "unexpected": "结果与预期不一致，请检查 F5 配置与池成员状态。"
+    },
+    "tcp": {
+      "title": "场景B：TCP 连接失败触发 fallback",
+      "desc": "先验证 7999 不可连但仍能自动 reselect 到 8005；再强制 offline 8005，观察 fallback 行为。",
+      "caseReselectTitle": "按钮一：执行 TCP 自动 reselect 演示（Pool 内重选）",
+      "caseReselectDesc": "该测试模拟“F5 视角成员可用，但目标成员实际不提供服务”的场景：pool_deepseek-chat 中 7999 成员无监听，连接在 TCP 层失败。F5 在同一 Pool 内执行成员重选（reselect），将流量切换到可用成员。",
+      "caseReselectExpected": "预期验证点：请求最终由 8005 成员响应（server_port=8005），说明发生了 Pool 内重选而非跨 Pool fallback。",
+      "caseFallbackTitle": "按钮二：Force offline 8005 并验证 fallback（跨 Pool 兜底）",
+      "caseFallbackDesc": "该测试通过将 8005 成员强制 offline，使 pool_deepseek-chat 内部全部成员不可达，从而无法在 Pool 内继续重选。此时策略会触发 fallback 到缺省 Pool（pool_llm_default）。",
+      "caseFallbackExpected": "预期验证点：最终响应内容体现来自 pool_llm_default（或出现 terminal retry/upstream_error），说明已执行跨 Pool fallback。",
+      "reselectResult": "TCP reselect 结果",
+      "fallbackResult": "Force offline 后 fallback 结果",
+      "expectedPort": "预期所有请求最终命中 server_port={{port}}",
+      "fallbackToDefault": "检测到已 fallback 到默认池（default_model mismatch）。",
+      "terminalFallback": "检测到终止重试响应（all members unavailable / terminal header）。",
+      "memberStateBefore": "执行前成员状态（pool_deepseek-chat）",
+      "memberStateAfter": "force offline 后成员状态（pool_deepseek-chat）",
+      "stabilityWait": "Pool 成员刚恢复，等待其稳定（3 秒）…"
+    },
+    "debug": {
+      "missingPort": "第 {{attempts}} 次请求未解析到 server_port；观测端口序列：[{{ports}}]"
+    }
+  },
+  "tblbDemo": {
+    "interactionTitle": "TBLB 成员调度演示",
+    "retryFallback": {
+      "title": "Retry 与 Fallback（本场景下的逻辑）",
+      "subtitle": "Router 与 TBLB 分层协作：先选池、再选成员，失败时逐级兜底。下图仅描述行为逻辑，不涉及内部实现细节。",
+      "step1Title": "Router 选池",
+      "step1Body": "按请求中的 model（及上下文 / Agent 规则）选定目标 Pool，例如 pool_gpt-4o。",
+      "step2Title": "池内选成员",
+      "step2Body": "启用 TBLB 的 Pool：Scheduler 按排队、缓存等指标选出当前最优 member；未启用 TBLB 的 Pool：走标准负载均衡选 member。",
+      "step3Title": "连接失败 → Pool 内成员重选",
+      "step3Body": "若所选 member TCP 不可达（LB_FAILED），F5 在同一 Pool 内自动换一台 member 重试，不立刻跨 Pool。",
+      "step4Title": "5xx / 429 或池内成员耗尽 → Router Retry + 跨 Pool Fallback",
+      "step4Body": "HTTP 状态码触发 Router 有限次重试；主 Pool 仍不可用时，切换到预配置的 Fallback Pool（如 pool_llm_default）。",
+      "sameAsRouterTitle": "Router 层 Retry / Fallback 演示与本页上方 TBLB 演示无关",
+      "sameAsRouterBody": "步骤 3（Pool 内重选）与步骤 4（5xx 重试 + 跨 Pool Fallback）的交互演示，与「场景一 · LLM Router → Retry 与 Fallback」子场景完全一致——使用同一套 VS、同一组 Pool 与同一套演示按钮。本页仅演示 TBLB 成员调度（步骤 2），不重复运行 Retry / Fallback 测试。",
+      "goToRouterDemo": "前往 LLM Router · Retry 与 Fallback 演示 →",
+      "footnote": "TBLB 的差异化在于步骤 2 的指标驱动选路；步骤 3–4 的韧性机制由 Router + LTM 统一提供，与是否启用 TBLB 无关。"
+    },
+    "testCount": "测试次数",
+    "runDemo": "开始测试（{{count}} 次）",
+    "optgroupTblb": "{{pool}} · TBLB 已启用",
+    "optgroupNoTblb": "{{pool}} · 标准 LB（无 TBLB）",
+    "optionTblb": "{{model}} · 智能成员调度",
+    "selectHintTblb": "该 Pool 已启用 TBLB：右侧将展示 Scheduler 理论占比，可与实际 server_port 分布对比。",
+    "selectHintNoTblb": "该 Pool 未启用 TBLB，仅展示标准负载均衡下的实际 server_port 分布。",
+    "hint": "选择 model 后右侧会先展示 Scheduler 理论成员占比；点击「开始测试」将刷新 Scheduler 并发起指定次数请求，下方对比实际 server_port 占比。",
+    "noResults": "加载配置中…",
+    "schedulerTarget": "TBLB Scheduler",
+    "triggerMemberLoad": "手动改变推理服务器负载",
+    "triggerEndpoints": "已触发的 member 端点",
+    "triggerEndpointsCollapse": "收起",
+    "triggerEndpointsExpand": "展开查看",
+    "triggerNoMembers": "Scheduler 未返回 pool member，无法触发负载更新",
+    "triggerFailed": "触发 member 负载更新失败",
+    "triggerRunning": "正在向各 member 发送 trigger_update…",
+    "cooldownHint": "负载更新已触发，请等待 {{sec}} 秒后再开始测试（Scheduler 指标需时间刷新）",
+    "runDemoCooldown": "等待 {{sec}} 秒…",
+    "refreshScheduler": "刷新 Scheduler",
+    "schedulerDistribution": "Scheduler 理论成员占比（percent）",
+    "schedulerEndpointDirect": "TBLB Scheduler 直连",
+    "schedulerEndpointProxy": "演示应用代理（页面实际调用）",
+    "schedulerLoading": "正在查询 Scheduler…",
+    "schedulerError": "Scheduler 查询失败",
+    "schedulerEmpty": "Scheduler 返回空成员列表",
+    "compareHint": "上方紫色为 Scheduler 理论占比，下方为实际测试 server_port 占比，可对比验证 TBLB 选路效果；访问总次数越多，实际分布越趋近理论值。",
+    "tblbEnabled": "TBLB 已启用",
+    "tblbDisabled": "TBLB 未启用",
+    "progress": "进度",
+    "successCount": "成功",
+    "errorCount": "失败",
+    "actualDistribution": "实际测试成员占比（server_port）",
+    "modelRewriteApplied": "已根据路由规则（Data Group field2）改写请求中的 model 后转发至目标 Pool。",
+    "portLabel": "member :{{port}}",
+    "portUnknown": "未解析到 server_port",
+    "portError": "请求失败",
+    "noPortData": "成功响应中未找到 server_port 字段，请确认推理后端返回该字段。",
+    "explain": [
+      "选择 model 后自动查询对应 Pool 的 Scheduler `/pools/{name}/Common/status`，展示理论成员 percent",
+      "测试次数内按响应 JSON 的 server_port 统计实际成员占比，与 Scheduler 理论值对比",
+      "pool_gpt-4o 与 pool_gemini-1.5-pro 已启用 TBLB；pool_deepseek-chat 为标准 LB，无 Scheduler 区块"
+    ],
+    "explainNote": "响应中的 server_port 由 F5 / 推理后端在 JSON body 中回写，用于标识实际处理请求的 Pool member 端口。"
+  },
+  "systemPromptDemo": {
+    "targetVs": "目标 Virtual Server",
+    "selectPreset": "选择演示场景",
+    "presetFormatOverride": "格式冲突（Markdown vs YAML）",
+    "presetFormatOverrideDesc": "用户 system 要求 Markdown，F5 BIG-IP 上强制规则要求 YAML。",
+    "presetInjection": "Prompt 注入攻击",
+    "presetInjectionDesc": "system 中嵌入伪造 admin_prompts 标签，验证 nonce wrapper 对不可信内容的隔离。",
+    "presetBenign": "正常请求（对照）",
+    "presetBenignDesc": "普通企业 system，wrapper 生效且业务语义正常。",
+    "systemField": "客户端 System 消息（不可信）",
+    "userField": "User 消息",
+    "model": "model",
+    "mockPort": "Mock LLM 端口",
+    "sendRequest": "发送演示请求",
+    "noResult": "选择场景并点击「发送演示请求」查看 F5 wrapper 效果",
+    "configLoadFailed": "无法加载演示配置",
+    "previewTitle": "F5 Wrapper 预览（本地算法，与 ir_openai_api.tcl 对齐）",
+    "previewLoading": "正在生成 wrapper 预览…",
+    "previewIdle": "编辑 System / User 消息后此处显示改写对比",
+    "clientSystem": "客户端原始 System",
+    "wrappedSystem": "F5 改写后 System（预期）",
+    "flowTitle": "请求处理流水线",
+    "flowClient": "客户端",
+    "flowF5": "F5 JSON_REQUEST",
+    "flowLlm": "Mock LLM",
+    "flowOutcome": "YAML 响应",
+    "resultTitle": "演示结果",
+    "resultPass": "策略生效",
+    "resultFail": "未达预期",
+    "badgeYaml": "YAML 格式",
+    "badgePolicy": "BIG-IP 强制规则已生效",
+    "badgeInjection": "注入已隔离",
+    "emptyContent": "响应中无 assistant 内容，请确认 F5 VS 与 Pool member 8011 已就绪",
+    "showRequest": "展开原始请求",
+    "tagOuter": "外层 wrapper",
+    "tagAdmin": "管理员人设",
+    "tagUser": "用户输入（不可信）",
+    "tagMandatoryRules": "F5 BIG-IP 上强制规则要求",
+    "legend": {
+      "mandatory-key": "本场景关键强制规则（如第 4 条 YAML 格式 / 层级覆盖）",
+      "mandatory-block": "BIG-IP 强制规则区块其余内容",
+      "user-conflict": "将被强制规则覆盖的用户 system 指令",
+      "user-contained": "被 nonce 隔离的不可信/注入内容",
+      "admin-block": "管理员人设（admin_prompts）"
+    }
+  },
+  "modelAllowlistDemo": {
+    "targetVs": "目标 Virtual Server（System Prompt VS）",
+    "datagroupTitle": "当前 Data Group 规则（iRule Layer 0）",
+    "colModel": "model",
+    "colAction": "action",
+    "defaultRow": "（未命中）默认策略",
+    "modelInput": "模拟请求的 model 名称",
+    "modelPlaceholder": "例如 demo-model、gpt-5.2-codex 或 gpt-4o",
+    "quickAllow": "一键：{{model}}（预期放行）",
+    "quickBlock": "一键：{{model}}（预期拦截）",
+    "policyPreview": "策略预览",
+    "policyDetail": "model={{model}} → {{action}}（来源：{{source}}）",
+    "sourceDatagroup": "datagroup 命中",
+    "sourceDefault": "DEFAULT_MODEL_ACTION",
+    "sendTest": "发送测试请求",
+    "testPrompt": "请用一句话介绍你自己。",
+    "configLoadFailed": "无法加载模型黑白名单配置",
+    "resultPlaceholder": "填写 model 并发送请求，查看 iRule Layer 0 放行或 403 拦截结果",
+    "resultAllowed": "iRule Layer 0 放行 — 请求已转发",
+    "resultBlocked": "iRule Layer 0 拦截 — 模型未授权",
+    "modelLabel": "请求 model",
+    "expectedAction": "预期策略",
+    "mismatchHint": "实际结果与 datagroup 预期不一致，请检查 F5 VS、iRule 与 dg_openai_model_list 配置",
+    "showRequest": "展开原始请求",
+    "flowClient": "客户端",
+    "flowF5": "JSON Profile + iRule",
+    "flowCheck": "iRule Layer 0 模型检查",
+    "flowOutcome": "放行 / 403"
+  },
+  "maxTokensDemo": {
+    "targetVs": "目标 Virtual Server（System Prompt VS）",
+    "modelNote": "演示 model（已通过模型准入）",
+    "layerNote": "iRule Layer",
+    "gaugeTitle": "max_tokens 与上限对比",
+    "gaugeActiveValue": "当前选中",
+    "gaugeCompliant": "合规预设（2048）",
+    "gaugeOverflow": "超限预设（8192）",
+    "gaugeLimitLine": "上限 {{limit}}",
+    "customInput": "自定义 max_tokens",
+    "quickCompliant": "合规 {{value}}",
+    "quickOverflow": "超限 {{value}}",
+    "quickAtLimit": "恰在上限 {{value}}",
+    "quickOverLimit": "超 1（{{value}}）",
+    "policyPreview": "策略预览",
+    "policyDetail": "max_tokens={{value}}，上限={{limit}} → {{action}}",
+    "runCompare": "运行对比演示",
+    "runCustom": "发送自定义测试",
+    "testPrompt": "请用一句话介绍你自己。",
+    "configLoadFailed": "无法加载 max_tokens 配置",
+    "resultPlaceholder": "点击「运行对比演示」查看合规放行 vs 超限拦截的并排对比",
+    "compareHint": "VS {{host}}:{{port}} · model={{model}}",
+    "caseCompliant": "受控放行（合规）",
+    "caseOverflow": "超限拦截",
+    "caseCustomAllow": "自定义 · 预期放行",
+    "caseCustomBlock": "自定义 · 预期拦截",
+    "expectedAction": "预期策略",
+    "limitRef": "上限 {{limit}}",
+    "resultAllowed": "iRule Layer 0 放行 — 请求已转发",
+    "resultBlocked": "iRule Layer 0 拦截 — max_tokens 超限",
+    "allowedHint": "max_tokens 未超过 MAX_TOKENS_LIMIT，请求进入推理后端。",
+    "blockedHint": "max_tokens 超过 MAX_TOKENS_LIMIT，F5 在 iRule Layer 0 返回 403，不会转发至后端（策略也可选自动将 max_tokens 修改为上限值后放行）。",
+    "cardPending": "等待演示…",
+    "mismatchHint": "实际结果与策略预期不一致，请检查 F5 iRule MAX_TOKENS_LIMIT 与 model 准入配置",
+    "showRequest": "展开实际发送至 VS 的 JSON"
+  },
+  "guardrailDemo": {
+    "targetVs": "目标 Virtual Server",
+    "selectPrompt": "选择测试 Prompt",
+    "promptBlocked": "阻断类 Prompt",
+    "promptAllowed": "非阻断 Prompt",
+    "userPrompt": "用户输入",
+    "model": "model",
+    "streamEnabled": "stream: true",
+    "sendRequest": "发送测试请求",
+    "noResult": "选择 Prompt 并点击「发送测试请求」查看护栏扫描结果",
+    "blockedTitle": "护栏已阻断 — 请求未进入推理后端",
+    "blockedHint": "F5 Gateway 在 Sideband 扫描返回 flagged 后，直接以 OpenAI 兼容 JSON 回复阻断消息（HTTP 200），不会转发至 Default Pool。",
+    "passedTitle": "护栏放行 — 请求已转发至推理后端",
+    "passedHint": "扫描 outcome 为 passed/cleared，Gateway 将请求转发 Default Pool 并由推理服务正常响应。",
+    "passedStreamHint": "客户端请求 stream:true，Gateway 扫描通过后强制 stream:false 再转发；代理侧已消费 SSE 并统计 chunk 数。",
+    "streamChunks": "SSE chunks",
+    "flowTitle": "请求处理流水线",
+    "flowClient": "客户端",
+    "flowGateway": "Gateway VS",
+    "flowScan": "Guardrail 扫描",
+    "flowOutcome": "放行 / 阻断",
+    "flowHint": "Gateway iRule 经 Sideband → Egress VS → HTTPS 调用 Calypso AI /backend/v1/scans，再根据 outcome 决定转发或阻断。",
+    "showRawRequest": "展开原始请求",
+    "hideRawRequest": "收起原始请求",
+    "willSend": "即将发送"
+  },
+  "demo": {
+    "targetVs": "目标 Virtual Server",
+    "host": "IP 地址",
+    "port": "端口",
+    "selectModel": "选择 model",
+    "batchDemo": "一键批量演示（{{count}} 项）",
+    "unmappedModels": "未映射 / 兜底测试",
+    "interval": "请求间隔 (ms)",
+    "noResults": "点击「开始演示」查看路由结果",
+    "singleRequest": "单条请求",
+    "connectionFailed": "无法连接 VS，请检查网络与 IP/端口",
+    "timeout": "请求超时",
+    "forbiddenHost": "目标地址不在允许的内网范围"
+  },
+  "status": {
+    "success": "成功",
+    "error": "失败",
+    "pending": "等待",
+    "active": "进行中"
+  },
+  "memberGuard": {
+    "message": "{{pool}} 成员 {{member}} 当前为 disabled 状态，演示请求可能失败。",
+    "stateHint": "F5 状态：state={{state}}，session={{session}}",
+    "enable": "一键启用",
+    "enabling": "启用中…"
+  }
+}

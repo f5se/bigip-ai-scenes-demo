@@ -1,0 +1,35 @@
+# --- Python ---
+__pycache__/
+*.py[cod]
+.Python
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+*.txt
+*.md
+!README.md
+!requirements.txt
+!README_irulelx.md
+
+# Local virtualenvs (created on each machine)
+.venv/
+venv/
+adapter_service/.venv/
+
+# Secrets / machine-local overrides (use *.example templates in repo)
+.env
+.env.local
+backend/app/config.py
+
+# --- Node / frontend build cache ---
+node_modules/
+frontend/tsconfig.tsbuildinfo
+# frontend/dist/  — not ignored: commit built SPA for air-gapped deploy,
+# or delete this line and run `npm run build` during Ubuntu install (see DEPLOY_UBUNTU.md)
+
+# --- OS / editor ---
+.DS_Store
+.cursor/
+
+# --- Local scratch (do not publish) ---
+temp-dev.txt
