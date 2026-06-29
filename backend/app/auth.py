@@ -322,11 +322,9 @@ def install_auth(app: FastAPI) -> None:
         if get_current_session(request):
             return RedirectResponse(url=safe_return_to(request.query_params.get("return_to")), status_code=302)
         return templates.TemplateResponse(
+            request,
             "login.html",
-            {
-                "request": request,
-                "return_to": safe_return_to(request.query_params.get("return_to")),
-            },
+            {"return_to": safe_return_to(request.query_params.get("return_to"))},
         )
 
     @app.post("/api/login")
