@@ -57,7 +57,7 @@ from backend.app.system_prompt import (
     preview_wrap,
 )
 from backend.app.auth import install_auth
-from backend.app.grafana_login import build_grafana_open_redirect
+from backend.app.grafana_login import build_grafana_open_response
 from backend.app.runtime_config import get_grafana_url, grafana_auto_login_enabled
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -193,7 +193,7 @@ async def config_observability() -> dict[str, str | bool]:
 
 @app.get("/api/grafana/open")
 async def grafana_open():
-    return await build_grafana_open_redirect()
+    return await build_grafana_open_response()
 
 
 @app.post("/api/proxy/chat/completions")

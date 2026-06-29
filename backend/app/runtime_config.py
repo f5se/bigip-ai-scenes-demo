@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+from urllib.parse import urlparse
 
 DEFAULT_GRAFANA_URL = "http://localhost:3001"
 
@@ -29,6 +30,23 @@ def get_grafana_url() -> str:
     if env_value:
         return env_value.rstrip("/")
     return DEFAULT_GRAFANA_URL
+
+
+def get_grafana_target() -> tuple[str, str, str]:
+    """Return (origin, redirect_url, redirect_path) from configured Grafana URL."""
+    configured = get_grafana_url()
+    parsed = urlparse(configured)
+    if not parsed.scheme or not parsed.netloc:
+        base = DEFAULT_GRAFANA_URL
+        return base, base, "/"
+
+    origin = f"{parsed.scheme}://{parsed.netloc}"
+    redirect_path = parsed.path or "/"
+    if parsed.query:
+        redirect_url = f"{origin}{redirect_path}?{parsed.query}"
+    else:
+        redirect_url = f"{origin}{redirect_path}" if redirect_path != "/" else origin
+    return origin, redirect_url, redirect_path
 
 
 def get_grafana_username() -> str:
