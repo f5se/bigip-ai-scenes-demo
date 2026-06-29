@@ -180,6 +180,11 @@ async def config_defaults() -> dict[str, Any]:
     }
 
 
+@app.get("/api/config/observability")
+async def config_observability() -> dict[str, str]:
+    return {"grafana_url": settings.grafana_url}
+
+
 @app.post("/api/proxy/chat/completions")
 async def proxy_chat(req: ProxyRequest) -> dict[str, Any]:
     try:

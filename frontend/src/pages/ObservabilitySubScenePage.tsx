@@ -4,16 +4,15 @@ import { SceneLayout } from "@/components/SceneLayout";
 import { MermaidDiagram } from "@/components/MermaidDiagram";
 import { MERMAID_DIAGRAMS } from "@/scenes/manifest";
 import { collectSceneIntroKeys } from "@/utils/sceneIntro";
+import { useGrafanaDashboardUrl } from "@/utils/grafana";
 
 type Props = {
   pageKey: "obsTokens" | "obsMetrics";
 };
 
-const GRAFANA_URL =
-  "http://localhost:3001/d/adz84xj/f5-big-ip-llm?orgId=1&from=now-5m&to=now&timezone=browser&var-model=$__all&var-pool=$__all&var-member=$__all&var-client_ip=$__all&var-price_version=v1&refresh=10s";
-
 export function ObservabilitySubScenePage({ pageKey }: Props) {
   const { t, i18n } = useTranslation();
+  const grafanaUrl = useGrafanaDashboardUrl();
   const prefix = `scenes.${pageKey}`;
   const technicalChart = MERMAID_DIAGRAMS[pageKey] ?? MERMAID_DIAGRAMS.placeholder;
   const businessChart = i18n.language.startsWith("en")
@@ -71,7 +70,7 @@ export function ObservabilitySubScenePage({ pageKey }: Props) {
 
       <div className="flex flex-wrap items-center gap-3">
         <a
-          href={GRAFANA_URL}
+          href={grafanaUrl}
           target="_blank"
           rel="noreferrer"
           className="inline-flex items-center rounded-md border border-cyan-500/60 bg-cyan-500/10 px-3 py-2 text-sm font-medium text-cyan-300 transition hover:bg-cyan-500/20"

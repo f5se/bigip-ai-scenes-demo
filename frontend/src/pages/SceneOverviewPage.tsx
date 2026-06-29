@@ -4,6 +4,7 @@ import { SceneLayout } from "@/components/SceneLayout";
 import { MermaidDiagram } from "@/components/MermaidDiagram";
 import { SubFeatureName } from "@/components/SubFeatureName";
 import { MERMAID_DIAGRAMS, scenes } from "@/scenes/manifest";
+import { useGrafanaDashboardUrl } from "@/utils/grafana";
 
 type Props = {
   sceneId: string;
@@ -12,12 +13,11 @@ type Props = {
 export function SceneOverviewPage({ sceneId }: Props) {
   const { t, i18n } = useTranslation();
   const scene = scenes.find((s) => s.id === sceneId);
+  const grafanaUrl = useGrafanaDashboardUrl();
   if (!scene) return null;
 
   const k = scene.i18nKey;
   const isObservability = scene.id === "observability";
-  const grafanaUrl =
-    "http://localhost:3001/d/adz84xj/f5-big-ip-llm?orgId=1&from=now-5m&to=now&timezone=browser&var-model=$__all&var-pool=$__all&var-member=$__all&var-client_ip=$__all&var-price_version=v1&refresh=10s";
   const technicalChart =
     MERMAID_DIAGRAMS[scene.overviewDiagramKey ?? "placeholder"] ?? MERMAID_DIAGRAMS.placeholder;
   const businessChartKey = `${scene.overviewDiagramKey ?? "placeholder"}Biz`;

@@ -67,6 +67,10 @@ export type DefaultsConfig = {
   demo_interval_ms: number;
 };
 
+export type ObservabilityConfig = {
+  grafana_url: string;
+};
+
 export async function fetchHealth(): Promise<{ status: string }> {
   const res = await authFetch("/api/health");
   if (!res.ok) throw new Error("Health check failed");
@@ -76,6 +80,12 @@ export async function fetchHealth(): Promise<{ status: string }> {
 export async function fetchDefaults(): Promise<DefaultsConfig> {
   const res = await authFetch("/api/config/defaults");
   if (!res.ok) throw new Error("Failed to load defaults");
+  return res.json();
+}
+
+export async function fetchObservabilityConfig(): Promise<ObservabilityConfig> {
+  const res = await authFetch("/api/config/observability");
+  if (!res.ok) throw new Error("Failed to load observability config");
   return res.json();
 }
 
