@@ -14,6 +14,10 @@ class Settings(BaseSettings):
     tblb_demo_interval_ms: int = 50
     tblb_trigger_path: str = "/trigger_update"
     tblb_trigger_wait_sec: int = 10
+    grafana_url: str = "http://localhost:3001"
+    grafana_username: str = ""
+    grafana_password: str = ""
+    grafana_verify_tls: bool = True
     f5_mgmt_host: str = "172.16.20.198"
     f5_mgmt_username: str = "admin"
     f5_mgmt_password: str = "CHANGE_ME"

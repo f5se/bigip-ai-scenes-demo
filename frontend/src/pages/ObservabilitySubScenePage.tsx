@@ -12,7 +12,7 @@ type Props = {
 
 export function ObservabilitySubScenePage({ pageKey }: Props) {
   const { t, i18n } = useTranslation();
-  const { dashboardUrl: grafanaUrl, baseUrl: grafanaBaseUrl } = useGrafanaConfig();
+  const { openUrl: grafanaUrl, baseUrl: grafanaBaseUrl } = useGrafanaConfig();
   const prefix = `scenes.${pageKey}`;
   const technicalChart = MERMAID_DIAGRAMS[pageKey] ?? MERMAID_DIAGRAMS.placeholder;
   const businessChart = i18n.language.startsWith("en")

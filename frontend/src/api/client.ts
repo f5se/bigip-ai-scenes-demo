@@ -69,6 +69,7 @@ export type DefaultsConfig = {
 
 export type ObservabilityConfig = {
   grafana_url: string;
+  grafana_auto_login?: boolean;
 };
 
 export async function fetchHealth(): Promise<{ status: string }> {

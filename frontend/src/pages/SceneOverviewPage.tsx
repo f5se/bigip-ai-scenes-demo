@@ -13,7 +13,7 @@ type Props = {
 export function SceneOverviewPage({ sceneId }: Props) {
   const { t, i18n } = useTranslation();
   const scene = scenes.find((s) => s.id === sceneId);
-  const { dashboardUrl: grafanaUrl, baseUrl: grafanaBaseUrl } = useGrafanaConfig();
+  const { openUrl: grafanaUrl, baseUrl: grafanaBaseUrl } = useGrafanaConfig();
   if (!scene) return null;
 
   const k = scene.i18nKey;

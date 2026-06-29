@@ -57,6 +57,8 @@ from backend.app.system_prompt import (
     preview_wrap,
 )
 from backend.app.auth import install_auth
+from backend.app.grafana_login import build_grafana_open_redirect
+from backend.app.runtime_config import get_grafana_url, grafana_auto_login_enabled
 
 ROOT = Path(__file__).resolve().parents[2]
 FRONTEND_DIST = ROOT / "frontend" / "dist"
@@ -182,8 +184,16 @@ async def config_defaults() -> dict[str, Any]:
 
 
 @app.get("/api/config/observability")
-async def config_observability() -> dict[str, str]:
-    return {"grafana_url": settings.grafana_url}
+async def config_observability() -> dict[str, str | bool]:
+    return {
+        "grafana_url": get_grafana_url(),
+        "grafana_auto_login": grafana_auto_login_enabled(),
+    }
+
+
+@app.get("/api/grafana/open")
+async def grafana_open():
+    return await build_grafana_open_redirect()
 
 
 @app.post("/api/proxy/chat/completions")
@@ -587,7 +597,13 @@ if FRONTEND_DIST.is_dir():
 
     def _spa_index_response() -> HTMLResponse:
         raw = _get_index_html_template()
-        payload = json.dumps({"grafana_url": settings.grafana_url}, ensure_ascii=False)
+        payload = json.dumps(
+            {
+                "grafana_url": get_grafana_url(),
+                "grafana_auto_login": grafana_auto_login_enabled(),
+            },
+            ensure_ascii=False,
+        )
         script = f"<script>window.__LLM_DEMO_RUNTIME__={payload}</script>"
         html = raw.replace("</head>", f"{script}</head>", 1) if "</head>" in raw else f"{script}{raw}"
         return HTMLResponse(html)

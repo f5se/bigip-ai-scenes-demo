@@ -2,6 +2,7 @@
 
 interface LlmDemoRuntimeConfig {
   grafana_url?: string;
+  grafana_auto_login?: boolean;
 }
 
 interface Window {
