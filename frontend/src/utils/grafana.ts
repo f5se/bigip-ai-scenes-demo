@@ -13,16 +13,37 @@ export function buildGrafanaDashboardUrl(
   return `${base}${GRAFANA_DASHBOARD_PATH}`;
 }
 
-export function useGrafanaDashboardUrl(): string {
-  const [url, setUrl] = useState(() => buildGrafanaDashboardUrl());
+export function getRuntimeGrafanaBaseUrl(): string {
+  const injected = window.__LLM_DEMO_RUNTIME__?.grafana_url?.trim();
+  if (injected) {
+    return injected.replace(/\/$/, "");
+  }
+  return DEFAULT_GRAFANA_BASE_URL;
+}
+
+export function useGrafanaConfig(): { dashboardUrl: string; baseUrl: string } {
+  const runtimeBase = getRuntimeGrafanaBaseUrl();
+  const [baseUrl, setBaseUrl] = useState(runtimeBase);
 
   useEffect(() => {
+    if (runtimeBase !== DEFAULT_GRAFANA_BASE_URL) {
+      setBaseUrl(runtimeBase);
+      return;
+    }
     fetchObservabilityConfig()
-      .then((cfg) => setUrl(buildGrafanaDashboardUrl(cfg.grafana_url)))
+      .then((cfg) => setBaseUrl(cfg.grafana_url.replace(/\/$/, "")))
       .catch(() => {
         /* keep default */
       });
-  }, []);
+  }, [runtimeBase]);
 
-  return url;
+  return {
+    baseUrl,
+    dashboardUrl: buildGrafanaDashboardUrl(baseUrl),
+  };
+}
+
+/** @deprecated Use useGrafanaConfig().dashboardUrl */
+export function useGrafanaDashboardUrl(): string {
+  return useGrafanaConfig().dashboardUrl;
 }

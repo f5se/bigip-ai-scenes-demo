@@ -177,7 +177,7 @@
       "interactionTitle": "Grafana Dashboard Sketch",
       "interactionSubtitle": "Embedded mini diagrams are illustrative; use Grafana for real-time details",
       "openGrafana": "Open Live Grafana Dashboard",
-      "linkHint": "Target: localhost:3001 (last 5 minutes, auto-refresh every 10s)",
+      "linkHint": "Target: {{url}} (last 5 minutes, auto-refresh every 10s)",
       "mockPanels": {
         "traffic": "Request & Error Trend",
         "quality": "Latency & TTFT",
@@ -255,7 +255,7 @@
       "interactionTitle": "Tokens & Cost Sketch",
       "interactionSubtitle": "Sketches are for orientation; use Grafana for full filtering and real-time data",
       "openGrafana": "Open Grafana (Tokens/Cost)",
-      "linkHint": "Defaults to last 5 minutes with model/pool/member/client_ip/price_version variables"
+      "linkHint": "Target: {{url}} (defaults to last 5 minutes with model/pool/member/client_ip/price_version variables)"
     },
     "obsMetrics": {
       "title": "Model metrics",
@@ -282,7 +282,7 @@
       "interactionTitle": "Metrics Sketch",
       "interactionSubtitle": "Sketches show metric categories; live values are in Grafana",
       "openGrafana": "Open Grafana (Metrics)",
-      "linkHint": "Use dashboard variables to switch model, pool, member, and price version"
+      "linkHint": "Dashboard at {{url}}; switch model, pool, member, and price version via variables"
     },
     "trafficMgmt": {
       "title": "Optimization and Control",

@@ -4,7 +4,7 @@ import { SceneLayout } from "@/components/SceneLayout";
 import { MermaidDiagram } from "@/components/MermaidDiagram";
 import { MERMAID_DIAGRAMS } from "@/scenes/manifest";
 import { collectSceneIntroKeys } from "@/utils/sceneIntro";
-import { useGrafanaDashboardUrl } from "@/utils/grafana";
+import { useGrafanaConfig } from "@/utils/grafana";
 
 type Props = {
   pageKey: "obsTokens" | "obsMetrics";
@@ -12,7 +12,7 @@ type Props = {
 
 export function ObservabilitySubScenePage({ pageKey }: Props) {
   const { t, i18n } = useTranslation();
-  const grafanaUrl = useGrafanaDashboardUrl();
+  const { dashboardUrl: grafanaUrl, baseUrl: grafanaBaseUrl } = useGrafanaConfig();
   const prefix = `scenes.${pageKey}`;
   const technicalChart = MERMAID_DIAGRAMS[pageKey] ?? MERMAID_DIAGRAMS.placeholder;
   const businessChart = i18n.language.startsWith("en")
@@ -77,7 +77,9 @@ export function ObservabilitySubScenePage({ pageKey }: Props) {
         >
           {t(`${prefix}.openGrafana`)}
         </a>
-        <span className="text-xs text-slate-400">{t(`${prefix}.linkHint`)}</span>
+        <span className="text-xs text-slate-400">
+          {t(`${prefix}.linkHint`, { url: grafanaBaseUrl })}
+        </span>
       </div>
     </div>
   );

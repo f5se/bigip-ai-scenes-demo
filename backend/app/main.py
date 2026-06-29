@@ -1,9 +1,10 @@
 from pathlib import Path
 from typing import Any
+import json
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
@@ -576,9 +577,24 @@ if FRONTEND_DIST.is_dir():
     if assets_dir.is_dir():
         app.mount("/assets", StaticFiles(directory=assets_dir), name="assets")
 
+    _index_html_template: str | None = None
+
+    def _get_index_html_template() -> str:
+        global _index_html_template
+        if _index_html_template is None:
+            _index_html_template = (FRONTEND_DIST / "index.html").read_text(encoding="utf-8")
+        return _index_html_template
+
+    def _spa_index_response() -> HTMLResponse:
+        raw = _get_index_html_template()
+        payload = json.dumps({"grafana_url": settings.grafana_url}, ensure_ascii=False)
+        script = f"<script>window.__LLM_DEMO_RUNTIME__={payload}</script>"
+        html = raw.replace("</head>", f"{script}</head>", 1) if "</head>" in raw else f"{script}{raw}"
+        return HTMLResponse(html)
+
     @app.get("/")
     async def spa_root():
-        return FileResponse(FRONTEND_DIST / "index.html")
+        return _spa_index_response()
 
     @app.get("/{full_path:path}")
     async def spa_fallback(full_path: str):
@@ -587,4 +603,4 @@ if FRONTEND_DIST.is_dir():
         candidate = FRONTEND_DIST / full_path
         if candidate.is_file():
             return FileResponse(candidate)
-        return FileResponse(FRONTEND_DIST / "index.html")
+        return _spa_index_response()

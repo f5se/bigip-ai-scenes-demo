@@ -4,7 +4,7 @@ import { SceneLayout } from "@/components/SceneLayout";
 import { MermaidDiagram } from "@/components/MermaidDiagram";
 import { SubFeatureName } from "@/components/SubFeatureName";
 import { MERMAID_DIAGRAMS, scenes } from "@/scenes/manifest";
-import { useGrafanaDashboardUrl } from "@/utils/grafana";
+import { useGrafanaConfig } from "@/utils/grafana";
 
 type Props = {
   sceneId: string;
@@ -13,7 +13,7 @@ type Props = {
 export function SceneOverviewPage({ sceneId }: Props) {
   const { t, i18n } = useTranslation();
   const scene = scenes.find((s) => s.id === sceneId);
-  const grafanaUrl = useGrafanaDashboardUrl();
+  const { dashboardUrl: grafanaUrl, baseUrl: grafanaBaseUrl } = useGrafanaConfig();
   if (!scene) return null;
 
   const k = scene.i18nKey;
@@ -114,7 +114,9 @@ export function SceneOverviewPage({ sceneId }: Props) {
         >
           {t("scenes.observability.openGrafana")}
         </a>
-        <span className="text-xs text-slate-400">{t("scenes.observability.linkHint")}</span>
+        <span className="text-xs text-slate-400">
+          {t("scenes.observability.linkHint", { url: grafanaBaseUrl })}
+        </span>
       </div>
     </div>
   );

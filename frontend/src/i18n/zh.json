@@ -177,7 +177,7 @@
       "interactionTitle": "Grafana 看板预览示意",
       "interactionSubtitle": "界面内展示简图，详细数据请进入 Grafana 实时查看",
       "openGrafana": "打开 Grafana 实时看板",
-      "linkHint": "目标地址：localhost:3001（默认近 5 分钟，10s 自动刷新）",
+      "linkHint": "目标地址：{{url}}（默认近 5 分钟，10s 自动刷新）",
       "mockPanels": {
         "traffic": "请求与错误趋势",
         "quality": "时延与首包时间",
@@ -256,7 +256,7 @@
       "interactionTitle": "Tokens & Cost 简图示意",
       "interactionSubtitle": "示意仅用于导览，详图与筛选请在 Grafana 中查看",
       "openGrafana": "打开 Grafana（Tokens/Cost）",
-      "linkHint": "默认近 5 分钟窗口，支持 model/pool/member/client_ip/price_version 变量"
+      "linkHint": "目标地址：{{url}}（默认近 5 分钟，支持 model/pool/member/client_ip/price_version 变量）"
     },
     "obsMetrics": {
       "title": "模型 Metrics",
@@ -283,7 +283,7 @@
       "interactionTitle": "Metrics 简图示意",
       "interactionSubtitle": "示意图展示指标类型，实时值以 Grafana 为准",
       "openGrafana": "打开 Grafana（Metrics）",
-      "linkHint": "同一看板可通过变量切换模型、池、成员与价格版本"
+      "linkHint": "看板地址：{{url}}，可通过变量切换模型、池、成员与价格版本"
     },
     "trafficMgmt": {
       "title": "Optimization and Control",
