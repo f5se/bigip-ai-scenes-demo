@@ -1,0 +1,56 @@
+{
+  "auth": {
+    "users": [
+      {
+        "username": "admin",
+        "password_hash": "pbkdf2_sha256$120000$dAWCW_DfZES4KCVhd0380kpaaYiT_SfIkEUDoFR86dE",
+        "enabled": true
+      },
+      {
+        "username": "user1",
+        "password_hash": "pbkdf2_sha256$12000dfB8$acKK2kluIYwVslVsGw0sD9_Yaq7vFYDdUb8Qix5uZmQ",
+        "enabled": true
+      }
+    ],
+    "session_ttl_seconds": 86400
+  },
+  "global_settings": {
+    "kb_top_k": 3,
+    "kb_allowed_extensions": [
+      ".txt",
+      ".md",
+      ".json",
+      ".csv"
+    ],
+    "guardrail_verbose": true,
+    "kb_max_file_chars": 8000,
+    "kb_max_result_chars": 5000,
+    "agent_debug_enabled": true,
+    "kb_dir": "./enterprise_kb",
+    "agent_max_steps": 4,
+    "dataset_max_upload_mb": 20,
+    "dataset_max_concurrency": 3
+  },
+  "user_settings": {
+    "admin": {
+      "agent_skill_enabled": true,
+      "heuristic_threshold": 6,
+      "default_provider": "deepseek-JingLin-real-charge",
+      "debug_guardrail_raw_enabled": false,
+      "f5_guardrail_only": true,
+      "pi_threshold": 0.7,
+      "patterns": "ignore:3\nsystem:3\nprompt:2\n忽略:3\n系统提示词:3\n忘记:2\n角色:4\n",
+      "toxic_threshold": 0.75
+    },
+    "user1": {
+      "agent_skill_enabled": false,
+      "heuristic_threshold": 5,
+      "default_provider": "deepseek-JingLin-real-charge",
+      "debug_guardrail_raw_enabled": false,
+      "f5_guardrail_only": false,
+      "pi_threshold": 0.7,
+      "patterns": "ignore:3\nsystem:3\nprompt:2\n忽略:3\n系统提示词:3\n忘记:2\n角色:4\n",
+      "toxic_threshold": 0.75
+    }
+  }
+}

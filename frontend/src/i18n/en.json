@@ -5,6 +5,8 @@
     "language": "Language",
     "fullscreen": "Fullscreen",
     "exitFullscreen": "Exit fullscreen",
+    "logout": "Log out",
+    "loggedInAs": "Signed in as",
     "home": "Home",
     "comingSoon": "Coming soon",
     "comingSoonHint": "Full interactive demo will be available in a future release",
@@ -74,7 +76,80 @@
     "scene1Desc": "One LLM entry: model routing, context-size steering, retry & fallback",
     "scene2Desc": "Token usage, per-model metrics, and LLM traffic observability",
     "scene3Desc": "Optimize and control inference: TBLB scheduling, model allow/block, max_tokens ceiling, MCP tool gateway (planned)",
-    "scene4Desc": "System prompt hardening and LLM Guardrail integration at the gateway"
+    "scene4Desc": "System prompt hardening and LLM Guardrail integration at the gateway",
+    "hero": {
+      "title": "One question — what happens behind the scenes?",
+      "subtitle": "The same AI complexity looks very different with vs. without BIG-IP AI ADC.",
+      "tabUngated": "No gateway",
+      "tabGated": "Via BIG-IP AI ADC",
+      "startPlay": "Start playback",
+      "stopPlay": "Stop & reset",
+      "replay": "Replay",
+      "playbackFinished": "Playback complete — switch tabs to compare the final state",
+      "tabCompareHint": "Switch tabs anytime during playback to compare",
+      "user": "User question",
+      "oneAnswer": "One answer",
+      "aiApp": "AI application",
+      "gateway": "BIG-IP",
+      "gatewaySub": "AI ADC",
+      "externalCalls": "{{count}} external calls",
+      "compareUngated": "12 outbound calls are scattered across agents and external systems — no single control plane.",
+      "compareGated": "All 12 calls pass through BIG-IP AI ADC — unified model routing & control, LLM Guardrail security, and observability for requests, tokens, cost, TTFT, MCP tool calls, and more.",
+      "ariaUngated": "Diagram: multi-agent AI with direct external connections and no gateway",
+      "ariaGated": "Diagram: AI external traffic consolidated through BIG-IP AI ADC",
+      "paused": "Paused",
+      "prev": "Previous",
+      "next": "Next",
+      "agents": {
+        "orchestrator": "Orchestrator",
+        "search": "Search agent",
+        "execute": "Execute agent"
+      },
+      "externals": {
+        "llm": "LLM",
+        "api": "Enterprise API / DB",
+        "mcp": "MCP tools",
+        "rag": "Knowledge RAG"
+      },
+      "phases": {
+        "0": "The user sends only one question",
+        "1": "Multiple agents inside the system divide the work",
+        "2": "Agents communicate and hand off tasks",
+        "3": "Each outbound call is real traffic — LLM, API, MCP, knowledge base",
+        "4": "After fetching data, more LLM rounds follow",
+        "5": "The user ultimately sees just one answer",
+        "6": "Same complexity — do you need centralized control?",
+        "6Gated": "BIG-IP AI ADC observability: requests, tokens, cost, and MCP calls in one view"
+      },
+      "badges": {
+        "ungated": {
+          "obs": "⚠ Hard to observe uniformly",
+          "policy": "⚠ Policies fragmented",
+          "security": "⚠ Security risks unmanaged"
+        },
+        "gated": {
+          "obs": "✓ Traffic observable",
+          "route": "✓ Intelligent routing",
+          "security": "✓ Unified security policies"
+        }
+      },
+      "obsPanel": {
+        "title": "BIG-IP Observability",
+        "requests": "Requests",
+        "tokens": "Tokens",
+        "cost": "Token cost",
+        "mcpCalls": "MCP tool calls",
+        "promptBlocked": "Prompts blocked",
+        "mcpBlocked": "MCP calls blocked",
+        "retryRate": "Model retry rate",
+        "avgTtft": "Avg TTFT"
+      },
+      "legend": {
+        "user": "User-visible path",
+        "collab": "Agent collaboration",
+        "gateway": "Via gateway"
+      }
+    }
   },
   "scenes": {
     "llmRouter": {
@@ -573,6 +648,7 @@
   },
   "retryFallback": {
     "hintAutoPrepare": "Each action first prepares member state automatically (enable/force offline), then sends the demo request.",
+    "scenarioCollapseHint": "Expand one scenario at a time so the animation above stays visible on the same screen.",
     "empty": "Run a scenario using the controls on the left.",
     "actions": {
       "refreshCounter": "Refresh counter",
@@ -581,7 +657,7 @@
       "forceOfflineAndRun": "Force offline 8005 and verify fallback"
     },
     "status": {
-      "title": "Scenario A: 5xx/429 triggers Retry + Fallback",
+      "title": "Scenario A: Target model returns 5xx/429 — auto Retry, then Fallback to default pool after repeated failures",
       "desc": "Send model=testmodel; expect pool_testmode first, then fallback to pool_llm_default after retries.",
       "currentCounter": "Current counter before run ({{member}})",
       "result": "Status-code retry result",
@@ -594,10 +670,10 @@
     "tcp": {
       "title": "Scenario B: TCP failure triggers fallback",
       "desc": "First verify auto-reselect from dead 7999 to healthy 8005, then force offline 8005 and observe fallback.",
-      "caseReselectTitle": "Button 1: Run TCP auto-reselect demo (in-pool reselection)",
+      "caseReselectTitle": "Scenario B: TCP connect failure to a pool member — auto Retry (in-pool Reselect to another member)",
       "caseReselectDesc": "This test simulates a member that appears selectable to F5 but does not actually serve traffic: in pool_deepseek-chat, member 7999 has no listener, causing TCP connection failure. F5 performs in-pool member reselection and switches traffic to a healthy member.",
       "caseReselectExpected": "Expected validation: requests finally return from member 8005 (server_port=8005), proving in-pool reselection instead of cross-pool fallback.",
-      "caseFallbackTitle": "Button 2: Force offline 8005 and verify fallback (cross-pool fallback)",
+      "caseFallbackTitle": "Scenario C: Target model pool fully unavailable — auto Fallback to default pool",
       "caseFallbackDesc": "This test forces member 8005 offline so all members in pool_deepseek-chat become unavailable. Once in-pool reselection is exhausted, policy triggers fallback to the default pool (pool_llm_default).",
       "caseFallbackExpected": "Expected validation: final response indicates pool_llm_default (or terminal retry/upstream_error), confirming cross-pool fallback.",
       "reselectResult": "TCP reselect result",
@@ -611,6 +687,56 @@
     },
     "debug": {
       "missingPort": "Attempt(s) {{attempts}} missing server_port; observed ports: [{{ports}}]"
+    },
+    "animation": {
+      "topologyTitle": "F5 view · request path replay",
+      "topologyHint": "After the demo completes, replay steps align with real API data. Amber = in-pool reselect, violet = cross-pool fallback.",
+      "preparing": "Preparing member state and sending request…",
+      "replayAgain": "Replay animation",
+      "error": "Demo failed — replay unavailable",
+      "layeredVs": "Layered VS · sideband",
+      "badge503": "503",
+      "badgeTcp": "TCP",
+      "badgeReselect": "LB reselect",
+      "badgeExhausted": "Members exhausted",
+      "badgeTerminal": "X-LLM-Retry-Terminal",
+      "memberNoListen": "No listener",
+      "memberOffline": "forced offline",
+      "requests": "Requests",
+      "legend": {
+        "retry": "HTTP retry",
+        "reselect": "In-pool reselect",
+        "fallback": "Cross-pool fallback",
+        "success": "Success",
+        "terminal": "Terminal retry"
+      },
+      "status": {
+        "stepInbound": "Inbound",
+        "stepRoute": "Route testmodel",
+        "stepHit503": "Hit 8008 · 503",
+        "stepRetry": "Retry ×{{count}}",
+        "stepFallback": "Fallback default",
+        "stepResponse": "Response to client"
+      },
+      "tcpReselect": {
+        "stepInbound": "Inbound",
+        "stepPool": "Select deepseek-chat pool",
+        "stepTcpFail": "7999 TCP fail",
+        "stepReselect": "In-pool reselect",
+        "stepSuccess": "8005 responds",
+        "stepResponse": "Back to client",
+        "stepStability": "Repeat request → 8005"
+      },
+      "tcpFallback": {
+        "stepPrepOffline": "8005 force offline",
+        "stepInbound": "Inbound",
+        "stepPool": "Select deepseek-chat pool",
+        "stepTcpFail7999": "7999 TCP fail",
+        "stepTcpFail8005": "8005 unreachable",
+        "stepExhausted": "Pool exhausted",
+        "stepFallback": "Cross-pool fallback",
+        "stepResponse": "Back to client"
+      }
     }
   },
   "tblbDemo": {

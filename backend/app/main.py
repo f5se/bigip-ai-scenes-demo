@@ -55,6 +55,7 @@ from backend.app.system_prompt import (
     build_client_payload,
     preview_wrap,
 )
+from backend.app.auth import install_auth
 
 ROOT = Path(__file__).resolve().parents[2]
 FRONTEND_DIST = ROOT / "frontend" / "dist"
@@ -68,6 +69,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+install_auth(app)
 
 
 class Target(BaseModel):

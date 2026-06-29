@@ -1,5 +1,41 @@
 export type Target = { host: string; port: number };
 
+function redirectToLogin(): void {
+  const path = window.location.pathname + window.location.search;
+  if (path.startsWith("/login")) return;
+  const returnTo = encodeURIComponent(path || "/");
+  window.location.href = `/login?return_to=${returnTo}`;
+}
+
+async function authFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+  const res = await fetch(input, { ...init, credentials: "include" });
+  if (res.status === 401) {
+    redirectToLogin();
+    throw new Error("Unauthorized");
+  }
+  return res;
+}
+
+export type AuthUser = { username: string };
+
+export async function fetchAuthMe(): Promise<AuthUser> {
+  const res = await authFetch("/api/auth/me");
+  if (!res.ok) throw new Error("Failed to load user");
+  return res.json();
+}
+
+export async function logout(): Promise<void> {
+  try {
+    const res = await authFetch("/api/logout", { method: "POST" });
+    if (!res.ok) {
+      console.error("logout failed", res.status);
+    }
+  } catch {
+    // still redirect to login
+  }
+  window.location.href = "/login";
+}
+
 export type ProxyResult = {
   status_code: number;
   headers: Record<string, string>;
@@ -32,13 +68,13 @@ export type DefaultsConfig = {
 };
 
 export async function fetchHealth(): Promise<{ status: string }> {
-  const res = await fetch("/api/health");
+  const res = await authFetch("/api/health");
   if (!res.ok) throw new Error("Health check failed");
   return res.json();
 }
 
 export async function fetchDefaults(): Promise<DefaultsConfig> {
-  const res = await fetch("/api/config/defaults");
+  const res = await authFetch("/api/config/defaults");
   if (!res.ok) throw new Error("Failed to load defaults");
   return res.json();
 }
@@ -48,7 +84,7 @@ export async function proxyChat(
   payload: Record<string, unknown>,
   extraHeaders?: Record<string, string>
 ): Promise<ProxyResult> {
-  const res = await fetch("/api/proxy/chat/completions", {
+  const res = await authFetch("/api/proxy/chat/completions", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -127,7 +163,7 @@ export type ContextProxyBundle = {
 };
 
 export async function fetchContextRoutingConfig(): Promise<ContextSizeConfig> {
-  const res = await fetch("/api/config/context-routing");
+  const res = await authFetch("/api/config/context-routing");
   if (!res.ok) throw new Error("Failed to load context routing config");
   return res.json();
 }
@@ -139,7 +175,7 @@ export async function calcContextRouting(
   messages_bytes: number;
   route: ContextRouteInfo;
 }> {
-  const res = await fetch("/api/demo/context-routing/calc", {
+  const res = await authFetch("/api/demo/context-routing/calc", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ target_messages_bytes: targetMessagesBytes }),
@@ -152,7 +188,7 @@ export async function runContextSingleDemo(
   target: Target,
   targetMessagesBytes: number
 ): Promise<ContextProxyBundle & { kind: string }> {
-  const res = await fetch("/api/demo/context-routing/single", {
+  const res = await authFetch("/api/demo/context-routing/single", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ target, target_messages_bytes: targetMessagesBytes }),
@@ -172,7 +208,7 @@ export async function runContextMultiturnDemo(target: Target): Promise<{
   under: ContextProxyBundle;
   over: ContextProxyBundle;
 }> {
-  const res = await fetch("/api/demo/context-routing/multiturn", {
+  const res = await authFetch("/api/demo/context-routing/multiturn", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ target }),
@@ -224,7 +260,7 @@ export type ObsTrafficStatus = {
 };
 
 export async function fetchObsTrafficStatus(): Promise<ObsTrafficStatus> {
-  const res = await fetch("/api/demo/observability/traffic/status");
+  const res = await authFetch("/api/demo/observability/traffic/status");
   if (!res.ok) throw new Error("Failed to load traffic sim status");
   return res.json();
 }
@@ -236,7 +272,7 @@ export async function startObsTrafficSim(
   startedFrom: ObsTrafficScene,
   streamMode: ObsTrafficStreamMode = "mixed"
 ): Promise<ObsTrafficStatus> {
-  const res = await fetch("/api/demo/observability/traffic/start", {
+  const res = await authFetch("/api/demo/observability/traffic/start", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -266,7 +302,7 @@ export async function startObsTrafficSim(
 }
 
 export async function stopObsTrafficSim(): Promise<ObsTrafficStatus> {
-  const res = await fetch("/api/demo/observability/traffic/stop", { method: "POST" });
+  const res = await authFetch("/api/demo/observability/traffic/stop", { method: "POST" });
   if (!res.ok) throw new Error("Failed to stop traffic sim");
   return res.json();
 }
@@ -310,7 +346,7 @@ export type AgentDemoResult = {
 };
 
 export async function fetchAgentRoutingConfig(): Promise<AgentRoutingConfig> {
-  const res = await fetch("/api/config/agent-routing");
+  const res = await authFetch("/api/config/agent-routing");
   if (!res.ok) throw new Error("Failed to load agent routing config");
   return res.json();
 }
@@ -327,7 +363,7 @@ export async function runAgentRoutingDemo(
   identity_mode: AgentIdentityModeSelector;
   agent_identity_modes: Record<string, AgentIdentityMode>;
 }> {
-  const res = await fetch("/api/demo/agent-routing/run", {
+  const res = await authFetch("/api/demo/agent-routing/run", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -391,7 +427,7 @@ export type AgentTrafficStatus = {
 };
 
 export async function fetchAgentTrafficStatus(): Promise<AgentTrafficStatus> {
-  const res = await fetch("/api/demo/agent-routing/traffic/status");
+  const res = await authFetch("/api/demo/agent-routing/traffic/status");
   if (!res.ok) throw new Error("Failed to load agent traffic sim status");
   return res.json();
 }
@@ -402,7 +438,7 @@ export async function startAgentTrafficSim(
   userPrompt: string,
   durationMinutes: number
 ): Promise<AgentTrafficStatus> {
-  const res = await fetch("/api/demo/agent-routing/traffic/start", {
+  const res = await authFetch("/api/demo/agent-routing/traffic/start", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -429,7 +465,7 @@ export async function startAgentTrafficSim(
 }
 
 export async function stopAgentTrafficSim(): Promise<AgentTrafficStatus> {
-  const res = await fetch("/api/demo/agent-routing/traffic/stop", { method: "POST" });
+  const res = await authFetch("/api/demo/agent-routing/traffic/stop", { method: "POST" });
   if (!res.ok) throw new Error("Failed to stop agent traffic sim");
   return res.json();
 }
@@ -439,7 +475,7 @@ export async function runModelRoutingDemo(
   cases: string[] | "all" = "all",
   intervalMs?: number
 ): Promise<{ results: DemoCaseResult[] }> {
-  const res = await fetch("/api/demo/model-routing/run", {
+  const res = await authFetch("/api/demo/model-routing/run", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ target, cases, interval_ms: intervalMs }),
@@ -527,7 +563,7 @@ export type TblbModelResult = {
 };
 
 export async function fetchTblbConfig(): Promise<TblbConfig> {
-  const res = await fetch("/api/config/tblb");
+  const res = await authFetch("/api/config/tblb");
   if (!res.ok) throw new Error("Failed to load TBLB config");
   return res.json();
 }
@@ -562,7 +598,7 @@ export async function triggerMemberLoad(
   members: Array<{ ip: string; port: number }>,
   path?: string
 ): Promise<{ results: TblbTriggerMemberResult[]; wait_seconds: number; path: string }> {
-  const res = await fetch("/api/demo/tblb/trigger-member-load", {
+  const res = await authFetch("/api/demo/tblb/trigger-member-load", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ members, path }),
@@ -579,7 +615,7 @@ export async function fetchSchedulerPoolStatus(
   scheduler: Target,
   partition = "Common"
 ): Promise<SchedulerPoolStatus> {
-  const res = await fetch(buildSchedulerProxyUrl(poolName, scheduler, partition));
+  const res = await authFetch(buildSchedulerProxyUrl(poolName, scheduler, partition));
   if (res.status === 403) {
     const err = await res.json().catch(() => ({}));
     throw new Error((err as { detail?: string }).detail || "forbidden_host");
@@ -647,7 +683,7 @@ export type PoolMemberGuardStatus = {
 };
 
 export async function checkPoolMemberGuard(): Promise<PoolMemberGuardStatus> {
-  const res = await fetch("/api/demo/pool-member/guard/status");
+  const res = await authFetch("/api/demo/pool-member/guard/status");
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error((err as { detail?: string }).detail || "pool_member_guard_status_failed");
@@ -663,7 +699,7 @@ export async function enablePoolMemberGuard(): Promise<{
   state?: string;
   session?: string;
 }> {
-  const res = await fetch("/api/demo/pool-member/guard/enable", { method: "POST" });
+  const res = await authFetch("/api/demo/pool-member/guard/enable", { method: "POST" });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error((err as { detail?: string }).detail || "pool_member_guard_enable_failed");
@@ -813,13 +849,13 @@ export type TcpForceFallbackResult = {
 };
 
 export async function fetchRetryFallbackConfig(): Promise<RetryFallbackConfig> {
-  const res = await fetch("/api/config/retry-fallback");
+  const res = await authFetch("/api/config/retry-fallback");
   if (!res.ok) throw new Error("Failed to load retry/fallback config");
   return res.json();
 }
 
 async function postRetryDemo<T>(path: string, target: Target): Promise<T> {
-  const res = await fetch(path, {
+  const res = await authFetch(path, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ target }),
@@ -840,7 +876,7 @@ export async function runRetryStatusDemo(target: Target): Promise<RetryStatusRes
 }
 
 export async function fetchRetryStatusCounter(): Promise<RetryStatusCounter> {
-  const res = await fetch("/api/demo/retry-fallback/status-counter");
+  const res = await authFetch("/api/demo/retry-fallback/status-counter");
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error((err as { detail?: string }).detail || "Failed to load retry counter");
@@ -849,7 +885,7 @@ export async function fetchRetryStatusCounter(): Promise<RetryStatusCounter> {
 }
 
 export async function prepareTcpReselectDemo(): Promise<TcpReselectPrepareResult> {
-  const res = await fetch("/api/demo/retry-fallback/tcp-reselect/prepare", {
+  const res = await authFetch("/api/demo/retry-fallback/tcp-reselect/prepare", {
     method: "POST",
   });
   if (!res.ok) {
@@ -1012,7 +1048,7 @@ export type SystemPromptAnalysis = {
 };
 
 export async function fetchSystemPromptConfig(): Promise<SystemPromptConfig> {
-  const res = await fetch("/api/demo/system-prompt/config");
+  const res = await authFetch("/api/demo/system-prompt/config");
   if (!res.ok) throw new Error("Failed to load system prompt config");
   return res.json();
 }
@@ -1022,7 +1058,7 @@ export async function previewSystemPromptWrap(
   user_content: string,
   model?: string
 ): Promise<SystemPromptPreview> {
-  const res = await fetch("/api/demo/system-prompt/preview", {
+  const res = await authFetch("/api/demo/system-prompt/preview", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ system_content, user_content, model }),
@@ -1072,13 +1108,13 @@ export type ModelAllowlistPolicy = {
 };
 
 export async function fetchModelAllowlistConfig(): Promise<ModelAllowlistConfig> {
-  const res = await fetch("/api/demo/model-allowlist/config");
+  const res = await authFetch("/api/demo/model-allowlist/config");
   if (!res.ok) throw new Error("Failed to load model allowlist config");
   return res.json();
 }
 
 export async function fetchModelAllowlistPolicy(model: string): Promise<ModelAllowlistPolicy> {
-  const res = await fetch(
+  const res = await authFetch(
     `/api/demo/model-allowlist/policy?model=${encodeURIComponent(model)}`
   );
   if (!res.ok) throw new Error("Failed to resolve model policy");
@@ -1152,13 +1188,13 @@ export type MaxTokensPolicy = {
 };
 
 export async function fetchMaxTokensConfig(): Promise<MaxTokensConfig> {
-  const res = await fetch("/api/demo/max-tokens/config");
+  const res = await authFetch("/api/demo/max-tokens/config");
   if (!res.ok) throw new Error("Failed to load max tokens config");
   return res.json();
 }
 
 export async function fetchMaxTokensPolicy(max_tokens: number): Promise<MaxTokensPolicy> {
-  const res = await fetch(
+  const res = await authFetch(
     `/api/demo/max-tokens/policy?max_tokens=${encodeURIComponent(String(max_tokens))}`
   );
   if (!res.ok) throw new Error("Failed to resolve max tokens policy");
@@ -1219,7 +1255,7 @@ export async function runMaxTokensTest(
   max_tokens: number,
   user_content?: string
 ): Promise<MaxTokensRunResult> {
-  const res = await fetch("/api/demo/max-tokens/run", {
+  const res = await authFetch("/api/demo/max-tokens/run", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({

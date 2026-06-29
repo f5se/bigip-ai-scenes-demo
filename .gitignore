@@ -20,6 +20,7 @@ adapter_service/.venv/
 .env
 .env.local
 backend/app/config.py
+settings.json
 
 # --- Node / frontend build cache ---
 node_modules/
@@ -33,3 +34,6 @@ frontend/tsconfig.tsbuildinfo
 
 # --- Local scratch (do not publish) ---
 temp-dev.txt
+
+# Machine-local adapter stack (Prometheus/Grafana ports vary by host)
+adapter_service/docker-compose.yaml
