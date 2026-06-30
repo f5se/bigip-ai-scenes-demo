@@ -605,7 +605,9 @@
       "errors": "Errors",
       "remaining": "Remaining",
       "lastAgent": "Last agent",
-      "alreadyRunning": "Continuous simulation is already running; stop it first"
+      "alreadyRunning": "Continuous simulation is already running; stop it first",
+      "openGrafana": "Open Grafana",
+      "linkHint": "Target: {{url}} (view Agent routing metrics while sim runs)"
     }
   },
   "contextSize": {

@@ -606,7 +606,9 @@
       "errors": "异常总计",
       "remaining": "剩余",
       "lastAgent": "最近 Agent",
-      "alreadyRunning": "持续模拟已在运行，请先停止"
+      "alreadyRunning": "持续模拟已在运行，请先停止",
+      "openGrafana": "打开 Grafana 面板",
+      "linkHint": "目标地址：{{url}}（配合持续模拟查看 Agent 路由指标）"
     }
   },
   "contextSize": {

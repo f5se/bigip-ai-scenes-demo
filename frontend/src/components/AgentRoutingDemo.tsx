@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useGrafanaConfig } from "@/utils/grafana";
 import {
   fetchAgentRoutingConfig,
   fetchAgentTrafficStatus,
@@ -39,6 +40,7 @@ function hasAgentModeMap(map: Record<string, AgentIdentityMode> | null): boolean
 
 export function AgentRoutingDemo() {
   const { t } = useTranslation();
+  const { openUrl: grafanaOpenUrl, baseUrl: grafanaBaseUrl } = useGrafanaConfig();
   const [config, setConfig] = useState<AgentRoutingConfig | null>(null);
   const [target, setTarget] = useState<Target>({ host: "172.16.30.121", port: 8000 });
   const [userPrompt, setUserPrompt] = useState("");
@@ -429,7 +431,18 @@ export function AgentRoutingDemo() {
                   {t("agentRouting.continuous.start")}
                 </button>
               )}
+              <a
+                href={grafanaOpenUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center rounded-md border border-cyan-500/60 bg-cyan-500/10 px-3 py-2 text-sm font-medium text-cyan-300 transition hover:bg-cyan-500/20"
+              >
+                {t("agentRouting.continuous.openGrafana")}
+              </a>
             </div>
+            <p className="text-xs text-slate-400">
+              {t("agentRouting.continuous.linkHint", { url: grafanaBaseUrl })}
+            </p>
             {trafficRunning && trafficStats && (
               <div className="grid grid-cols-2 gap-2 text-xs text-slate-400 sm:grid-cols-4">
                 <span>
