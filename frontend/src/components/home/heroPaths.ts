@@ -1,5 +1,5 @@
 import type { AgentId, ExternalId, Point } from "./heroLayout";
-import { AGENTS, AI_BOX, EXTERNALS, GATEWAY, USER } from "./heroLayout";
+import { AGENTS, AI_BOX, EXTERNALS, GATEWAY, userCircleRight } from "./heroLayout";
 
 export type HeroVariant = "ungated" | "gated";
 
@@ -87,10 +87,16 @@ export function buildCollabPath(from: AgentId, to: AgentId): string {
   return `M ${a.x} ${a.y} Q ${mx} ${my} ${b.x} ${b.y}`;
 }
 
+/** User → AI: from avatar circle 3 o'clock to AI box left edge (same height) */
 export function userToAiPath(): string {
-  return `M ${USER.x} ${USER.y} L ${AI_BOX.x} ${USER.y}`;
+  const from = userCircleRight();
+  const toX = AI_BOX.x;
+  return `M ${from.x} ${from.y} L ${toX} ${from.y}`;
 }
 
+/** AI → User: return path along same horizontal line */
 export function aiToUserPath(): string {
-  return `M ${AI_BOX.x} ${USER.y} L ${USER.x} ${USER.y}`;
+  const to = userCircleRight();
+  const fromX = AI_BOX.x;
+  return `M ${fromX} ${to.y} L ${to.x} ${to.y}`;
 }

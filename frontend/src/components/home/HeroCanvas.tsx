@@ -15,6 +15,9 @@ import {
   OBS_METRICS_DEMO,
   OBS_PANEL,
   USER,
+  USER_CARD,
+  USER_CIRCLE,
+  userCircleCenter,
   VIEW_H,
   VIEW_W,
   type AgentId,
@@ -33,6 +36,7 @@ interface HeroCanvasProps {
   phase: HeroPhase;
   externalCalls: number;
   phaseProgress: number;
+  fullscreen?: boolean;
 }
 
 function agentActive(phase: HeroPhase, id: AgentId, phaseProgress: number): boolean {
@@ -207,7 +211,7 @@ function GatedObsPanel({ show, phaseProgress }: { show: boolean; phaseProgress: 
   );
 }
 
-export function HeroCanvas({ variant, phase, externalCalls, phaseProgress }: HeroCanvasProps) {
+export function HeroCanvas({ variant, phase, externalCalls, phaseProgress, fullscreen = false }: HeroCanvasProps) {
   const { t } = useTranslation();
   const isGated = variant === "gated";
   const internalAlpha = internalOpacity(phase);
@@ -239,7 +243,11 @@ export function HeroCanvas({ variant, phase, externalCalls, phaseProgress }: Her
   return (
     <svg
       viewBox={`0 0 ${VIEW_W} ${VIEW_H}`}
-      className="hero-canvas-svg aspect-[800/450] h-auto w-full min-h-[340px] max-h-[min(450px,calc(100vh-12rem))]"
+      className={`hero-canvas-svg aspect-[800/450] h-auto w-full min-h-[340px] ${
+        fullscreen
+          ? "max-h-[min(520px,55vh)]"
+          : "max-h-[min(450px,calc(100vh-12rem))]"
+      }`}
       role="img"
       aria-label={t(isGated ? "home.hero.ariaGated" : "home.hero.ariaUngated")}
     >
@@ -261,15 +269,21 @@ export function HeroCanvas({ variant, phase, externalCalls, phaseProgress }: Her
       {/* User */}
       <g opacity={1}>
         <rect
-          x={USER.x - 36}
-          y={USER.y - 44}
-          width={72}
-          height={88}
+          x={USER.x - USER_CARD.w / 2}
+          y={USER.y - USER_CARD.h / 2}
+          width={USER_CARD.w}
+          height={USER_CARD.h}
           rx={9}
           className="fill-slate-800/80 stroke-cyan-500/40"
           strokeWidth={1.3}
         />
-        <circle cx={USER.x} cy={USER.y - 19} r={13} className="fill-cyan-900/60 stroke-cyan-400/60" strokeWidth={1.1} />
+        <circle
+          cx={userCircleCenter().x}
+          cy={userCircleCenter().y}
+          r={USER_CIRCLE.r}
+          className="fill-cyan-900/60 stroke-cyan-400/60"
+          strokeWidth={1.1}
+        />
         <text x={USER.x} y={USER.y + 22} textAnchor="middle" className="fill-slate-300 text-[11px] font-medium">
           {t("home.hero.user")}
         </text>

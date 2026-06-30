@@ -230,3 +230,25 @@
     display: none;
   }
 }
+
+.hero-section:fullscreen {
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  margin: 0;
+  border-radius: 0;
+  background: rgb(2 6 23 / 0.98);
+  padding: 1.5rem 2rem;
+}
+
+.hero-section:fullscreen .hero-canvas-wrap {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 0;
+}
+
+.hero-section:fullscreen .hero-narration-panel {
+  flex-shrink: 0;
+}

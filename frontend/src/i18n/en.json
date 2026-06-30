@@ -86,6 +86,8 @@
       "stopPlay": "Stop & reset",
       "replay": "Replay",
       "playbackFinished": "Playback complete — switch tabs to compare the final state",
+      "fullscreen": "Fullscreen",
+      "exitFullscreen": "Exit fullscreen",
       "tabCompareHint": "Switch tabs anytime during playback to compare",
       "user": "User question",
       "oneAnswer": "One answer",

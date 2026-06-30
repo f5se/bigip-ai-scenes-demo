@@ -86,6 +86,8 @@
       "stopPlay": "停止并重置",
       "replay": "重新播放",
       "playbackFinished": "播放完毕，可切换 Tab 对比终态",
+      "fullscreen": "全屏",
+      "exitFullscreen": "退出全屏",
       "tabCompareHint": "播放中可随时切换 Tab 实时对比",
       "user": "用户提问",
       "oneAnswer": "一个答案",

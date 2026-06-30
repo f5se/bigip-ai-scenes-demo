@@ -39,6 +39,8 @@ export function AiComplexityHero() {
   const elapsedRef = useRef(0);
   const rafRef = useRef<number>(0);
   const lastTsRef = useRef<number | null>(null);
+  const sectionRef = useRef<HTMLElement>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   const externalCalls = externalCallsForPhase(phase);
 
@@ -106,6 +108,28 @@ export function AiComplexityHero() {
   );
 
   useEffect(() => {
+    const onFullscreenChange = () => {
+      setIsFullscreen(document.fullscreenElement === sectionRef.current);
+    };
+    document.addEventListener("fullscreenchange", onFullscreenChange);
+    return () => document.removeEventListener("fullscreenchange", onFullscreenChange);
+  }, []);
+
+  const toggleFullscreen = async () => {
+    const el = sectionRef.current;
+    if (!el) return;
+    try {
+      if (document.fullscreenElement === el) {
+        await document.exitFullscreen();
+      } else {
+        await el.requestFullscreen();
+      }
+    } catch {
+      /* browser may block */
+    }
+  };
+
+  useEffect(() => {
     if (reducedMotion) {
       setPhase(6);
       setPhaseProgress(1);
@@ -125,7 +149,7 @@ export function AiComplexityHero() {
     tab === "ungated" ? "home.hero.compareUngated" : "home.hero.compareGated";
 
   return (
-    <section className="glass-card mb-4 p-3 md:p-3.5">
+    <section ref={sectionRef} className="hero-section glass-card mb-4 p-3 md:p-3.5">
       {/* Header + play — single compact row */}
       <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
         <div className="min-w-0">
@@ -133,6 +157,14 @@ export function AiComplexityHero() {
           <p className="mt-0.5 line-clamp-1 text-[11px] text-slate-400 md:text-xs">{t("home.hero.subtitle")}</p>
         </div>
         <div className="flex shrink-0 items-center gap-2">
+          <button
+            type="button"
+            className="btn-secondary text-xs py-1.5 px-3"
+            onClick={toggleFullscreen}
+            title={t(isFullscreen ? "home.hero.exitFullscreen" : "home.hero.fullscreen")}
+          >
+            {t(isFullscreen ? "home.hero.exitFullscreen" : "home.hero.fullscreen")}
+          </button>
           {playing ? (
             <button type="button" className="btn-secondary text-xs py-1.5 px-3.5" onClick={stopPlay}>
               {t("home.hero.stopPlay")}
@@ -172,17 +204,18 @@ export function AiComplexityHero() {
       </div>
 
       {/* Canvas — primary visual, takes most of the section */}
-      <div className="relative rounded-lg border border-slate-700/60 bg-slate-950/50 p-1.5 md:p-2">
+      <div className="hero-canvas-wrap relative rounded-lg border border-slate-700/60 bg-slate-950/50 p-1.5 md:p-2">
         <HeroCanvas
           variant={tab}
           phase={phase}
           externalCalls={externalCalls}
           phaseProgress={phaseProgress}
+          fullscreen={isFullscreen}
         />
       </div>
 
       {/* Narration — phase description & comparison */}
-      <div className="mt-3 rounded-lg border border-cyan-500/15 bg-slate-900/50 px-4 py-3.5 md:px-5 md:py-4">
+      <div className="hero-narration-panel mt-3 rounded-lg border border-cyan-500/15 bg-slate-900/50 px-4 py-3.5 md:px-5 md:py-4">
         <p className="text-sm font-semibold leading-relaxed text-cyan-300 md:text-base">
           {t(subtitleKey)}
         </p>

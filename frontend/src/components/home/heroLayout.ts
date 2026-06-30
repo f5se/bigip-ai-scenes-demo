@@ -10,9 +10,24 @@ export interface Point {
   y: number;
 }
 
-export const USER: Point = { x: 50, y: 225 };
+/** User card center */
+export const USER = { x: 40, y: 225 };
 
-export const AI_BOX = { x: 98, y: 48, w: 168, h: 354 };
+export const USER_CARD = { w: 72, h: 88 };
+
+/** Avatar circle inside user card — connection at 3 o'clock (right edge) */
+export const USER_CIRCLE = { r: 13, cyOffset: -19 };
+
+export function userCircleCenter(): Point {
+  return { x: USER.x, y: USER.y + USER_CIRCLE.cyOffset };
+}
+
+/** Rightmost point of user avatar circle (3 o'clock) */
+export function userCircleRight(): Point {
+  return { x: USER.x + USER_CIRCLE.r, y: USER.y + USER_CIRCLE.cyOffset };
+}
+
+export const AI_BOX = { x: 120, y: 48, w: 168, h: 354 };
 
 export const GATEWAY = { x: 326, y: 64, w: 72, h: 322 };
 
@@ -25,9 +40,9 @@ export const BADGE_ZONE = {
 };
 
 export const AGENTS: Record<AgentId, Point> = {
-  orchestrator: { x: 182, y: 112 },
-  search: { x: 182, y: 225 },
-  execute: { x: 182, y: 338 },
+  orchestrator: { x: AI_BOX.x + AI_BOX.w / 2, y: 112 },
+  search: { x: AI_BOX.x + AI_BOX.w / 2, y: 225 },
+  execute: { x: AI_BOX.x + AI_BOX.w / 2, y: 338 },
 };
 
 export const EXTERNALS: Record<ExternalId, Point> = {
