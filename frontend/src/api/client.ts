@@ -1285,3 +1285,67 @@ export async function runMaxTokensTest(
   }
   return res.json();
 }
+
+export type McpStreamEvent = {
+  ts?: string;
+  direction?: string;
+  phase?: string;
+  method?: string;
+  summary?: string;
+  jsonrpc_id?: number | string;
+  highlight?: string | null;
+  msg?: Record<string, unknown>;
+};
+
+export type McpInsightConfig = {
+  default_vs: Target;
+  default_vs_f5: Target;
+  mcp_server_url: string;
+  adapter_events_url: string;
+  emit_audit_without_f5: boolean;
+  audit_delivery: "f5" | "runner";
+  grafana_dashboard_uid: string;
+  agent_options: { id: string; label: string }[];
+  tenant_options: { id: string; label: string }[];
+  scenarios: { id: string; label: string }[];
+};
+
+export type McpInsightHealth = {
+  mcp_server: { ok: boolean; target: string; detail: string | null };
+  adapter: { ok: boolean; url: string; detail: string | null };
+};
+
+export async function fetchMcpInsightConfig(): Promise<McpInsightConfig> {
+  const res = await authFetch("/api/demo/mcp-insight/config");
+  if (!res.ok) throw new Error("Failed to load MCP insight config");
+  return res.json();
+}
+
+export async function fetchMcpInsightHealth(host: string, port: number): Promise<McpInsightHealth> {
+  const params = new URLSearchParams({
+    target_host: host,
+    target_port: String(port),
+  });
+  const res = await authFetch(`/api/demo/mcp-insight/health?${params.toString()}`);
+  if (!res.ok) throw new Error("MCP health check failed");
+  return res.json();
+}
+
+export async function runMcpInsightSession(body: {
+  target?: Target;
+  agent?: string;
+  tenant?: string;
+  scenario?: string;
+  emit_audit?: boolean;
+}): Promise<Record<string, unknown>> {
+  const res = await authFetch("/api/demo/mcp-insight/run", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error((err as { detail?: string }).detail || "MCP run failed");
+  }
+  return res.json();
+}

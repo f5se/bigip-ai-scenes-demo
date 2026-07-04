@@ -13,6 +13,7 @@ import { TblbPage } from "@/pages/TblbPage";
 import { GuardrailsPage } from "@/pages/GuardrailsPage";
 import { ModelAllowlistPage } from "@/pages/ModelAllowlistPage";
 import { MaxTokensPage } from "@/pages/MaxTokensPage";
+import { McpToolsInsightPage } from "@/pages/McpToolsInsightPage";
 import { SystemPromptPage } from "@/pages/SystemPromptPage";
 
 export default function App() {
@@ -54,7 +55,7 @@ export default function App() {
             />
             <Route
               path="/scene/traffic-mgmt/mcp-tools-insight"
-              element={<PlaceholderSubScenePage pageKey="mcpToolsInsight" />}
+              element={<McpToolsInsightPage />}
             />
             <Route
               path="/scene/traffic-mgmt/mcp-tools-control"

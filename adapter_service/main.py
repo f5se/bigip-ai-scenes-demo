@@ -11,6 +11,13 @@ from fastapi import FastAPI, HTTPException
 from fastapi.responses import PlainTextResponse
 from prometheus_client import CONTENT_TYPE_LATEST, Counter, Histogram, generate_latest
 from pydantic import BaseModel, ConfigDict
+from mcp_events import (
+    ACCEPTED_MCP_EVENT_TYPES,
+    ACCEPTED_MCP_SCHEMA_VERSIONS,
+    McpEventsBatch,
+    McpLogEvent,
+)
+from mcp_metrics import MCP_DUPLICATE_DROPS_TOTAL, MCP_EVENTS_PARSE_FAILURES, record_mcp_event
 
 app = FastAPI(title="F5 LLM Observability Adapter", version="1.0.0")
 
@@ -32,9 +39,12 @@ def _env_bool(name: str, default: bool = False) -> bool:
 PRICING_RULES_PATH = os.getenv("ADAPTER_PRICING_RULES_PATH", "./pricing_rules.json")
 DEDUP_TTL_SECONDS = _env_int("ADAPTER_DEDUP_TTL_SECONDS", 300)
 EVENT_DEBUG = _env_bool("ADAPTER_EVENT_DEBUG", False)
+MCP_EVENT_DEBUG = _env_bool("ADAPTER_MCP_EVENT_DEBUG", EVENT_DEBUG)
 
 if EVENT_DEBUG:
     print("[adapter] ADAPTER_EVENT_DEBUG=1 — POST /events body will be printed to stdout", flush=True)
+if MCP_EVENT_DEBUG:
+    print("[adapter] ADAPTER_MCP_EVENT_DEBUG=1 — POST /api/mcp-events body will be printed", flush=True)
 
 ACCEPTED_EVENT_TYPES = frozenset(
     {"llm_request_completed", "subagent_request_completed"}
@@ -310,6 +320,7 @@ def _pricing_model_name(payload: LogEvent) -> str:
 
 
 deduplicator = Deduplicator(ttl_seconds=DEDUP_TTL_SECONDS)
+mcp_deduplicator = Deduplicator(ttl_seconds=DEDUP_TTL_SECONDS)
 pricing_manager = PricingManager(config_path=Path(PRICING_RULES_PATH))
 
 
@@ -409,6 +420,47 @@ async def ingest_event(payload: LogEvent) -> dict[str, Any]:
             "total": total_cost,
         },
     }
+
+
+def _debug_log_mcp_event_body(payload: McpLogEvent) -> None:
+    body = payload.model_dump(mode="json")
+    print(
+        "[adapter][mcp_event_debug] POST /api/mcp-events body:\n"
+        + json.dumps(body, ensure_ascii=False, indent=2),
+        flush=True,
+    )
+
+
+def _ingest_mcp_event(payload: McpLogEvent) -> dict[str, Any]:
+    if MCP_EVENT_DEBUG:
+        _debug_log_mcp_event_body(payload)
+
+    if payload.schema_version not in ACCEPTED_MCP_SCHEMA_VERSIONS:
+        MCP_EVENTS_PARSE_FAILURES.labels("unsupported_schema_version").inc()
+        raise HTTPException(status_code=400, detail="unsupported schema_version")
+
+    if payload.event_type not in ACCEPTED_MCP_EVENT_TYPES:
+        MCP_EVENTS_PARSE_FAILURES.labels("unsupported_event_type").inc()
+        raise HTTPException(status_code=400, detail="unsupported event_type")
+
+    if not mcp_deduplicator.check_and_put(payload.trace_id):
+        MCP_DUPLICATE_DROPS_TOTAL.inc()
+        return {"accepted": False, "reason": "duplicate_trace_id", "trace_id": payload.trace_id}
+
+    record_mcp_event(payload.model_dump(mode="json"))
+    return {"accepted": True, "trace_id": payload.trace_id, "event_type": payload.event_type}
+
+
+@app.post("/api/mcp-events")
+async def ingest_mcp_event(payload: McpLogEvent) -> dict[str, Any]:
+    return _ingest_mcp_event(payload)
+
+
+@app.post("/api/mcp-events/batch")
+async def ingest_mcp_events_batch(batch: McpEventsBatch) -> dict[str, Any]:
+    results = [_ingest_mcp_event(item) for item in batch.events]
+    accepted = sum(1 for r in results if r.get("accepted"))
+    return {"accepted_count": accepted, "total": len(results), "results": results}
 
 
 @app.post("/pricing/reload")

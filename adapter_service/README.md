@@ -13,6 +13,21 @@
 - `GET /health`：健康检查
 - **Event Debug**（可选）：`ADAPTER_EVENT_DEBUG` 开启后，在终端打印每次 `POST /events` 的 JSON body
 
+## MCP Tools Insight 事件（`schema_version=mcp_v1`）
+
+- `POST /api/mcp-events`：单条 MCP 审计日志
+- `POST /api/mcp-events/batch`：批量 `{"events":[...]}`
+- 幂等键：`trace_id`（TTL 同 `ADAPTER_DEDUP_TTL_SECONDS`）
+- 调试：`ADAPTER_MCP_EVENT_DEBUG=1`
+- 指标前缀：`mcp_*`（与 `llm_*` 并存）
+
+```bash
+# 压测 / Grafana 联调
+python scripts/mock_mcp_log_sender.py --count 100 --rate 20
+```
+
+完整本地链路见项目根目录 [`MCP-F5-DEPLOY-GUIDE.md`](../MCP-F5-DEPLOY-GUIDE.md)。
+
 ## 运行
 
 ```bash

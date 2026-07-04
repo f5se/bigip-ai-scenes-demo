@@ -114,7 +114,8 @@ export const scenes: Scene[] = [
         id: "mcp-tools-insight",
         path: "/scene/traffic-mgmt/mcp-tools-insight",
         titleKey: "nav.mcpToolsInsight",
-        ready: false,
+        ready: true,
+        versionBadge: true,
         pageKey: "mcpToolsInsight",
       },
       {
