@@ -46,7 +46,9 @@
     "technicalArchitecture": "Technical View",
     "collapseArchitecture": "Collapse diagram",
     "expandArchitecture": "Expand diagram",
-    "techFeatures": "Solution technical highlights"
+    "techFeatures": "Solution technical highlights",
+    "interactive": "Interactive",
+    "notes": "Notes"
   },
   "nav": {
     "scenes": "Scenes",
@@ -401,6 +403,74 @@
         "toolCalls": "Tool calls",
         "remaining": "Remaining",
         "alreadyRunning": "Continuous simulation is already running — stop it first"
+      },
+      "notes": {
+        "explain": [
+          "The demo backend MCPClientRunner drives Streamable HTTP + SSE JSON-RPC sessions against the MCP Server; the timeline shows initialize, tools/call, sampling/elicitation, and the full message flow in real time.",
+          "Structured audit events (mcp_request_completed plus sampling/elicitation sub-events) land on the Observability Adapter (POST /api/mcp-events), export Prometheus metrics, and feed Grafana dashboards by tool / agent / tenant."
+        ],
+        "mcpServerTitle": "MCP Server capabilities",
+        "mcpServer": [
+          "Demo server (IT-Ops-MCP-Server, FastAPI) implements MCP protocol 2025-11-25 over Streamable HTTP + SSE; sessions are keyed by Mcp-Session-Id.",
+          "Advertises Tools, Prompts, Resources, and Logging; ships ops tools such as query_alert, restart_service, get_service_status, and query_logs.",
+          "tools/call streams multiple JSON-RPC messages over SSE: restart_service triggers elicitation/create for client-side user confirmation; query_alert triggers sampling/createMessage so the client calls an LLM for remediation advice.",
+          "Sampling and elicitation show server-initiated bidirectional MCP interaction—one tool call can emit several SSE sub-events, so audit collection must recognize each event, not just the HTTP request."
+        ],
+        "f5Title": "F5 gateway implementation",
+        "f5": [
+          "iRule ir_mcp_audit_logger (TMM data plane): HTTP_REQUEST assigns trace_id and starts timing; JSON_REQUEST parses method and tools/call tool_name via JSON::; LB_SELECTED records pool_member.",
+          "SSE_RESPONSE parses each SSE data line, emits separate audit events for sampling/createMessage and elicitation/create, then mcp_request_completed on the final JSON-RPC response; non-SSE paths emit a single completion event on HTTP_RESPONSE_RELEASE.",
+          "iRuleLX mcp_audit_ext (Node.js): the iRule fire-and-forgets JSON via ILX::notify; the extension asynchronously POSTs to Adapter /api/mcp-events without blocking MCP traffic on TMM.",
+          "With emit_audit_without_f5=false (F5 mode) in config.py, the iRule sends audits and the Runner stops POSTing; set true for local dev without F5. Point MCP Host/Port at the VS (e.g. 172.16.30.125:9000) or direct MCP Server (127.0.0.1:9001)."
+        ],
+        "opsTip": "Local dev: 127.0.0.1:9001 + emit_audit_without_f5=true · F5 deploy: VS address + emit_audit_without_f5=false · Adapter: 8090/api/mcp-events"
+      },
+      "runFull": "▶ Run full MCP session",
+      "openGrafana": "📊 Grafana",
+      "statsTitle": "Session stats",
+      "statsEmpty": "Stats appear when the session completes",
+      "auditTitle": "Adapter audit log",
+      "auditPosting": "Posting…",
+      "auditDelivered": "delivered",
+      "auditFailed": "failed",
+      "auditNone": "0 events (disabled or not posted)",
+      "auditFailedHint": "Ensure the demo backend (8080) can reach the Adapter; check [mcp_audit] errors in the backend terminal",
+      "auditHint": "Without F5, the demo backend simulates audit logs and POSTs to the Adapter; set emit_audit_without_f5 to false after F5 is wired in.",
+      "timelineEmpty": "Run a session to see messages here",
+      "timelineTitle": "MCP message flow",
+      "running": "Running…",
+      "expandJson": "Expand JSON",
+      "collapseJson": "Collapse JSON",
+      "configLoading": "Loading config — please wait before running",
+      "streamError": "MCP session failed — is MCP Server running on {{host}}:{{port}}?",
+      "healthCheckFailed": "Health check failed",
+      "healthMcpOk": "MCP OK",
+      "healthMcpDown": "MCP down",
+      "healthAdapterOk": "Adapter OK",
+      "healthAdapterDown": "Adapter down",
+      "labels": {
+        "agent": "Agent",
+        "tenant": "Tenant",
+        "mcpHost": "MCP Server",
+        "port": "Port"
+      },
+      "agents": {
+        "monitoring-agent": "Monitoring Agent",
+        "change-agent": "Change Agent",
+        "analysis-agent": "Analysis Agent"
+      },
+      "tenants": {
+        "ops-team": "Ops Team",
+        "dev-team": "Dev Team"
+      },
+      "scenarios": {
+        "full": "Full session",
+        "lifecycle": "Lifecycle",
+        "tools_list": "Tools discovery",
+        "tool_call_alert": "Alert + Sampling",
+        "tool_call_restart": "Restart + Elicitation",
+        "prompts_get": "Get prompt",
+        "resources_read": "Read resource"
       }
     },
     "mcpToolsControl": {

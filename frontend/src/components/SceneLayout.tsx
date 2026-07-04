@@ -115,12 +115,12 @@ export function SceneLayout({
       </section>
 
       <section className="glass-card p-6">
-        <p className="section-title mb-4">Interactive</p>
+        <p className="section-title mb-4">{t("sceneIntro.interactive")}</p>
         {interaction}
       </section>
 
       <section className="glass-card p-6">
-        <p className="section-title mb-4">Notes</p>
+        <p className="section-title mb-4">{t("sceneIntro.notes")}</p>
         <div className="prose prose-invert max-w-none text-sm text-slate-300">{explanation}</div>
       </section>
     </div>

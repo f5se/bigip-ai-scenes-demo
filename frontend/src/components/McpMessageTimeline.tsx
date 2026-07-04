@@ -77,6 +77,8 @@ function JsonPanel({ json, direction }: { json: string; direction?: string }) {
   );
 }
 
+const PREFIX = "scenes.mcpToolsInsight";
+
 export function McpMessageTimeline({ events, running }: Props) {
   const { t } = useTranslation();
   const [expanded, setExpanded] = useState<Set<number>>(() => new Set());
@@ -93,17 +95,17 @@ export function McpMessageTimeline({ events, running }: Props) {
   return (
     <div className="flex h-[420px] flex-col rounded-lg border border-cyan-800/40 bg-slate-950/60">
       <div className="border-b border-cyan-900/40 px-3 py-2 text-xs font-medium text-cyan-300">
-        {t("scenes.mcpToolsInsight.timelineTitle", { defaultValue: "MCP 消息流" })}
+        {t(`${PREFIX}.timelineTitle`)}
         {running ? (
           <span className="ml-2 animate-pulse text-emerald-400">
-            {t("scenes.mcpToolsInsight.running", { defaultValue: "运行中…" })}
+            {t(`${PREFIX}.running`)}
           </span>
         ) : null}
       </div>
       <div className="flex-1 space-y-1.5 overflow-y-auto p-2">
         {events.length === 0 ? (
           <p className="px-1 font-mono text-xs text-slate-500">
-            {t("scenes.mcpToolsInsight.timelineEmpty", { defaultValue: "点击运行后在此显示消息" })}
+            {t(`${PREFIX}.timelineEmpty`)}
           </p>
         ) : (
           events.map((ev, idx) => {
@@ -139,9 +141,7 @@ export function McpMessageTimeline({ events, running }: Props) {
                         onClick={() => toggle(idx)}
                         aria-expanded={isOpen}
                         aria-label={
-                          isOpen
-                            ? t("scenes.mcpToolsInsight.collapseJson", { defaultValue: "收起 JSON" })
-                            : t("scenes.mcpToolsInsight.expandJson", { defaultValue: "展开 JSON" })
+                          isOpen ? t(`${PREFIX}.collapseJson`) : t(`${PREFIX}.expandJson`)
                         }
                         className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-md transition-all ${
                           isOpen

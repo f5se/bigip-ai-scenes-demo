@@ -13,6 +13,8 @@ import {
 } from "@/api/client";
 import { McpMessageTimeline } from "./McpMessageTimeline";
 
+const PREFIX = "scenes.mcpToolsInsight";
+
 export function McpInsightDemo() {
   const { t } = useTranslation();
   const { openUrl: grafanaUrl } = useGrafanaConfig();
@@ -42,6 +44,12 @@ export function McpInsightDemo() {
   const trafficRunning = trafficStatus?.running ?? false;
   const busy = running || trafficRunning;
 
+  const optionLabel = useCallback(
+    (group: "agents" | "tenants" | "scenarios", id: string) =>
+      t(`${PREFIX}.${group}.${id}`, { defaultValue: id }),
+    [t]
+  );
+
   useEffect(() => {
     fetchMcpInsightConfig()
       .then((c) => {
@@ -56,13 +64,13 @@ export function McpInsightDemo() {
   const checkHealth = useCallback(async () => {
     try {
       const h = await fetchMcpInsightHealth(host, port);
-      const mcp = h.mcp_server.ok ? "MCP OK" : "MCP down";
-      const ad = h.adapter.ok ? "Adapter OK" : "Adapter down";
+      const mcp = h.mcp_server.ok ? t(`${PREFIX}.healthMcpOk`) : t(`${PREFIX}.healthMcpDown`);
+      const ad = h.adapter.ok ? t(`${PREFIX}.healthAdapterOk`) : t(`${PREFIX}.healthAdapterDown`);
       setHealth(`${mcp} · ${ad}`);
     } catch {
-      setHealth("health check failed");
+      setHealth(t(`${PREFIX}.healthCheckFailed`));
     }
-  }, [host, port]);
+  }, [host, port, t]);
 
   useEffect(() => {
     void checkHealth();
@@ -102,7 +110,7 @@ export function McpInsightDemo() {
       const msg = e instanceof Error ? e.message : String(e);
       setTrafficError(
         msg === "mcp_traffic_sim_already_running"
-          ? t("scenes.mcpToolsInsight.continuous.alreadyRunning")
+          ? t(`${PREFIX}.continuous.alreadyRunning`)
           : msg
       );
       await refreshTrafficStatus();
@@ -128,7 +136,7 @@ export function McpInsightDemo() {
   const runStream = useCallback(
   async (scenarioId: string) => {
     if (!config) {
-      setError("配置加载中，请稍候再运行");
+      setError(t(`${PREFIX}.configLoading`));
       return;
     }
 
@@ -216,16 +224,16 @@ export function McpInsightDemo() {
       if (es.readyState === EventSource.CLOSED) return;
       try {
         const data = JSON.parse((e as MessageEvent).data) as { error?: string };
-        setError(data.error ?? "stream error");
+        setError(data.error ?? t(`${PREFIX}.streamError`, { host, port }));
       } catch {
-        setError("MCP session failed — is MCP Server running on " + host + ":" + port + "?");
+        setError(t(`${PREFIX}.streamError`, { host, port }));
       }
       es.close();
       setSessionComplete(true);
       setRunning(false);
     });
   },
-  [agent, tenant, host, port, checkHealth, config]);
+  [agent, tenant, host, port, checkHealth, config, t]);
 
   const f5AuditMode =
     config?.audit_delivery === "f5" || config?.emit_audit_without_f5 === false;
@@ -248,7 +256,7 @@ export function McpInsightDemo() {
 
       <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
         <label className="block text-xs text-slate-400">
-          Agent
+          {t(`${PREFIX}.labels.agent`)}
           <select
             className="mt-1 w-full rounded border border-slate-600 bg-slate-900 px-2 py-1.5 text-sm"
             value={agent}
@@ -257,13 +265,13 @@ export function McpInsightDemo() {
           >
             {((config?.agent_options as { id: string; label: string }[]) ?? []).map((a) => (
               <option key={a.id} value={a.id}>
-                {a.label}
+                {optionLabel("agents", a.id)}
               </option>
             ))}
           </select>
         </label>
         <label className="block text-xs text-slate-400">
-          Tenant
+          {t(`${PREFIX}.labels.tenant`)}
           <select
             className="mt-1 w-full rounded border border-slate-600 bg-slate-900 px-2 py-1.5 text-sm"
             value={tenant}
@@ -272,13 +280,13 @@ export function McpInsightDemo() {
           >
             {((config?.tenant_options as { id: string; label: string }[]) ?? []).map((a) => (
               <option key={a.id} value={a.id}>
-                {a.label}
+                {optionLabel("tenants", a.id)}
               </option>
             ))}
           </select>
         </label>
         <label className="block text-xs text-slate-400">
-          MCP Host
+          {t(`${PREFIX}.labels.mcpHost`)}
           <input
             className="mt-1 w-full rounded border border-slate-600 bg-slate-900 px-2 py-1.5 text-sm"
             value={host}
@@ -287,7 +295,7 @@ export function McpInsightDemo() {
           />
         </label>
         <label className="block text-xs text-slate-400">
-          Port
+          {t(`${PREFIX}.labels.port`)}
           <input
             type="number"
             className="mt-1 w-full rounded border border-slate-600 bg-slate-900 px-2 py-1.5 text-sm"
@@ -307,7 +315,7 @@ export function McpInsightDemo() {
           onClick={() => void runStream("full")}
           className="rounded-md bg-cyan-600 px-4 py-2 text-sm font-medium text-white hover:bg-cyan-500 disabled:opacity-50"
         >
-          {t("scenes.mcpToolsInsight.runFull", { defaultValue: "▶ 运行完整 MCP 会话" })}
+          {t(`${PREFIX}.runFull`)}
         </button>
         <a
           href={grafanaUrl}
@@ -315,25 +323,22 @@ export function McpInsightDemo() {
           rel="noreferrer"
           className="rounded-md border border-cyan-500/60 px-4 py-2 text-sm text-cyan-300 hover:bg-cyan-500/10"
         >
-          {t("scenes.mcpToolsInsight.openGrafana", { defaultValue: "📊 Grafana" })}
+          {t(`${PREFIX}.openGrafana`)}
         </a>
       </div>
 
       <div className="rounded-lg border border-cyan-700/40 bg-slate-950/60 p-4 space-y-3">
         <div>
           <p className="text-sm font-medium text-cyan-300">
-            {t("scenes.mcpToolsInsight.continuous.title", { defaultValue: "持续 Grafana 数据模拟" })}
+            {t(`${PREFIX}.continuous.title`)}
           </p>
           <p className="mt-1 text-xs text-slate-400">
-            {t("scenes.mcpToolsInsight.continuous.subtitle", {
-              defaultValue:
-                "在设定时长内自动轮询不同 Tenant、Agent 与 MCP 场景（工具调用、Sampling、Elicitation 等），持续向 Adapter 投递审计事件以填充 Grafana 看板。",
-            })}
+            {t(`${PREFIX}.continuous.subtitle`)}
           </p>
         </div>
         <div className="flex flex-wrap items-end gap-3">
           <label className="block min-w-[120px] text-xs text-slate-400">
-            {t("scenes.mcpToolsInsight.continuous.durationMinutes", { defaultValue: "模拟时长（分钟）" })}
+            {t(`${PREFIX}.continuous.durationMinutes`)}
             <input
               type="number"
               min={1}
@@ -351,7 +356,7 @@ export function McpInsightDemo() {
               disabled={trafficLoading}
               className="rounded-md border border-rose-500/60 bg-rose-500/10 px-4 py-2 text-sm font-medium text-rose-300 hover:bg-rose-500/20 disabled:opacity-50"
             >
-              {t("scenes.mcpToolsInsight.continuous.stop", { defaultValue: "停止模拟" })}
+              {t(`${PREFIX}.continuous.stop`)}
             </button>
           ) : (
             <button
@@ -360,22 +365,22 @@ export function McpInsightDemo() {
               disabled={busy || !config || trafficLoading}
               className="rounded-md bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-500 disabled:opacity-50"
             >
-              {t("scenes.mcpToolsInsight.continuous.start", { defaultValue: "▶ 启动持续模拟" })}
+              {t(`${PREFIX}.continuous.start`)}
             </button>
           )}
         </div>
         {trafficRunning && trafficStatus?.stats ? (
           <div className="grid grid-cols-2 gap-2 text-xs text-slate-400 sm:grid-cols-4">
             <span>
-              {t("scenes.mcpToolsInsight.continuous.sessions", { defaultValue: "已完成会话" })}:{" "}
+              {t(`${PREFIX}.continuous.sessions`)}:{" "}
               {trafficStatus.stats.sessions}
             </span>
             <span>
-              {t("scenes.mcpToolsInsight.continuous.toolCalls", { defaultValue: "工具调用" })}:{" "}
+              {t(`${PREFIX}.continuous.toolCalls`)}:{" "}
               {trafficStatus.stats.tool_calls}
             </span>
             <span>
-              {t("scenes.mcpToolsInsight.continuous.remaining", { defaultValue: "剩余" })}:{" "}
+              {t(`${PREFIX}.continuous.remaining`)}:{" "}
               {trafficStatus.remaining_seconds}s
             </span>
             {trafficStatus.stats.last_agent ? (
@@ -404,7 +409,7 @@ export function McpInsightDemo() {
                   : "border-slate-600 text-slate-400 hover:border-slate-500"
               }`}
             >
-              {s.label}
+              {optionLabel("scenarios", s.id)}
             </button>
           ))}
       </div>
@@ -413,7 +418,7 @@ export function McpInsightDemo() {
         <McpMessageTimeline events={events} running={running} />
         <div className="rounded-lg border border-cyan-800/40 bg-slate-950/60 p-3 text-sm">
           <p className="mb-2 font-medium text-cyan-300">
-            {t("scenes.mcpToolsInsight.statsTitle", { defaultValue: "会话统计" })}
+            {t(`${PREFIX}.statsTitle`)}
           </p>
           {stats ? (
             <ul className="space-y-1 font-mono text-xs text-slate-300">
@@ -424,7 +429,7 @@ export function McpInsightDemo() {
             </ul>
           ) : (
             <p className="text-xs text-slate-500">
-              {t("scenes.mcpToolsInsight.statsEmpty", { defaultValue: "完成后显示统计" })}
+              {t(`${PREFIX}.statsEmpty`)}
             </p>
           )}
           {showAuditPanel ? (
@@ -440,42 +445,36 @@ export function McpInsightDemo() {
               }`}
             >
               <p className="font-medium">
-                {t("scenes.mcpToolsInsight.auditTitle", { defaultValue: "Adapter 审计日志" })}
+                {t(`${PREFIX}.auditTitle`)}
               </p>
               {running && !auditSummary ? (
                 <p className="mt-1 font-mono animate-pulse">
-                  {t("scenes.mcpToolsInsight.auditPosting", { defaultValue: "投递中…" })}
+                  {t(`${PREFIX}.auditPosting`)}
                 </p>
               ) : auditSummary ? (
                 <p className="mt-1 font-mono">
                   {auditSummary.accepted}/{auditSummary.total}{" "}
-                  {t("scenes.mcpToolsInsight.auditDelivered", { defaultValue: "条已投递" })}
+                  {t(`${PREFIX}.auditDelivered`)}
                   {auditSummary.failed > 0
-                    ? ` · ${auditSummary.failed} ${t("scenes.mcpToolsInsight.auditFailed", { defaultValue: "条失败" })}`
+                    ? ` · ${auditSummary.failed} ${t(`${PREFIX}.auditFailed`)}`
                     : ""}
                 </p>
               ) : sessionComplete ? (
                 <p className="mt-1 font-mono text-slate-400">
-                  {t("scenes.mcpToolsInsight.auditNone", { defaultValue: "0 条（未启用或未投递）" })}
+                  {t(`${PREFIX}.auditNone`)}
                 </p>
               ) : null}
               <p className="mt-1 truncate text-[10px] opacity-80">{adapterUrl}</p>
               {auditSummary && auditSummary.failed > 0 ? (
                 <p className="mt-1 text-[10px] opacity-90">
-                  {t("scenes.mcpToolsInsight.auditFailedHint", {
-                    defaultValue:
-                      "请确认 Demo 后端 (8080) 能访问 Adapter，并查看后端终端 [mcp_audit] 错误",
-                  })}
+                  {t(`${PREFIX}.auditFailedHint`)}
                 </p>
               ) : null}
             </div>
           ) : null}
           {!f5AuditMode ? (
             <p className="mt-4 text-xs text-slate-500">
-              {t("scenes.mcpToolsInsight.auditHint", {
-                defaultValue:
-                  "无 F5 时由 Demo 后端模拟审计日志并 POST 至 Adapter；接入 F5 后将 emit_audit_without_f5 设为 false。",
-              })}
+              {t(`${PREFIX}.auditHint`)}
             </p>
           ) : null}
         </div>

@@ -21,14 +21,14 @@
     "graphTooltip": 1,
     "links": [
       {
-        "title": "F5 BIG-IP LLM",
-        "url": "/d/admzgfh/f5-big-ip-llm",
+        "title": "F5 BIG-IP LLM 可观测洞察",
+        "url": "/d/f5-bigip-llm-v2",
         "type": "link",
         "icon": "external link"
       },
       {
-        "title": "LLM Subagent",
-        "url": "/d/admfw6v/llm-subagent",
+        "title": "LLM Subagent 路由洞察",
+        "url": "/d/llm-subagent-routing-v2",
         "type": "link",
         "icon": "external link"
       }
@@ -55,7 +55,16 @@
           "includeAll": true,
           "allValue": ".*",
           "multi": true,
-          "label": "Tenant"
+          "label": "Tenant",
+          "current": {
+            "selected": true,
+            "text": [
+              "All"
+            ],
+            "value": [
+              "$__all"
+            ]
+          }
         },
         {
           "name": "agent_identity",
@@ -71,7 +80,16 @@
           "includeAll": true,
           "allValue": ".*",
           "multi": true,
-          "label": "Agent"
+          "label": "Agent",
+          "current": {
+            "selected": true,
+            "text": [
+              "All"
+            ],
+            "value": [
+              "$__all"
+            ]
+          }
         },
         {
           "name": "tool_name",
@@ -87,7 +105,16 @@
           "includeAll": true,
           "allValue": ".*",
           "multi": true,
-          "label": "Tool"
+          "label": "Tool",
+          "current": {
+            "selected": true,
+            "text": [
+              "All"
+            ],
+            "value": [
+              "$__all"
+            ]
+          }
         }
       ]
     },
@@ -187,7 +214,7 @@
               "type": "prometheus",
               "uid": "dfp3flzrl70n4d"
             },
-            "expr": "sum(rate(mcp_tool_calls_total{tenant_id=~\"$tenant_id\", agent_identity=~\"$agent_identity\", tool_name=~\"$tool_name\"}, status=\"success\"[5m])) / sum(rate(mcp_tool_calls_total{tenant_id=~\"$tenant_id\", agent_identity=~\"$agent_identity\", tool_name=~\"$tool_name\"}[5m])) * 100",
+            "expr": "sum(rate(mcp_tool_calls_total{tenant_id=~\"$tenant_id\", agent_identity=~\"$agent_identity\", tool_name=~\"$tool_name\", status=\"success\"}[5m])) / sum(rate(mcp_tool_calls_total{tenant_id=~\"$tenant_id\", agent_identity=~\"$agent_identity\", tool_name=~\"$tool_name\"}[5m])) * 100",
             "legendFormat": "",
             "refId": "A",
             "instant": true,
@@ -560,7 +587,7 @@
               "type": "prometheus",
               "uid": "dfp3flzrl70n4d"
             },
-            "expr": "sum by (tool_name) (rate(mcp_tool_calls_total{tenant_id=~\"$tenant_id\", agent_identity=~\"$agent_identity\", tool_name=~\"$tool_name\"}, status=\"success\"[5m])) / sum by (tool_name) (rate(mcp_tool_calls_total{tenant_id=~\"$tenant_id\", agent_identity=~\"$agent_identity\", tool_name=~\"$tool_name\"}[5m])) * 100",
+            "expr": "sum by (tool_name) (rate(mcp_tool_calls_total{tenant_id=~\"$tenant_id\", agent_identity=~\"$agent_identity\", tool_name=~\"$tool_name\", status=\"success\"}[5m])) / sum by (tool_name) (rate(mcp_tool_calls_total{tenant_id=~\"$tenant_id\", agent_identity=~\"$agent_identity\", tool_name=~\"$tool_name\"}[5m])) * 100",
             "legendFormat": "{{tool_name}}",
             "refId": "A",
             "instant": false,
@@ -642,8 +669,8 @@
         }
       },
       {
-        "type": "heatmap",
-        "title": "工具延迟分布热力图",
+        "type": "timeseries",
+        "title": "各工具 P95 延迟趋势",
         "gridPos": {
           "h": 8,
           "w": 12,
@@ -660,27 +687,38 @@
               "type": "prometheus",
               "uid": "dfp3flzrl70n4d"
             },
-            "expr": "sum by (le) (rate(mcp_tool_call_latency_ms_bucket{tenant_id=~\"$tenant_id\", agent_identity=~\"$agent_identity\", tool_name=~\"$tool_name\"}[5m]))",
-            "legendFormat": "",
+            "expr": "histogram_quantile(0.95, sum by (tool_name, le) (rate(mcp_tool_call_latency_ms_bucket{tenant_id=~\"$tenant_id\", agent_identity=~\"$agent_identity\", tool_name=~\"$tool_name\"}[5m])))",
+            "legendFormat": "{{tool_name}}",
             "refId": "A",
             "instant": false,
             "range": true
           }
         ],
         "options": {
-          "calculate": false,
-          "cellGap": 1,
-          "color": {
-            "mode": "scheme",
-            "scheme": "Spectral"
+          "legend": {
+            "displayMode": "table",
+            "placement": "bottom",
+            "calcs": [
+              "lastNotNull",
+              "max"
+            ]
           },
-          "yAxis": {
-            "axisPlacement": "left"
+          "tooltip": {
+            "mode": "multi",
+            "sort": "desc"
           }
         },
         "fieldConfig": {
           "defaults": {
-            "unit": "ms"
+            "unit": "ms",
+            "custom": {
+              "drawStyle": "line",
+              "lineInterpolation": "smooth",
+              "fillOpacity": 15,
+              "stacking": {
+                "mode": "none"
+              }
+            }
           },
           "overrides": []
         }
@@ -705,37 +743,69 @@
               "uid": "dfp3flzrl70n4d"
             },
             "expr": "sum by (tool_name, agent_identity, tenant_id) (mcp_tool_calls_total{tenant_id=~\"$tenant_id\", agent_identity=~\"$agent_identity\", tool_name=~\"$tool_name\"})",
-            "legendFormat": "{{tool_name}} / {{agent_identity}}",
+            "legendFormat": "",
             "refId": "A",
             "instant": true,
-            "range": false
+            "range": false,
+            "format": "table"
           }
         ],
         "options": {
           "showHeader": true,
           "sortBy": [
             {
-              "displayName": "Value",
+              "displayName": "调用量",
               "desc": true
+            }
+          ],
+          "footer": {
+            "show": true,
+            "reducer": [
+              "sum"
+            ],
+            "countRows": false
+          }
+        },
+        "fieldConfig": {
+          "defaults": {
+            "custom": {
+              "align": "auto",
+              "filterable": true
+            }
+          },
+          "overrides": [
+            {
+              "matcher": {
+                "id": "byName",
+                "options": "调用量"
+              },
+              "properties": [
+                {
+                  "id": "custom.width",
+                  "value": 120
+                }
+              ]
             }
           ]
         },
-        "fieldConfig": {
-          "defaults": {},
-          "overrides": []
-        },
         "transformations": [
-          {
-            "id": "labelsToFields",
-            "options": {
-              "mode": "columns"
-            }
-          },
           {
             "id": "organize",
             "options": {
               "excludeByName": {
                 "Time": true
+              },
+              "renameByName": {
+                "Value": "调用量",
+                "Value #A": "调用量"
+              },
+              "indexByName": {
+                "tool_name": 0,
+                "agent_identity": 1,
+                "tenant_id": 2,
+                "调用量": 3,
+                "Value": 3,
+                "Value #A": 3
               }
             }
           }
@@ -1794,5 +1864,5 @@
     ]
   },
   "folderId": 0,
-  "overwrite": false
+  "overwrite": true
 }

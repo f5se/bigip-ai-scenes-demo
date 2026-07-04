@@ -46,7 +46,9 @@
     "technicalArchitecture": "技术视角",
     "collapseArchitecture": "收起架构图",
     "expandArchitecture": "展开架构图",
-    "techFeatures": "方案技术特性"
+    "techFeatures": "方案技术特性",
+    "interactive": "交互演示",
+    "notes": "说明"
   },
   "nav": {
     "scenes": "演示场景",
@@ -402,6 +404,74 @@
         "toolCalls": "工具调用",
         "remaining": "剩余",
         "alreadyRunning": "持续模拟已在运行，请先停止"
+      },
+      "notes": {
+        "explain": [
+          "交互区由 Demo 后端 MCPClientRunner 驱动，经 Streamable HTTP + SSE 与 MCP Server 建立 JSON-RPC 会话；左侧时间线实时展示 initialize、tools/call、sampling/elicitation 等全链路消息。",
+          "结构化审计事件（mcp_request_completed 及 sampling/elicitation 子事件）汇聚至 Observability Adapter（POST /api/mcp-events），导出 Prometheus 指标后在 Grafana 看板按 tool / agent / tenant 维度下钻分析。"
+        ],
+        "mcpServerTitle": "MCP Server 特性与能力",
+        "mcpServer": [
+          "演示 Server（IT-Ops-MCP-Server，FastAPI）实现 MCP 2025-11-25 协议，传输层为 Streamable HTTP + SSE，会话由 Mcp-Session-Id 标识。",
+          "声明 Tools / Prompts / Resources / Logging 四类能力；提供 query_alert、restart_service、get_service_status、query_logs 等运维工具。",
+          "tools/call 以 SSE 流式返回多条 JSON-RPC 消息：restart_service 触发 elicitation/create 请求 Client 侧用户确认；query_alert 触发 sampling/createMessage 请求 Client 调 LLM 生成处置建议。",
+          "Sampling 与 Elicitation 体现 MCP 服务端主动发起双向交互的能力——一次工具调用可能产生多条 SSE 子事件，审计采集须逐条识别而非仅统计 HTTP 请求。"
+        ],
+        "f5Title": "F5 网关实现逻辑",
+        "f5": [
+          "iRule ir_mcp_audit_logger（TMM 数据面）：HTTP_REQUEST 生成 trace_id 并记时，JSON_REQUEST 用 JSON:: 解析 method 与 tools/call 的 tool_name，LB_SELECTED 记录 pool_member。",
+          "SSE_RESPONSE 逐条解析 SSE data 字段，识别 sampling/createMessage、elicitation/create 子事件并单独发审计；最终 JSON-RPC 响应发 mcp_request_completed；非 SSE 路径在 HTTP_RESPONSE_RELEASE 发单条完成事件。",
+          "iRuleLX mcp_audit_ext（Node.js）：iRule 通过 ILX::notify fire-and-forget 投递 JSON，Extension 异步 POST 至 Adapter /api/mcp-events，不阻塞 TMM 上的 MCP 主连接。",
+          "config.py 中 emit_audit_without_f5=false（F5 模式）时由 iRule 发审计，Runner 不再 POST；本地无 F5 联调时改 true，Runner 模拟 iRule 输出。前端 MCP Host/Port 分别指向 VS（如 172.16.30.125:9000）或直连 MCP Server（127.0.0.1:9001）。"
+        ],
+        "opsTip": "开发联调：127.0.0.1:9001 + emit_audit_without_f5=true · F5 部署：VS 地址 + emit_audit_without_f5=false · Adapter：8090/api/mcp-events"
+      },
+      "runFull": "▶ 运行完整 MCP 会话",
+      "openGrafana": "📊 Grafana",
+      "statsTitle": "会话统计",
+      "statsEmpty": "完成后显示统计",
+      "auditTitle": "Adapter 审计日志",
+      "auditPosting": "投递中…",
+      "auditDelivered": "条已投递",
+      "auditFailed": "条失败",
+      "auditNone": "0 条（未启用或未投递）",
+      "auditFailedHint": "请确认 Demo 后端 (8080) 能访问 Adapter，并查看后端终端 [mcp_audit] 错误",
+      "auditHint": "无 F5 时由 Demo 后端模拟审计日志并 POST 至 Adapter；接入 F5 后将 emit_audit_without_f5 设为 false。",
+      "timelineEmpty": "点击运行后在此显示消息",
+      "timelineTitle": "MCP 消息流",
+      "running": "运行中…",
+      "expandJson": "展开 JSON",
+      "collapseJson": "收起 JSON",
+      "configLoading": "配置加载中，请稍候再运行",
+      "streamError": "MCP 会话失败 — 请确认 MCP Server 是否在 {{host}}:{{port}} 运行",
+      "healthCheckFailed": "健康检查失败",
+      "healthMcpOk": "MCP 正常",
+      "healthMcpDown": "MCP 不可用",
+      "healthAdapterOk": "Adapter 正常",
+      "healthAdapterDown": "Adapter 不可用",
+      "labels": {
+        "agent": "Agent",
+        "tenant": "Tenant",
+        "mcpHost": "MCP Server",
+        "port": "Port"
+      },
+      "agents": {
+        "monitoring-agent": "监控 Agent",
+        "change-agent": "变更 Agent",
+        "analysis-agent": "分析 Agent"
+      },
+      "tenants": {
+        "ops-team": "运维团队",
+        "dev-team": "开发团队"
+      },
+      "scenarios": {
+        "full": "完整会话",
+        "lifecycle": "生命周期",
+        "tools_list": "Tools 发现",
+        "tool_call_alert": "告警 + Sampling",
+        "tool_call_restart": "重启 + Elicitation",
+        "prompts_get": "Prompts 获取",
+        "resources_read": "Resources 读取"
       }
     },
     "mcpToolsControl": {

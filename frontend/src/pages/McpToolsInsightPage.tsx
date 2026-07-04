@@ -30,12 +30,31 @@ export function McpToolsInsightPage() {
       diagramTechnical={<MermaidDiagram chart={technicalChart} />}
       interaction={<McpInsightDemo />}
       explanation={
-        <p className="text-sm text-slate-400">
-          {t(`${prefix}.auditHint`, {
-            defaultValue:
-              "开发联调默认直连 MCP Server (127.0.0.1:9001)。F5 部署完成后将 Host 改为 172.16.30.125、Port 9000。",
-          })}
-        </p>
+        <div className="space-y-4">
+          <ul className="list-inside list-disc space-y-1 text-slate-400">
+            <li>{t(`${prefix}.notes.explain.0`)}</li>
+            <li>{t(`${prefix}.notes.explain.1`)}</li>
+          </ul>
+          <div className="rounded-lg border border-cyan-500/30 bg-cyan-950/20 p-3">
+            <p className="font-medium text-cyan-300">{t(`${prefix}.notes.mcpServerTitle`)}</p>
+            <ul className="mt-2 list-inside list-disc space-y-1 text-slate-400">
+              <li>{t(`${prefix}.notes.mcpServer.0`)}</li>
+              <li>{t(`${prefix}.notes.mcpServer.1`)}</li>
+              <li>{t(`${prefix}.notes.mcpServer.2`)}</li>
+              <li>{t(`${prefix}.notes.mcpServer.3`)}</li>
+            </ul>
+          </div>
+          <div className="rounded-lg border border-violet-500/30 bg-violet-950/25 p-3">
+            <p className="font-medium text-violet-300">{t(`${prefix}.notes.f5Title`)}</p>
+            <ul className="mt-2 list-inside list-disc space-y-1 text-slate-400">
+              <li>{t(`${prefix}.notes.f5.0`)}</li>
+              <li>{t(`${prefix}.notes.f5.1`)}</li>
+              <li>{t(`${prefix}.notes.f5.2`)}</li>
+              <li>{t(`${prefix}.notes.f5.3`)}</li>
+            </ul>
+          </div>
+          <p className="font-mono text-xs text-cyan-600/80">{t(`${prefix}.notes.opsTip`)}</p>
+        </div>
       }
     />
   );

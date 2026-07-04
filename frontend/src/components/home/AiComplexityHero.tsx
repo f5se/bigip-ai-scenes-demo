@@ -31,6 +31,7 @@ export function AiComplexityHero() {
   const reducedMotion = usePrefersReducedMotion();
 
   const [tab, setTab] = useState<HeroTab>("ungated");
+  const [sessionActive, setSessionActive] = useState(false);
   const [playing, setPlaying] = useState(false);
   const [finished, setFinished] = useState(false);
   const [phase, setPhase] = useState<HeroPhase>(0);
@@ -39,8 +40,13 @@ export function AiComplexityHero() {
   const elapsedRef = useRef(0);
   const rafRef = useRef<number>(0);
   const lastTsRef = useRef<number | null>(null);
+  const playingRef = useRef(false);
   const sectionRef = useRef<HTMLElement>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
+
+  useEffect(() => {
+    playingRef.current = playing;
+  }, [playing]);
 
   const externalCalls = externalCallsForPhase(phase);
 
@@ -53,11 +59,15 @@ export function AiComplexityHero() {
 
   const startPlay = () => {
     resetClock();
+    playingRef.current = true;
+    setSessionActive(true);
     setFinished(false);
     setPlaying(true);
   };
 
   const stopPlay = () => {
+    playingRef.current = false;
+    setSessionActive(false);
     setPlaying(false);
     setFinished(false);
     resetClock();
@@ -66,12 +76,21 @@ export function AiComplexityHero() {
   const jumpToPhase = (i: number) => {
     let acc = 0;
     for (let j = 0; j < i; j++) acc += HERO_PHASE_DURATIONS_MS[j];
-    elapsedRef.current = acc;
     lastTsRef.current = null;
+    if (playingRef.current) {
+      // During auto-play: jump to the start of the phase and let tick advance progress.
+      elapsedRef.current = acc;
+      setPhaseProgress(0);
+    } else {
+      // Manual scrub (e.g. after playback ends): show the fully developed frame for that step.
+      elapsedRef.current = Math.min(acc + HERO_PHASE_DURATIONS_MS[i] - 1, HERO_TOTAL_MS);
+      setPhaseProgress(1);
+    }
     setPhase(i as HeroPhase);
-    setPhaseProgress(0);
     setFinished(i === HERO_PHASE_COUNT - 1);
   };
+
+  const canScrub = sessionActive || reducedMotion;
 
   const goStep = (dir: -1 | 1) => {
     jumpToPhase(Math.max(0, Math.min(HERO_PHASE_COUNT - 1, phase + dir)));
@@ -83,28 +102,29 @@ export function AiComplexityHero() {
       const delta = ts - lastTsRef.current;
       lastTsRef.current = ts;
 
-      if (playing && !reducedMotion) {
+      if (playingRef.current && !reducedMotion) {
         elapsedRef.current += delta;
         if (elapsedRef.current >= HERO_TOTAL_MS) {
           elapsedRef.current = HERO_TOTAL_MS;
+          playingRef.current = false;
           setPlaying(false);
           setFinished(true);
+          setSessionActive(true);
           setPhase(6);
           setPhaseProgress(1);
-          return;
+        } else {
+          const elapsed = elapsedRef.current;
+          const p = phaseFromElapsed(elapsed);
+          setPhase(p);
+          setPhaseProgress(
+            Math.min(1, elapsedInPhase(elapsed, p) / HERO_PHASE_DURATIONS_MS[p])
+          );
         }
-
-        const elapsed = elapsedRef.current;
-        const p = phaseFromElapsed(elapsed);
-        setPhase(p);
-        setPhaseProgress(
-          Math.min(1, elapsedInPhase(elapsed, p) / HERO_PHASE_DURATIONS_MS[p])
-        );
       }
 
       rafRef.current = requestAnimationFrame(tick);
     },
-    [playing, reducedMotion]
+    [reducedMotion]
   );
 
   useEffect(() => {
@@ -135,6 +155,7 @@ export function AiComplexityHero() {
       setPhaseProgress(1);
       setPlaying(false);
       setFinished(true);
+      setSessionActive(true);
       return;
     }
     rafRef.current = requestAnimationFrame(tick);
@@ -165,13 +186,13 @@ export function AiComplexityHero() {
           >
             {t(isFullscreen ? "home.hero.exitFullscreen" : "home.hero.fullscreen")}
           </button>
-          {playing ? (
+          {sessionActive ? (
             <button type="button" className="btn-secondary text-xs py-1.5 px-3.5" onClick={stopPlay}>
               {t("home.hero.stopPlay")}
             </button>
           ) : (
             <button type="button" className="btn-primary text-xs py-1.5 px-3.5" onClick={startPlay}>
-              {t(finished ? "home.hero.replay" : "home.hero.startPlay")}
+              {t("home.hero.startPlay")}
             </button>
           )}
         </div>
@@ -243,9 +264,9 @@ export function AiComplexityHero() {
                 key={i}
                 type="button"
                 title={t(`home.hero.phases.${i}` as const)}
-                disabled={!playing && !finished && !reducedMotion}
+                disabled={!canScrub}
                 onClick={() => {
-                  if (!playing && !finished) startPlay();
+                  if (!sessionActive) startPlay();
                   jumpToPhase(i);
                 }}
                 className={`h-2 w-6 rounded-full transition disabled:opacity-40 ${
@@ -257,7 +278,7 @@ export function AiComplexityHero() {
           <button
             type="button"
             className="btn-secondary text-xs py-1 px-2.5"
-            disabled={!playing && !finished}
+            disabled={!canScrub}
             onClick={() => goStep(-1)}
           >
             {t("home.hero.prev")}
@@ -265,7 +286,7 @@ export function AiComplexityHero() {
           <button
             type="button"
             className="btn-secondary text-xs py-1 px-2.5"
-            disabled={!playing && !finished}
+            disabled={!canScrub}
             onClick={() => goStep(1)}
           >
             {t("home.hero.next")}

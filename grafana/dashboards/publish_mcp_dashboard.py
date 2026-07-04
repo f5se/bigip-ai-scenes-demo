@@ -17,20 +17,44 @@ DASHBOARD_UID = "mcp-tools-insight"
 
 FILTER = 'tenant_id=~"$tenant_id", agent_identity=~"$agent_identity", tool_name=~"$tool_name"'
 TOOL_FILTER = f"mcp_tool_calls_total{{{FILTER}}}"
+TOOL_FILTER_SUCCESS = f'mcp_tool_calls_total{{{FILTER}, status="success"}}'
+LATENCY_FILTER = FILTER
 
 
 def ds() -> dict:
     return {"type": "prometheus", "uid": PROM_DS_UID}
 
 
-def prom_target(expr: str, legend: str = "", instant: bool = False) -> dict:
-    return {
+def prom_target(
+    expr: str,
+    legend: str = "",
+    instant: bool = False,
+    fmt: str | None = None,
+) -> dict:
+    target = {
         "datasource": ds(),
         "expr": expr,
         "legendFormat": legend,
         "refId": "A",
         "instant": instant,
         "range": not instant,
+    }
+    if fmt:
+        target["format"] = fmt
+    return target
+
+
+def template_var(name: str, query: str, label: str) -> dict:
+    return {
+        "name": name,
+        "type": "query",
+        "datasource": ds(),
+        "query": {"query": query, "refId": "A"},
+        "includeAll": True,
+        "allValue": ".*",
+        "multi": True,
+        "label": label,
+        "current": {"selected": True, "text": ["All"], "value": ["$__all"]},
     }
 
 
@@ -178,28 +202,66 @@ def table_panel(title: str, expr: str, x: int, y: int, w: int = 24, h: int = 8) 
         "title": title,
         "gridPos": {"h": h, "w": w, "x": x, "y": y},
         "datasource": ds(),
-        "targets": [prom_target(expr, "{{tool_name}} / {{agent_identity}}", instant=True)],
-        "options": {"showHeader": True, "sortBy": [{"displayName": "Value", "desc": True}]},
-        "fieldConfig": {"defaults": {}, "overrides": []},
+        "targets": [prom_target(expr, instant=True, fmt="table")],
+        "options": {
+            "showHeader": True,
+            "sortBy": [{"displayName": "调用量", "desc": True}],
+            "footer": {"show": True, "reducer": ["sum"], "countRows": False},
+        },
+        "fieldConfig": {
+            "defaults": {"custom": {"align": "auto", "filterable": True}},
+            "overrides": [
+                {
+                    "matcher": {"id": "byName", "options": "调用量"},
+                    "properties": [{"id": "custom.width", "value": 120}],
+                },
+            ],
+        },
         "transformations": [
-            {"id": "labelsToFields", "options": {"mode": "columns"}},
-            {"id": "organize", "options": {"excludeByName": {"Time": True}}},
+            {
+                "id": "organize",
+                "options": {
+                    "excludeByName": {"Time": True},
+                    "renameByName": {"Value": "调用量", "Value #A": "调用量"},
+                    "indexByName": {
+                        "tool_name": 0,
+                        "agent_identity": 1,
+                        "tenant_id": 2,
+                        "调用量": 3,
+                        "Value": 3,
+                        "Value #A": 3,
+                    },
+                },
+            },
         ],
     }
 
 
-def heatmap_panel(title: str, expr: str, x: int, y: int, w: int = 12, h: int = 8) -> dict:
+def heatmap_panel(
+    title: str,
+    expr: str,
+    x: int,
+    y: int,
+    w: int = 12,
+    h: int = 8,
+    legend: str = "{{tool_name}}",
+    calculate: bool = True,
+) -> dict:
     return {
         "type": "heatmap",
         "title": title,
         "gridPos": {"h": h, "w": w, "x": x, "y": y},
         "datasource": ds(),
-        "targets": [prom_target(expr, "")],
+        "targets": [prom_target(expr, legend)],
         "options": {
-            "calculate": False,
+            "calculate": calculate,
+            "calculation": {
+                "xBuckets": {"mode": "size", "value": "1m"},
+            },
             "cellGap": 1,
-            "color": {"mode": "scheme", "scheme": "Spectral"},
-            "yAxis": {"axisPlacement": "left"},
+            "color": {"mode": "scheme", "scheme": "Spectral", "steps": 64},
+            "yAxis": {"axisPlacement": "left", "decimals": 0},
+            "tooltip": {"show": True, "yHistogram": False},
         },
         "fieldConfig": {"defaults": {"unit": "ms"}, "overrides": []},
     }
@@ -216,7 +278,7 @@ def build_dashboard() -> dict:
             stat_panel("工具调用总数", f"sum({TOOL_FILTER})", 0, y, 4, "short"),
             gauge_panel(
                 "工具调用成功率",
-                f"sum(rate({TOOL_FILTER}, status=\"success\"[5m])) / sum(rate({TOOL_FILTER}[5m])) * 100",
+                f"sum(rate({TOOL_FILTER_SUCCESS}[5m])) / sum(rate({TOOL_FILTER}[5m])) * 100",
                 4,
                 y,
                 4,
@@ -272,7 +334,7 @@ def build_dashboard() -> dict:
             ),
             timeseries_panel(
                 "各工具成功率 (%)",
-                f"sum by (tool_name) (rate({TOOL_FILTER}, status=\"success\"[5m])) / sum by (tool_name) (rate({TOOL_FILTER}[5m])) * 100",
+                f"sum by (tool_name) (rate({TOOL_FILTER_SUCCESS}[5m])) / sum by (tool_name) (rate({TOOL_FILTER}[5m])) * 100",
                 12,
                 y,
                 12,
@@ -288,13 +350,15 @@ def build_dashboard() -> dict:
                 12,
                 8,
             ),
-            heatmap_panel(
-                "工具延迟分布热力图",
-                f"sum by (le) (rate(mcp_tool_call_latency_ms_bucket{{{FILTER}}}[5m]))",
+            timeseries_panel(
+                "各工具 P95 延迟趋势",
+                f"histogram_quantile(0.95, sum by (tool_name, le) (rate(mcp_tool_call_latency_ms_bucket{{{LATENCY_FILTER}}}[5m])))",
                 12,
                 y + 8,
                 12,
                 8,
+                "{{tool_name}}",
+                "ms",
             ),
             table_panel(
                 "工具 × Agent 调用量",
@@ -526,8 +590,8 @@ def build_dashboard() -> dict:
             "time": {"from": "now-1h", "to": "now"},
             "graphTooltip": 1,
             "links": [
-                {"title": "F5 BIG-IP LLM", "url": "/d/admzgfh/f5-big-ip-llm", "type": "link", "icon": "external link"},
-                {"title": "LLM Subagent", "url": "/d/admfw6v/llm-subagent", "type": "link", "icon": "external link"},
+                {"title": "F5 BIG-IP LLM 可观测洞察", "url": "/d/f5-bigip-llm-v2", "type": "link", "icon": "external link"},
+                {"title": "LLM Subagent 路由洞察", "url": "/d/llm-subagent-routing-v2", "type": "link", "icon": "external link"},
             ],
             "templating": {
                 "list": [
@@ -537,49 +601,28 @@ def build_dashboard() -> dict:
                         "query": "prometheus",
                         "hide": 2,
                     },
-                    {
-                        "name": "tenant_id",
-                        "type": "query",
-                        "datasource": ds(),
-                        "query": {"query": "label_values(mcp_tool_calls_total, tenant_id)", "refId": "A"},
-                        "includeAll": True,
-                        "allValue": ".*",
-                        "multi": True,
-                        "label": "Tenant",
-                    },
-                    {
-                        "name": "agent_identity",
-                        "type": "query",
-                        "datasource": ds(),
-                        "query": {
-                            "query": 'label_values(mcp_tool_calls_total{tenant_id=~"$tenant_id"}, agent_identity)',
-                            "refId": "A",
-                        },
-                        "includeAll": True,
-                        "allValue": ".*",
-                        "multi": True,
-                        "label": "Agent",
-                    },
-                    {
-                        "name": "tool_name",
-                        "type": "query",
-                        "datasource": ds(),
-                        "query": {
-                            "query": 'label_values(mcp_tool_calls_total{tenant_id=~"$tenant_id", agent_identity=~"$agent_identity"}, tool_name)',
-                            "refId": "A",
-                        },
-                        "includeAll": True,
-                        "allValue": ".*",
-                        "multi": True,
-                        "label": "Tool",
-                    },
+                    template_var(
+                        "tenant_id",
+                        "label_values(mcp_tool_calls_total, tenant_id)",
+                        "Tenant",
+                    ),
+                    template_var(
+                        "agent_identity",
+                        'label_values(mcp_tool_calls_total{tenant_id=~"$tenant_id"}, agent_identity)',
+                        "Agent",
+                    ),
+                    template_var(
+                        "tool_name",
+                        'label_values(mcp_tool_calls_total{tenant_id=~"$tenant_id", agent_identity=~"$agent_identity"}, tool_name)',
+                        "Tool",
+                    ),
                 ]
             },
             "annotations": {"list": []},
             "panels": panels,
         },
         "folderId": 0,
-        "overwrite": False,
+        "overwrite": True,
     }
 
 

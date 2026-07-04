@@ -1,0 +1,2669 @@
+{
+  "dashboard": {
+    "id": null,
+    "uid": "f5-bigip-llm-v2",
+    "title": "F5 BIG-IP LLM 可观测洞察",
+    "description": "场景二 Observability — Model Router VS：Token/费用、模型路由、延迟(TTFB/TTFT/E2E)、Retry/Fallback、Adapter 健康",
+    "tags": [
+      "f5",
+      "llm",
+      "observability",
+      "scene2",
+      "router"
+    ],
+    "timezone": "browser",
+    "schemaVersion": 39,
+    "version": 1,
+    "refresh": "10s",
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    },
+    "graphTooltip": 1,
+    "links": [
+      {
+        "title": "LLM Subagent 路由洞察",
+        "url": "/d/llm-subagent-routing-v2",
+        "type": "link",
+        "icon": "external link"
+      },
+      {
+        "title": "MCP Tools 洞察",
+        "url": "/d/mcp-tools-insight",
+        "type": "link",
+        "icon": "external link"
+      },
+      {
+        "title": "旧版 F5 BIG-IP LLM",
+        "url": "/d/admzgfh/f5-big-ip-llm",
+        "type": "link",
+        "icon": "doc"
+      }
+    ],
+    "templating": {
+      "list": [
+        {
+          "name": "datasource",
+          "type": "datasource",
+          "query": "prometheus",
+          "hide": 2
+        },
+        {
+          "name": "model",
+          "type": "query",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "dfp3flzrl70n4d"
+          },
+          "query": {
+            "query": "label_values(llm_requests_total{agent=\"-\"}, model)",
+            "refId": "A"
+          },
+          "includeAll": true,
+          "allValue": ".*",
+          "multi": true,
+          "label": "Model",
+          "current": {
+            "selected": true,
+            "text": [
+              "All"
+            ],
+            "value": [
+              "$__all"
+            ]
+          }
+        },
+        {
+          "name": "pool",
+          "type": "query",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "dfp3flzrl70n4d"
+          },
+          "query": {
+            "query": "label_values(llm_requests_total{agent=\"-\", model=~\"$model\"}, pool)",
+            "refId": "A"
+          },
+          "includeAll": true,
+          "allValue": ".*",
+          "multi": true,
+          "label": "Pool",
+          "current": {
+            "selected": true,
+            "text": [
+              "All"
+            ],
+            "value": [
+              "$__all"
+            ]
+          }
+        },
+        {
+          "name": "member",
+          "type": "query",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "dfp3flzrl70n4d"
+          },
+          "query": {
+            "query": "label_values(llm_requests_total{agent=\"-\", model=~\"$model\", pool=~\"$pool\"}, member)",
+            "refId": "A"
+          },
+          "includeAll": true,
+          "allValue": ".*",
+          "multi": true,
+          "label": "Member",
+          "current": {
+            "selected": true,
+            "text": [
+              "All"
+            ],
+            "value": [
+              "$__all"
+            ]
+          }
+        },
+        {
+          "name": "price_version",
+          "type": "query",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "dfp3flzrl70n4d"
+          },
+          "query": {
+            "query": "label_values(llm_requests_total{agent=\"-\"}, price_version)",
+            "refId": "A"
+          },
+          "includeAll": true,
+          "allValue": ".*",
+          "multi": true,
+          "label": "Price Ver",
+          "current": {
+            "selected": true,
+            "text": [
+              "All"
+            ],
+            "value": [
+              "$__all"
+            ]
+          }
+        }
+      ]
+    },
+    "annotations": {
+      "list": []
+    },
+    "panels": [
+      {
+        "type": "row",
+        "title": "总览 Overview — 场景二 Model Router VS",
+        "gridPos": {
+          "h": 1,
+          "w": 24,
+          "x": 0,
+          "y": 0
+        },
+        "collapsed": false,
+        "panels": [],
+        "id": null
+      },
+      {
+        "type": "stat",
+        "title": "总请求 RPS",
+        "gridPos": {
+          "h": 4,
+          "w": 3,
+          "x": 0,
+          "y": 1
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "dfp3flzrl70n4d"
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfp3flzrl70n4d"
+            },
+            "expr": "sum(rate(llm_requests_total{agent=\"-\", model=~\"$model\", pool=~\"$pool\", member=~\"$member\", price_version=~\"$price_version\"}[1m]))",
+            "legendFormat": "",
+            "refId": "A",
+            "instant": true,
+            "range": false
+          }
+        ],
+        "options": {
+          "reduceOptions": {
+            "calcs": [
+              "lastNotNull"
+            ],
+            "fields": "",
+            "values": false
+          },
+          "orientation": "auto",
+          "textMode": "auto",
+          "colorMode": "value",
+          "graphMode": "area"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "reqps",
+            "decimals": 0,
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                },
+                {
+                  "color": "red",
+                  "value": 80
+                }
+              ]
+            }
+          },
+          "overrides": []
+        }
+      },
+      {
+        "type": "gauge",
+        "title": "HTTP 错误率",
+        "gridPos": {
+          "h": 4,
+          "w": 3,
+          "x": 3,
+          "y": 1
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "dfp3flzrl70n4d"
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfp3flzrl70n4d"
+            },
+            "expr": "sum(rate(llm_requests_total{agent=\"-\", model=~\"$model\", pool=~\"$pool\", member=~\"$member\", price_version=~\"$price_version\", status_class=~\"4xx|5xx\"}[5m])) / sum(rate(llm_requests_total{agent=\"-\", model=~\"$model\", pool=~\"$pool\", member=~\"$member\", price_version=~\"$price_version\"}[5m])) * 100",
+            "legendFormat": "",
+            "refId": "A",
+            "instant": true,
+            "range": false
+          }
+        ],
+        "options": {
+          "reduceOptions": {
+            "calcs": [
+              "lastNotNull"
+            ],
+            "fields": "",
+            "values": false
+          },
+          "orientation": "auto",
+          "showThresholdLabels": false,
+          "showThresholdMarkers": true
+        },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percent",
+            "decimals": 2,
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                },
+                {
+                  "color": "yellow",
+                  "value": 5
+                },
+                {
+                  "color": "red",
+                  "value": 15
+                }
+              ]
+            },
+            "min": 0,
+            "max": 100
+          },
+          "overrides": []
+        }
+      },
+      {
+        "type": "gauge",
+        "title": "Retry 率",
+        "gridPos": {
+          "h": 4,
+          "w": 3,
+          "x": 6,
+          "y": 1
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "dfp3flzrl70n4d"
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfp3flzrl70n4d"
+            },
+            "expr": "sum(rate(llm_retry_requests_total{agent=\"-\", model=~\"$model\", pool=~\"$pool\", member=~\"$member\", price_version=~\"$price_version\"}[5m])) / sum(rate(llm_requests_total{agent=\"-\", model=~\"$model\", pool=~\"$pool\", member=~\"$member\", price_version=~\"$price_version\"}[5m])) * 100",
+            "legendFormat": "",
+            "refId": "A",
+            "instant": true,
+            "range": false
+          }
+        ],
+        "options": {
+          "reduceOptions": {
+            "calcs": [
+              "lastNotNull"
+            ],
+            "fields": "",
+            "values": false
+          },
+          "orientation": "auto",
+          "showThresholdLabels": false,
+          "showThresholdMarkers": true
+        },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percent",
+            "decimals": 2,
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                },
+                {
+                  "color": "yellow",
+                  "value": 5
+                },
+                {
+                  "color": "red",
+                  "value": 15
+                }
+              ]
+            },
+            "min": 0,
+            "max": 100
+          },
+          "overrides": []
+        }
+      },
+      {
+        "type": "gauge",
+        "title": "Fallback 率",
+        "gridPos": {
+          "h": 4,
+          "w": 3,
+          "x": 9,
+          "y": 1
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "dfp3flzrl70n4d"
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfp3flzrl70n4d"
+            },
+            "expr": "sum(rate(llm_fallback_requests_total{agent=\"-\", model=~\"$model\", pool=~\"$pool\", member=~\"$member\", price_version=~\"$price_version\"}[5m])) / sum(rate(llm_requests_total{agent=\"-\", model=~\"$model\", pool=~\"$pool\", member=~\"$member\", price_version=~\"$price_version\"}[5m])) * 100",
+            "legendFormat": "",
+            "refId": "A",
+            "instant": true,
+            "range": false
+          }
+        ],
+        "options": {
+          "reduceOptions": {
+            "calcs": [
+              "lastNotNull"
+            ],
+            "fields": "",
+            "values": false
+          },
+          "orientation": "auto",
+          "showThresholdLabels": false,
+          "showThresholdMarkers": true
+        },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percent",
+            "decimals": 2,
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                },
+                {
+                  "color": "yellow",
+                  "value": 5
+                },
+                {
+                  "color": "red",
+                  "value": 15
+                }
+              ]
+            },
+            "min": 0,
+            "max": 100
+          },
+          "overrides": []
+        }
+      },
+      {
+        "type": "stat",
+        "title": "Token 吞吐",
+        "gridPos": {
+          "h": 4,
+          "w": 3,
+          "x": 12,
+          "y": 1
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "dfp3flzrl70n4d"
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfp3flzrl70n4d"
+            },
+            "expr": "sum(rate(llm_total_tokens_total{agent=\"-\", model=~\"$model\", pool=~\"$pool\", member=~\"$member\", price_version=~\"$price_version\"}[1m]))",
+            "legendFormat": "",
+            "refId": "A",
+            "instant": true,
+            "range": false
+          }
+        ],
+        "options": {
+          "reduceOptions": {
+            "calcs": [
+              "lastNotNull"
+            ],
+            "fields": "",
+            "values": false
+          },
+          "orientation": "auto",
+          "textMode": "auto",
+          "colorMode": "value",
+          "graphMode": "area"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "tps",
+            "decimals": 0,
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                },
+                {
+                  "color": "red",
+                  "value": 80
+                }
+              ]
+            }
+          },
+          "overrides": []
+        }
+      },
+      {
+        "type": "stat",
+        "title": "费用速率 (Yuan/s)",
+        "gridPos": {
+          "h": 4,
+          "w": 3,
+          "x": 15,
+          "y": 1
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "dfp3flzrl70n4d"
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfp3flzrl70n4d"
+            },
+            "expr": "sum(rate(llm_cost_total{cost_type=\"total\", currency=\"Yuan\", agent=\"-\", model=~\"$model\", pool=~\"$pool\", member=~\"$member\", price_version=~\"$price_version\"}[1m]))",
+            "legendFormat": "",
+            "refId": "A",
+            "instant": true,
+            "range": false
+          }
+        ],
+        "options": {
+          "reduceOptions": {
+            "calcs": [
+              "lastNotNull"
+            ],
+            "fields": "",
+            "values": false
+          },
+          "orientation": "auto",
+          "textMode": "auto",
+          "colorMode": "value",
+          "graphMode": "area"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "currencyCNY",
+            "decimals": 4,
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                },
+                {
+                  "color": "red",
+                  "value": 80
+                }
+              ]
+            }
+          },
+          "overrides": []
+        }
+      },
+      {
+        "type": "stat",
+        "title": "时间段总费用 (Yuan)",
+        "gridPos": {
+          "h": 4,
+          "w": 3,
+          "x": 18,
+          "y": 1
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "dfp3flzrl70n4d"
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfp3flzrl70n4d"
+            },
+            "expr": "sum(increase(llm_cost_total{cost_type=\"total\", currency=\"Yuan\", agent=\"-\", model=~\"$model\", pool=~\"$pool\", member=~\"$member\", price_version=~\"$price_version\"}[$__range]))",
+            "legendFormat": "",
+            "refId": "A",
+            "instant": true,
+            "range": false
+          }
+        ],
+        "options": {
+          "reduceOptions": {
+            "calcs": [
+              "lastNotNull"
+            ],
+            "fields": "",
+            "values": false
+          },
+          "orientation": "auto",
+          "textMode": "auto",
+          "colorMode": "value",
+          "graphMode": "area"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "currencyCNY",
+            "decimals": 2,
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                },
+                {
+                  "color": "red",
+                  "value": 80
+                }
+              ]
+            }
+          },
+          "overrides": []
+        }
+      },
+      {
+        "type": "stat",
+        "title": "网关 E2E P95",
+        "gridPos": {
+          "h": 4,
+          "w": 3,
+          "x": 21,
+          "y": 1
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "dfp3flzrl70n4d"
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfp3flzrl70n4d"
+            },
+            "expr": "histogram_quantile(0.95, sum(rate(llm_latency_ms_bucket{agent=\"-\", model=~\"$model\", pool=~\"$pool\", member=~\"$member\", price_version=~\"$price_version\"}[5m])) by (le))",
+            "legendFormat": "",
+            "refId": "A",
+            "instant": true,
+            "range": false
+          }
+        ],
+        "options": {
+          "reduceOptions": {
+            "calcs": [
+              "lastNotNull"
+            ],
+            "fields": "",
+            "values": false
+          },
+          "orientation": "auto",
+          "textMode": "auto",
+          "colorMode": "value",
+          "graphMode": "area"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "ms",
+            "decimals": 0,
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                },
+                {
+                  "color": "red",
+                  "value": 80
+                }
+              ]
+            }
+          },
+          "overrides": []
+        }
+      },
+      {
+        "type": "row",
+        "title": "Token 用量与费用 Tokens & Cost",
+        "gridPos": {
+          "h": 1,
+          "w": 24,
+          "x": 0,
+          "y": 5
+        },
+        "collapsed": false,
+        "panels": [],
+        "id": null
+      },
+      {
+        "type": "stat",
+        "title": "时间段总费用 (Yuan)",
+        "gridPos": {
+          "h": 4,
+          "w": 6,
+          "x": 0,
+          "y": 6
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "dfp3flzrl70n4d"
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfp3flzrl70n4d"
+            },
+            "expr": "sum(increase(llm_cost_total{cost_type=\"total\", currency=\"Yuan\", agent=\"-\", model=~\"$model\", pool=~\"$pool\", member=~\"$member\", price_version=~\"$price_version\"}[$__range]))",
+            "legendFormat": "",
+            "refId": "A",
+            "instant": true,
+            "range": false
+          }
+        ],
+        "options": {
+          "reduceOptions": {
+            "calcs": [
+              "lastNotNull"
+            ],
+            "fields": "",
+            "values": false
+          },
+          "orientation": "auto",
+          "textMode": "auto",
+          "colorMode": "value",
+          "graphMode": "area"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "currencyCNY",
+            "decimals": 2,
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                },
+                {
+                  "color": "red",
+                  "value": 80
+                }
+              ]
+            }
+          },
+          "overrides": []
+        }
+      },
+      {
+        "type": "stat",
+        "title": "时间段输入费用 (Yuan)",
+        "gridPos": {
+          "h": 4,
+          "w": 6,
+          "x": 6,
+          "y": 6
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "dfp3flzrl70n4d"
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfp3flzrl70n4d"
+            },
+            "expr": "sum(increase(llm_cost_total{cost_type=\"input\", currency=\"Yuan\", agent=\"-\", model=~\"$model\", pool=~\"$pool\", member=~\"$member\", price_version=~\"$price_version\"}[$__range]))",
+            "legendFormat": "",
+            "refId": "A",
+            "instant": true,
+            "range": false
+          }
+        ],
+        "options": {
+          "reduceOptions": {
+            "calcs": [
+              "lastNotNull"
+            ],
+            "fields": "",
+            "values": false
+          },
+          "orientation": "auto",
+          "textMode": "auto",
+          "colorMode": "value",
+          "graphMode": "area"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "currencyCNY",
+            "decimals": 2,
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                },
+                {
+                  "color": "red",
+                  "value": 80
+                }
+              ]
+            }
+          },
+          "overrides": []
+        }
+      },
+      {
+        "type": "stat",
+        "title": "时间段输出费用 (Yuan)",
+        "gridPos": {
+          "h": 4,
+          "w": 6,
+          "x": 12,
+          "y": 6
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "dfp3flzrl70n4d"
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfp3flzrl70n4d"
+            },
+            "expr": "sum(increase(llm_cost_total{cost_type=\"output\", currency=\"Yuan\", agent=\"-\", model=~\"$model\", pool=~\"$pool\", member=~\"$member\", price_version=~\"$price_version\"}[$__range]))",
+            "legendFormat": "",
+            "refId": "A",
+            "instant": true,
+            "range": false
+          }
+        ],
+        "options": {
+          "reduceOptions": {
+            "calcs": [
+              "lastNotNull"
+            ],
+            "fields": "",
+            "values": false
+          },
+          "orientation": "auto",
+          "textMode": "auto",
+          "colorMode": "value",
+          "graphMode": "area"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "currencyCNY",
+            "decimals": 2,
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                },
+                {
+                  "color": "red",
+                  "value": 80
+                }
+              ]
+            }
+          },
+          "overrides": []
+        }
+      },
+      {
+        "type": "stat",
+        "title": "时间段缓存费用 (Yuan)",
+        "gridPos": {
+          "h": 4,
+          "w": 6,
+          "x": 18,
+          "y": 6
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "dfp3flzrl70n4d"
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfp3flzrl70n4d"
+            },
+            "expr": "sum(increase(llm_cost_total{cost_type=\"cache\", currency=\"Yuan\", agent=\"-\", model=~\"$model\", pool=~\"$pool\", member=~\"$member\", price_version=~\"$price_version\"}[$__range]))",
+            "legendFormat": "",
+            "refId": "A",
+            "instant": true,
+            "range": false
+          }
+        ],
+        "options": {
+          "reduceOptions": {
+            "calcs": [
+              "lastNotNull"
+            ],
+            "fields": "",
+            "values": false
+          },
+          "orientation": "auto",
+          "textMode": "auto",
+          "colorMode": "value",
+          "graphMode": "area"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "currencyCNY",
+            "decimals": 2,
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                },
+                {
+                  "color": "red",
+                  "value": 80
+                }
+              ]
+            }
+          },
+          "overrides": []
+        }
+      },
+      {
+        "type": "timeseries",
+        "title": "输入 Token 吞吐 (tokens/s)",
+        "gridPos": {
+          "h": 7,
+          "w": 8,
+          "x": 0,
+          "y": 10
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "dfp3flzrl70n4d"
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfp3flzrl70n4d"
+            },
+            "expr": "sum(rate(llm_prompt_tokens_total{agent=\"-\", model=~\"$model\", pool=~\"$pool\", member=~\"$member\", price_version=~\"$price_version\"}[1m]))",
+            "legendFormat": "{{model}}",
+            "refId": "A",
+            "instant": false,
+            "range": true
+          }
+        ],
+        "options": {
+          "legend": {
+            "displayMode": "table",
+            "placement": "bottom",
+            "calcs": [
+              "lastNotNull",
+              "max",
+              "mean"
+            ]
+          },
+          "tooltip": {
+            "mode": "multi",
+            "sort": "desc"
+          }
+        },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "tps",
+            "decimals": 0,
+            "custom": {
+              "drawStyle": "line",
+              "lineInterpolation": "smooth",
+              "fillOpacity": 12,
+              "stacking": {
+                "mode": "none"
+              }
+            }
+          },
+          "overrides": []
+        }
+      },
+      {
+        "type": "timeseries",
+        "title": "输出 Token 吞吐 (tokens/s)",
+        "gridPos": {
+          "h": 7,
+          "w": 8,
+          "x": 8,
+          "y": 10
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "dfp3flzrl70n4d"
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfp3flzrl70n4d"
+            },
+            "expr": "sum(rate(llm_completion_tokens_total{agent=\"-\", model=~\"$model\", pool=~\"$pool\", member=~\"$member\", price_version=~\"$price_version\"}[1m]))",
+            "legendFormat": "{{model}}",
+            "refId": "A",
+            "instant": false,
+            "range": true
+          }
+        ],
+        "options": {
+          "legend": {
+            "displayMode": "table",
+            "placement": "bottom",
+            "calcs": [
+              "lastNotNull",
+              "max",
+              "mean"
+            ]
+          },
+          "tooltip": {
+            "mode": "multi",
+            "sort": "desc"
+          }
+        },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "tps",
+            "decimals": 0,
+            "custom": {
+              "drawStyle": "line",
+              "lineInterpolation": "smooth",
+              "fillOpacity": 12,
+              "stacking": {
+                "mode": "none"
+              }
+            }
+          },
+          "overrides": []
+        }
+      },
+      {
+        "type": "timeseries",
+        "title": "总 Token 吞吐 (tokens/s)",
+        "gridPos": {
+          "h": 7,
+          "w": 8,
+          "x": 16,
+          "y": 10
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "dfp3flzrl70n4d"
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfp3flzrl70n4d"
+            },
+            "expr": "sum(rate(llm_total_tokens_total{agent=\"-\", model=~\"$model\", pool=~\"$pool\", member=~\"$member\", price_version=~\"$price_version\"}[1m]))",
+            "legendFormat": "{{model}}",
+            "refId": "A",
+            "instant": false,
+            "range": true
+          }
+        ],
+        "options": {
+          "legend": {
+            "displayMode": "table",
+            "placement": "bottom",
+            "calcs": [
+              "lastNotNull",
+              "max",
+              "mean"
+            ]
+          },
+          "tooltip": {
+            "mode": "multi",
+            "sort": "desc"
+          }
+        },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "tps",
+            "decimals": 0,
+            "custom": {
+              "drawStyle": "line",
+              "lineInterpolation": "smooth",
+              "fillOpacity": 12,
+              "stacking": {
+                "mode": "none"
+              }
+            }
+          },
+          "overrides": []
+        }
+      },
+      {
+        "type": "timeseries",
+        "title": "缓存 Token 吞吐",
+        "gridPos": {
+          "h": 7,
+          "w": 12,
+          "x": 0,
+          "y": 17
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "dfp3flzrl70n4d"
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfp3flzrl70n4d"
+            },
+            "expr": "sum(rate(llm_cache_read_tokens_total{agent=\"-\", model=~\"$model\", pool=~\"$pool\", member=~\"$member\", price_version=~\"$price_version\"}[1m]))",
+            "legendFormat": "cache_read",
+            "refId": "A",
+            "instant": false,
+            "range": true
+          }
+        ],
+        "options": {
+          "legend": {
+            "displayMode": "table",
+            "placement": "bottom",
+            "calcs": [
+              "lastNotNull",
+              "max",
+              "mean"
+            ]
+          },
+          "tooltip": {
+            "mode": "multi",
+            "sort": "desc"
+          }
+        },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "tps",
+            "decimals": 0,
+            "custom": {
+              "drawStyle": "line",
+              "lineInterpolation": "smooth",
+              "fillOpacity": 12,
+              "stacking": {
+                "mode": "none"
+              }
+            }
+          },
+          "overrides": []
+        }
+      },
+      {
+        "type": "timeseries",
+        "title": "缓存写入 Token 吞吐",
+        "gridPos": {
+          "h": 7,
+          "w": 12,
+          "x": 12,
+          "y": 17
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "dfp3flzrl70n4d"
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfp3flzrl70n4d"
+            },
+            "expr": "sum(rate(llm_cache_write_tokens_total{agent=\"-\", model=~\"$model\", pool=~\"$pool\", member=~\"$member\", price_version=~\"$price_version\"}[1m]))",
+            "legendFormat": "cache_write",
+            "refId": "A",
+            "instant": false,
+            "range": true
+          }
+        ],
+        "options": {
+          "legend": {
+            "displayMode": "table",
+            "placement": "bottom",
+            "calcs": [
+              "lastNotNull",
+              "max",
+              "mean"
+            ]
+          },
+          "tooltip": {
+            "mode": "multi",
+            "sort": "desc"
+          }
+        },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "tps",
+            "decimals": 0,
+            "custom": {
+              "drawStyle": "line",
+              "lineInterpolation": "smooth",
+              "fillOpacity": 12,
+              "stacking": {
+                "mode": "none"
+              }
+            }
+          },
+          "overrides": []
+        }
+      },
+      {
+        "type": "timeseries",
+        "title": "总费用速率 (Yuan/s)",
+        "gridPos": {
+          "h": 7,
+          "w": 8,
+          "x": 0,
+          "y": 24
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "dfp3flzrl70n4d"
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfp3flzrl70n4d"
+            },
+            "expr": "sum(rate(llm_cost_total{cost_type=\"total\", currency=\"Yuan\", agent=\"-\", model=~\"$model\", pool=~\"$pool\", member=~\"$member\", price_version=~\"$price_version\"}[1m]))",
+            "legendFormat": "{{model}}",
+            "refId": "A",
+            "instant": false,
+            "range": true
+          }
+        ],
+        "options": {
+          "legend": {
+            "displayMode": "table",
+            "placement": "bottom",
+            "calcs": [
+              "lastNotNull",
+              "max",
+              "mean"
+            ]
+          },
+          "tooltip": {
+            "mode": "multi",
+            "sort": "desc"
+          }
+        },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "currencyCNY",
+            "decimals": 4,
+            "custom": {
+              "drawStyle": "line",
+              "lineInterpolation": "smooth",
+              "fillOpacity": 12,
+              "stacking": {
+                "mode": "none"
+              }
+            }
+          },
+          "overrides": []
+        }
+      },
+      {
+        "type": "timeseries",
+        "title": "按模型费用速率 (Yuan/s)",
+        "gridPos": {
+          "h": 7,
+          "w": 8,
+          "x": 8,
+          "y": 24
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "dfp3flzrl70n4d"
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfp3flzrl70n4d"
+            },
+            "expr": "sum by (model) (rate(llm_cost_total{cost_type=\"total\", currency=\"Yuan\", agent=\"-\", model=~\"$model\", pool=~\"$pool\", member=~\"$member\", price_version=~\"$price_version\"}[1m]))",
+            "legendFormat": "{{model}}",
+            "refId": "A",
+            "instant": false,
+            "range": true
+          }
+        ],
+        "options": {
+          "legend": {
+            "displayMode": "table",
+            "placement": "bottom",
+            "calcs": [
+              "lastNotNull",
+              "max",
+              "mean"
+            ]
+          },
+          "tooltip": {
+            "mode": "multi",
+            "sort": "desc"
+          }
+        },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "currencyCNY",
+            "decimals": 4,
+            "custom": {
+              "drawStyle": "line",
+              "lineInterpolation": "smooth",
+              "fillOpacity": 12,
+              "stacking": {
+                "mode": "none"
+              }
+            }
+          },
+          "overrides": []
+        }
+      },
+      {
+        "type": "piechart",
+        "title": "时间段累计费用（按模型, Yuan）",
+        "gridPos": {
+          "h": 7,
+          "w": 8,
+          "x": 16,
+          "y": 24
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "dfp3flzrl70n4d"
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfp3flzrl70n4d"
+            },
+            "expr": "sum by (model) (increase(llm_cost_total{cost_type=\"total\", currency=\"Yuan\", agent=\"-\", model=~\"$model\", pool=~\"$pool\", member=~\"$member\", price_version=~\"$price_version\"}[$__range]))",
+            "legendFormat": "{{model}}",
+            "refId": "A",
+            "instant": true,
+            "range": false
+          }
+        ],
+        "options": {
+          "legend": {
+            "displayMode": "table",
+            "placement": "right",
+            "values": [
+              "value",
+              "percent"
+            ]
+          },
+          "pieType": "donut",
+          "reduceOptions": {
+            "calcs": [
+              "lastNotNull"
+            ],
+            "fields": "",
+            "values": false
+          }
+        },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "currencyCNY",
+            "decimals": 2
+          },
+          "overrides": []
+        }
+      },
+      {
+        "type": "timeseries",
+        "title": "输入费用速率 (Yuan/s)",
+        "gridPos": {
+          "h": 7,
+          "w": 12,
+          "x": 0,
+          "y": 31
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "dfp3flzrl70n4d"
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfp3flzrl70n4d"
+            },
+            "expr": "sum(rate(llm_cost_total{cost_type=\"input\", currency=\"Yuan\", agent=\"-\", model=~\"$model\", pool=~\"$pool\", member=~\"$member\", price_version=~\"$price_version\"}[1m]))",
+            "legendFormat": "input",
+            "refId": "A",
+            "instant": false,
+            "range": true
+          }
+        ],
+        "options": {
+          "legend": {
+            "displayMode": "table",
+            "placement": "bottom",
+            "calcs": [
+              "lastNotNull",
+              "max",
+              "mean"
+            ]
+          },
+          "tooltip": {
+            "mode": "multi",
+            "sort": "desc"
+          }
+        },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "currencyCNY",
+            "decimals": 4,
+            "custom": {
+              "drawStyle": "line",
+              "lineInterpolation": "smooth",
+              "fillOpacity": 12,
+              "stacking": {
+                "mode": "none"
+              }
+            }
+          },
+          "overrides": []
+        }
+      },
+      {
+        "type": "timeseries",
+        "title": "输出费用速率 (Yuan/s)",
+        "gridPos": {
+          "h": 7,
+          "w": 12,
+          "x": 12,
+          "y": 31
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "dfp3flzrl70n4d"
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfp3flzrl70n4d"
+            },
+            "expr": "sum(rate(llm_cost_total{cost_type=\"output\", currency=\"Yuan\", agent=\"-\", model=~\"$model\", pool=~\"$pool\", member=~\"$member\", price_version=~\"$price_version\"}[1m]))",
+            "legendFormat": "output",
+            "refId": "A",
+            "instant": false,
+            "range": true
+          }
+        ],
+        "options": {
+          "legend": {
+            "displayMode": "table",
+            "placement": "bottom",
+            "calcs": [
+              "lastNotNull",
+              "max",
+              "mean"
+            ]
+          },
+          "tooltip": {
+            "mode": "multi",
+            "sort": "desc"
+          }
+        },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "currencyCNY",
+            "decimals": 4,
+            "custom": {
+              "drawStyle": "line",
+              "lineInterpolation": "smooth",
+              "fillOpacity": 12,
+              "stacking": {
+                "mode": "none"
+              }
+            }
+          },
+          "overrides": []
+        }
+      },
+      {
+        "type": "row",
+        "title": "模型与路由 Models & Routing",
+        "gridPos": {
+          "h": 1,
+          "w": 24,
+          "x": 0,
+          "y": 38
+        },
+        "collapsed": false,
+        "panels": [],
+        "id": null
+      },
+      {
+        "type": "timeseries",
+        "title": "总 RPS",
+        "gridPos": {
+          "h": 8,
+          "w": 8,
+          "x": 0,
+          "y": 39
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "dfp3flzrl70n4d"
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfp3flzrl70n4d"
+            },
+            "expr": "sum(rate(llm_requests_total{agent=\"-\", model=~\"$model\", pool=~\"$pool\", member=~\"$member\", price_version=~\"$price_version\"}[1m]))",
+            "legendFormat": "{{model}}",
+            "refId": "A",
+            "instant": false,
+            "range": true
+          }
+        ],
+        "options": {
+          "legend": {
+            "displayMode": "table",
+            "placement": "bottom",
+            "calcs": [
+              "lastNotNull",
+              "max",
+              "mean"
+            ]
+          },
+          "tooltip": {
+            "mode": "multi",
+            "sort": "desc"
+          }
+        },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "reqps",
+            "decimals": 0,
+            "custom": {
+              "drawStyle": "line",
+              "lineInterpolation": "smooth",
+              "fillOpacity": 12,
+              "stacking": {
+                "mode": "none"
+              }
+            }
+          },
+          "overrides": []
+        }
+      },
+      {
+        "type": "timeseries",
+        "title": "按模型 RPS",
+        "gridPos": {
+          "h": 8,
+          "w": 8,
+          "x": 8,
+          "y": 39
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "dfp3flzrl70n4d"
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfp3flzrl70n4d"
+            },
+            "expr": "sum by (model) (rate(llm_requests_total{agent=\"-\", model=~\"$model\", pool=~\"$pool\", member=~\"$member\", price_version=~\"$price_version\"}[1m]))",
+            "legendFormat": "{{model}}",
+            "refId": "A",
+            "instant": false,
+            "range": true
+          }
+        ],
+        "options": {
+          "legend": {
+            "displayMode": "table",
+            "placement": "bottom",
+            "calcs": [
+              "lastNotNull",
+              "max",
+              "mean"
+            ]
+          },
+          "tooltip": {
+            "mode": "multi",
+            "sort": "desc"
+          }
+        },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "reqps",
+            "decimals": 0,
+            "custom": {
+              "drawStyle": "line",
+              "lineInterpolation": "smooth",
+              "fillOpacity": 12,
+              "stacking": {
+                "mode": "none"
+              }
+            }
+          },
+          "overrides": []
+        }
+      },
+      {
+        "type": "timeseries",
+        "title": "按 Pool RPS",
+        "gridPos": {
+          "h": 8,
+          "w": 8,
+          "x": 16,
+          "y": 39
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "dfp3flzrl70n4d"
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfp3flzrl70n4d"
+            },
+            "expr": "sum by (pool) (rate(llm_requests_total{agent=\"-\", model=~\"$model\", pool=~\"$pool\", member=~\"$member\", price_version=~\"$price_version\"}[1m]))",
+            "legendFormat": "{{pool}}",
+            "refId": "A",
+            "instant": false,
+            "range": true
+          }
+        ],
+        "options": {
+          "legend": {
+            "displayMode": "table",
+            "placement": "bottom",
+            "calcs": [
+              "lastNotNull",
+              "max",
+              "mean"
+            ]
+          },
+          "tooltip": {
+            "mode": "multi",
+            "sort": "desc"
+          }
+        },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "reqps",
+            "decimals": 0,
+            "custom": {
+              "drawStyle": "line",
+              "lineInterpolation": "smooth",
+              "fillOpacity": 12,
+              "stacking": {
+                "mode": "normal"
+              }
+            }
+          },
+          "overrides": []
+        }
+      },
+      {
+        "type": "timeseries",
+        "title": "按 Member RPS",
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 47
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "dfp3flzrl70n4d"
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfp3flzrl70n4d"
+            },
+            "expr": "sum by (member) (rate(llm_requests_total{agent=\"-\", model=~\"$model\", pool=~\"$pool\", member=~\"$member\", price_version=~\"$price_version\"}[1m]))",
+            "legendFormat": "{{member}}",
+            "refId": "A",
+            "instant": false,
+            "range": true
+          }
+        ],
+        "options": {
+          "legend": {
+            "displayMode": "table",
+            "placement": "bottom",
+            "calcs": [
+              "lastNotNull",
+              "max",
+              "mean"
+            ]
+          },
+          "tooltip": {
+            "mode": "multi",
+            "sort": "desc"
+          }
+        },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "reqps",
+            "decimals": 0,
+            "custom": {
+              "drawStyle": "line",
+              "lineInterpolation": "smooth",
+              "fillOpacity": 12,
+              "stacking": {
+                "mode": "none"
+              }
+            }
+          },
+          "overrides": []
+        }
+      },
+      {
+        "type": "piechart",
+        "title": "HTTP 状态码分布",
+        "gridPos": {
+          "h": 8,
+          "w": 6,
+          "x": 12,
+          "y": 47
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "dfp3flzrl70n4d"
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfp3flzrl70n4d"
+            },
+            "expr": "sum by (status_class) (rate(llm_requests_total{agent=\"-\", model=~\"$model\", pool=~\"$pool\", member=~\"$member\", price_version=~\"$price_version\"}[5m]))",
+            "legendFormat": "{{status_class}}",
+            "refId": "A",
+            "instant": true,
+            "range": false
+          }
+        ],
+        "options": {
+          "legend": {
+            "displayMode": "table",
+            "placement": "right",
+            "values": [
+              "value",
+              "percent"
+            ]
+          },
+          "pieType": "donut",
+          "reduceOptions": {
+            "calcs": [
+              "lastNotNull"
+            ],
+            "fields": "",
+            "values": false
+          }
+        },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short",
+            "decimals": 0
+          },
+          "overrides": []
+        }
+      },
+      {
+        "type": "piechart",
+        "title": "请求分布（按 Pool）",
+        "gridPos": {
+          "h": 8,
+          "w": 6,
+          "x": 18,
+          "y": 47
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "dfp3flzrl70n4d"
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfp3flzrl70n4d"
+            },
+            "expr": "sum by (pool) (rate(llm_requests_total{agent=\"-\", model=~\"$model\", pool=~\"$pool\", member=~\"$member\", price_version=~\"$price_version\"}[5m]))",
+            "legendFormat": "{{pool}}",
+            "refId": "A",
+            "instant": true,
+            "range": false
+          }
+        ],
+        "options": {
+          "legend": {
+            "displayMode": "table",
+            "placement": "right",
+            "values": [
+              "value",
+              "percent"
+            ]
+          },
+          "pieType": "donut",
+          "reduceOptions": {
+            "calcs": [
+              "lastNotNull"
+            ],
+            "fields": "",
+            "values": false
+          }
+        },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short",
+            "decimals": 0
+          },
+          "overrides": []
+        }
+      },
+      {
+        "type": "timeseries",
+        "title": "按模型错误率 (%)",
+        "gridPos": {
+          "h": 8,
+          "w": 24,
+          "x": 0,
+          "y": 55
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "dfp3flzrl70n4d"
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfp3flzrl70n4d"
+            },
+            "expr": "sum by (model) (rate(llm_requests_total{agent=\"-\", model=~\"$model\", pool=~\"$pool\", member=~\"$member\", price_version=~\"$price_version\", status_class=~\"4xx|5xx\"}[5m])) / sum by (model) (rate(llm_requests_total{agent=\"-\", model=~\"$model\", pool=~\"$pool\", member=~\"$member\", price_version=~\"$price_version\"}[5m])) * 100",
+            "legendFormat": "{{model}}",
+            "refId": "A",
+            "instant": false,
+            "range": true
+          }
+        ],
+        "options": {
+          "legend": {
+            "displayMode": "table",
+            "placement": "bottom",
+            "calcs": [
+              "lastNotNull",
+              "max",
+              "mean"
+            ]
+          },
+          "tooltip": {
+            "mode": "multi",
+            "sort": "desc"
+          }
+        },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percent",
+            "decimals": 2,
+            "custom": {
+              "drawStyle": "line",
+              "lineInterpolation": "smooth",
+              "fillOpacity": 12,
+              "stacking": {
+                "mode": "none"
+              }
+            }
+          },
+          "overrides": []
+        }
+      },
+      {
+        "type": "row",
+        "title": "延迟 Latency — E2E / TTFB / TTFT",
+        "gridPos": {
+          "h": 1,
+          "w": 24,
+          "x": 0,
+          "y": 63
+        },
+        "collapsed": false,
+        "panels": [],
+        "id": null
+      },
+      {
+        "type": "timeseries",
+        "title": "网关 E2E 延迟 P95 (ms)",
+        "gridPos": {
+          "h": 8,
+          "w": 8,
+          "x": 0,
+          "y": 64
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "dfp3flzrl70n4d"
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfp3flzrl70n4d"
+            },
+            "expr": "histogram_quantile(0.95, sum by (le) (rate(llm_latency_ms_bucket{agent=\"-\", model=~\"$model\", pool=~\"$pool\", member=~\"$member\", price_version=~\"$price_version\"}[5m])))",
+            "legendFormat": "p95",
+            "refId": "A",
+            "instant": false,
+            "range": true
+          }
+        ],
+        "options": {
+          "legend": {
+            "displayMode": "table",
+            "placement": "bottom",
+            "calcs": [
+              "lastNotNull",
+              "max",
+              "mean"
+            ]
+          },
+          "tooltip": {
+            "mode": "multi",
+            "sort": "desc"
+          }
+        },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "ms",
+            "decimals": 0,
+            "custom": {
+              "drawStyle": "line",
+              "lineInterpolation": "smooth",
+              "fillOpacity": 12,
+              "stacking": {
+                "mode": "none"
+              }
+            }
+          },
+          "overrides": []
+        }
+      },
+      {
+        "type": "timeseries",
+        "title": "E2E P95 按模型",
+        "gridPos": {
+          "h": 8,
+          "w": 8,
+          "x": 8,
+          "y": 64
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "dfp3flzrl70n4d"
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfp3flzrl70n4d"
+            },
+            "expr": "histogram_quantile(0.95, sum by (model, le) (rate(llm_latency_ms_bucket{agent=\"-\", model=~\"$model\", pool=~\"$pool\", member=~\"$member\", price_version=~\"$price_version\"}[5m])))",
+            "legendFormat": "{{model}}",
+            "refId": "A",
+            "instant": false,
+            "range": true
+          }
+        ],
+        "options": {
+          "legend": {
+            "displayMode": "table",
+            "placement": "bottom",
+            "calcs": [
+              "lastNotNull",
+              "max",
+              "mean"
+            ]
+          },
+          "tooltip": {
+            "mode": "multi",
+            "sort": "desc"
+          }
+        },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "ms",
+            "decimals": 0,
+            "custom": {
+              "drawStyle": "line",
+              "lineInterpolation": "smooth",
+              "fillOpacity": 12,
+              "stacking": {
+                "mode": "none"
+              }
+            }
+          },
+          "overrides": []
+        }
+      },
+      {
+        "type": "timeseries",
+        "title": "上游 TTFB P95 — 非流式 (ms)",
+        "gridPos": {
+          "h": 8,
+          "w": 8,
+          "x": 16,
+          "y": 64
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "dfp3flzrl70n4d"
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfp3flzrl70n4d"
+            },
+            "expr": "histogram_quantile(0.95, sum by (le) (rate(llm_upstream_ttfb_ms_bucket{agent=\"-\", model=~\"$model\", pool=~\"$pool\", member=~\"$member\", price_version=~\"$price_version\"}[5m])))",
+            "legendFormat": "p95",
+            "refId": "A",
+            "instant": false,
+            "range": true
+          }
+        ],
+        "options": {
+          "legend": {
+            "displayMode": "table",
+            "placement": "bottom",
+            "calcs": [
+              "lastNotNull",
+              "max",
+              "mean"
+            ]
+          },
+          "tooltip": {
+            "mode": "multi",
+            "sort": "desc"
+          }
+        },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "ms",
+            "decimals": 0,
+            "custom": {
+              "drawStyle": "line",
+              "lineInterpolation": "smooth",
+              "fillOpacity": 12,
+              "stacking": {
+                "mode": "none"
+              }
+            }
+          },
+          "overrides": []
+        }
+      },
+      {
+        "type": "timeseries",
+        "title": "TTFB P95 按模型",
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 72
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "dfp3flzrl70n4d"
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfp3flzrl70n4d"
+            },
+            "expr": "histogram_quantile(0.95, sum by (model, le) (rate(llm_upstream_ttfb_ms_bucket{agent=\"-\", model=~\"$model\", pool=~\"$pool\", member=~\"$member\", price_version=~\"$price_version\"}[5m])))",
+            "legendFormat": "{{model}}",
+            "refId": "A",
+            "instant": false,
+            "range": true
+          }
+        ],
+        "options": {
+          "legend": {
+            "displayMode": "table",
+            "placement": "bottom",
+            "calcs": [
+              "lastNotNull",
+              "max",
+              "mean"
+            ]
+          },
+          "tooltip": {
+            "mode": "multi",
+            "sort": "desc"
+          }
+        },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "ms",
+            "decimals": 0,
+            "custom": {
+              "drawStyle": "line",
+              "lineInterpolation": "smooth",
+              "fillOpacity": 12,
+              "stacking": {
+                "mode": "none"
+              }
+            }
+          },
+          "overrides": []
+        }
+      },
+      {
+        "type": "timeseries",
+        "title": "TTFT P95 — 流式 SSE (ms)",
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 72
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "dfp3flzrl70n4d"
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfp3flzrl70n4d"
+            },
+            "expr": "histogram_quantile(0.95, sum by (le) (rate(llm_ttft_ms_bucket{agent=\"-\", model=~\"$model\", pool=~\"$pool\", member=~\"$member\", price_version=~\"$price_version\"}[5m])))",
+            "legendFormat": "p95",
+            "refId": "A",
+            "instant": false,
+            "range": true
+          }
+        ],
+        "options": {
+          "legend": {
+            "displayMode": "table",
+            "placement": "bottom",
+            "calcs": [
+              "lastNotNull",
+              "max",
+              "mean"
+            ]
+          },
+          "tooltip": {
+            "mode": "multi",
+            "sort": "desc"
+          }
+        },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "ms",
+            "decimals": 0,
+            "custom": {
+              "drawStyle": "line",
+              "lineInterpolation": "smooth",
+              "fillOpacity": 12,
+              "stacking": {
+                "mode": "none"
+              }
+            }
+          },
+          "overrides": []
+        }
+      },
+      {
+        "type": "timeseries",
+        "title": "TTFT P95 按模型",
+        "gridPos": {
+          "h": 8,
+          "w": 24,
+          "x": 0,
+          "y": 80
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "dfp3flzrl70n4d"
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfp3flzrl70n4d"
+            },
+            "expr": "histogram_quantile(0.95, sum by (model, le) (rate(llm_ttft_ms_bucket{agent=\"-\", model=~\"$model\", pool=~\"$pool\", member=~\"$member\", price_version=~\"$price_version\"}[5m])))",
+            "legendFormat": "{{model}}",
+            "refId": "A",
+            "instant": false,
+            "range": true
+          }
+        ],
+        "options": {
+          "legend": {
+            "displayMode": "table",
+            "placement": "bottom",
+            "calcs": [
+              "lastNotNull",
+              "max",
+              "mean"
+            ]
+          },
+          "tooltip": {
+            "mode": "multi",
+            "sort": "desc"
+          }
+        },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "ms",
+            "decimals": 0,
+            "custom": {
+              "drawStyle": "line",
+              "lineInterpolation": "smooth",
+              "fillOpacity": 12,
+              "stacking": {
+                "mode": "none"
+              }
+            }
+          },
+          "overrides": []
+        }
+      },
+      {
+        "type": "row",
+        "title": "Retry / Fallback / Usage 解析",
+        "gridPos": {
+          "h": 1,
+          "w": 24,
+          "x": 0,
+          "y": 88
+        },
+        "collapsed": false,
+        "panels": [],
+        "id": null
+      },
+      {
+        "type": "timeseries",
+        "title": "Retry RPS 按模型",
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 89
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "dfp3flzrl70n4d"
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfp3flzrl70n4d"
+            },
+            "expr": "sum by (model) (rate(llm_retry_requests_total{agent=\"-\", model=~\"$model\", pool=~\"$pool\", member=~\"$member\", price_version=~\"$price_version\"}[5m]))",
+            "legendFormat": "{{model}}",
+            "refId": "A",
+            "instant": false,
+            "range": true
+          }
+        ],
+        "options": {
+          "legend": {
+            "displayMode": "table",
+            "placement": "bottom",
+            "calcs": [
+              "lastNotNull",
+              "max",
+              "mean"
+            ]
+          },
+          "tooltip": {
+            "mode": "multi",
+            "sort": "desc"
+          }
+        },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "reqps",
+            "decimals": 0,
+            "custom": {
+              "drawStyle": "line",
+              "lineInterpolation": "smooth",
+              "fillOpacity": 12,
+              "stacking": {
+                "mode": "none"
+              }
+            }
+          },
+          "overrides": []
+        }
+      },
+      {
+        "type": "timeseries",
+        "title": "Fallback RPS 按模型",
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 89
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "dfp3flzrl70n4d"
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfp3flzrl70n4d"
+            },
+            "expr": "sum by (model) (rate(llm_fallback_requests_total{agent=\"-\", model=~\"$model\", pool=~\"$pool\", member=~\"$member\", price_version=~\"$price_version\"}[5m]))",
+            "legendFormat": "{{model}}",
+            "refId": "A",
+            "instant": false,
+            "range": true
+          }
+        ],
+        "options": {
+          "legend": {
+            "displayMode": "table",
+            "placement": "bottom",
+            "calcs": [
+              "lastNotNull",
+              "max",
+              "mean"
+            ]
+          },
+          "tooltip": {
+            "mode": "multi",
+            "sort": "desc"
+          }
+        },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "reqps",
+            "decimals": 0,
+            "custom": {
+              "drawStyle": "line",
+              "lineInterpolation": "smooth",
+              "fillOpacity": 12,
+              "stacking": {
+                "mode": "none"
+              }
+            }
+          },
+          "overrides": []
+        }
+      },
+      {
+        "type": "gauge",
+        "title": "Usage 解析失败率",
+        "gridPos": {
+          "h": 4,
+          "w": 6,
+          "x": 0,
+          "y": 97
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "dfp3flzrl70n4d"
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfp3flzrl70n4d"
+            },
+            "expr": "sum(rate(llm_usage_parse_failures_total{agent=\"-\", model=~\"$model\", pool=~\"$pool\", member=~\"$member\", price_version=~\"$price_version\"}[5m])) / sum(rate(llm_requests_total{agent=\"-\", model=~\"$model\", pool=~\"$pool\", member=~\"$member\", price_version=~\"$price_version\"}[5m])) * 100",
+            "legendFormat": "",
+            "refId": "A",
+            "instant": true,
+            "range": false
+          }
+        ],
+        "options": {
+          "reduceOptions": {
+            "calcs": [
+              "lastNotNull"
+            ],
+            "fields": "",
+            "values": false
+          },
+          "orientation": "auto",
+          "showThresholdLabels": false,
+          "showThresholdMarkers": true
+        },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percent",
+            "decimals": 2,
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                },
+                {
+                  "color": "yellow",
+                  "value": 5
+                },
+                {
+                  "color": "red",
+                  "value": 15
+                }
+              ]
+            },
+            "min": 0,
+            "max": 100
+          },
+          "overrides": []
+        }
+      },
+      {
+        "type": "stat",
+        "title": "Usage 解析失败速率",
+        "gridPos": {
+          "h": 4,
+          "w": 6,
+          "x": 6,
+          "y": 97
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "dfp3flzrl70n4d"
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfp3flzrl70n4d"
+            },
+            "expr": "sum(rate(llm_usage_parse_failures_total{agent=\"-\", model=~\"$model\", pool=~\"$pool\", member=~\"$member\", price_version=~\"$price_version\"}[5m]))",
+            "legendFormat": "",
+            "refId": "A",
+            "instant": true,
+            "range": false
+          }
+        ],
+        "options": {
+          "reduceOptions": {
+            "calcs": [
+              "lastNotNull"
+            ],
+            "fields": "",
+            "values": false
+          },
+          "orientation": "auto",
+          "textMode": "auto",
+          "colorMode": "value",
+          "graphMode": "area"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "ops",
+            "decimals": 0,
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                },
+                {
+                  "color": "red",
+                  "value": 80
+                }
+              ]
+            }
+          },
+          "overrides": []
+        }
+      },
+      {
+        "type": "bargauge",
+        "title": "Retry 次数（时间范围）",
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 97
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "dfp3flzrl70n4d"
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfp3flzrl70n4d"
+            },
+            "expr": "sum by (model) (increase(llm_retry_requests_total{agent=\"-\", model=~\"$model\", pool=~\"$pool\", member=~\"$member\", price_version=~\"$price_version\"}[$__range]))",
+            "legendFormat": "{{model}}",
+            "refId": "A",
+            "instant": true,
+            "range": false
+          }
+        ],
+        "options": {
+          "displayMode": "gradient",
+          "orientation": "horizontal",
+          "reduceOptions": {
+            "calcs": [
+              "lastNotNull"
+            ],
+            "fields": "",
+            "values": false
+          },
+          "showUnfilled": true
+        },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short",
+            "decimals": 0
+          },
+          "overrides": []
+        }
+      },
+      {
+        "type": "row",
+        "title": "Adapter 健康",
+        "gridPos": {
+          "h": 1,
+          "w": 24,
+          "x": 0,
+          "y": 105
+        },
+        "collapsed": false,
+        "panels": [],
+        "id": null
+      },
+      {
+        "type": "timeseries",
+        "title": "解析失败速率（按原因）",
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 106
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "dfp3flzrl70n4d"
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfp3flzrl70n4d"
+            },
+            "expr": "sum by (reason) (rate(adapter_parse_failures_total[5m]))",
+            "legendFormat": "{{reason}}",
+            "refId": "A",
+            "instant": false,
+            "range": true
+          }
+        ],
+        "options": {
+          "legend": {
+            "displayMode": "table",
+            "placement": "bottom",
+            "calcs": [
+              "lastNotNull",
+              "max",
+              "mean"
+            ]
+          },
+          "tooltip": {
+            "mode": "multi",
+            "sort": "desc"
+          }
+        },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "reqps",
+            "decimals": 0,
+            "custom": {
+              "drawStyle": "line",
+              "lineInterpolation": "smooth",
+              "fillOpacity": 12,
+              "stacking": {
+                "mode": "none"
+              }
+            }
+          },
+          "overrides": []
+        }
+      },
+      {
+        "type": "timeseries",
+        "title": "重复 request_id 丢弃速率",
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 106
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "dfp3flzrl70n4d"
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfp3flzrl70n4d"
+            },
+            "expr": "rate(adapter_duplicate_drops_total[5m])",
+            "legendFormat": "drops",
+            "refId": "A",
+            "instant": false,
+            "range": true
+          }
+        ],
+        "options": {
+          "legend": {
+            "displayMode": "table",
+            "placement": "bottom",
+            "calcs": [
+              "lastNotNull",
+              "max",
+              "mean"
+            ]
+          },
+          "tooltip": {
+            "mode": "multi",
+            "sort": "desc"
+          }
+        },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "reqps",
+            "decimals": 0,
+            "custom": {
+              "drawStyle": "line",
+              "lineInterpolation": "smooth",
+              "fillOpacity": 12,
+              "stacking": {
+                "mode": "none"
+              }
+            }
+          },
+          "overrides": []
+        }
+      }
+    ]
+  },
+  "folderId": 0,
+  "overwrite": true
+}
