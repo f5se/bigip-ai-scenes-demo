@@ -4,8 +4,12 @@ import { useGrafanaConfig } from "@/utils/grafana";
 import {
   fetchMcpInsightConfig,
   fetchMcpInsightHealth,
+  fetchMcpTrafficStatus,
+  startMcpTrafficSim,
+  stopMcpTrafficSim,
   type McpInsightConfig,
   type McpStreamEvent,
+  type McpTrafficStatus,
 } from "@/api/client";
 import { McpMessageTimeline } from "./McpMessageTimeline";
 
@@ -30,6 +34,13 @@ export function McpInsightDemo() {
   const [sessionComplete, setSessionComplete] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [health, setHealth] = useState<string | null>(null);
+  const [durationMinutes, setDurationMinutes] = useState(10);
+  const [trafficStatus, setTrafficStatus] = useState<McpTrafficStatus | null>(null);
+  const [trafficLoading, setTrafficLoading] = useState(false);
+  const [trafficError, setTrafficError] = useState<string | null>(null);
+
+  const trafficRunning = trafficStatus?.running ?? false;
+  const busy = running || trafficRunning;
 
   useEffect(() => {
     fetchMcpInsightConfig()
@@ -55,6 +66,63 @@ export function McpInsightDemo() {
 
   useEffect(() => {
     void checkHealth();
+  }, [checkHealth]);
+
+  const refreshTrafficStatus = useCallback(async () => {
+    try {
+      const s = await fetchMcpTrafficStatus();
+      setTrafficStatus(s);
+    } catch {
+      setTrafficStatus((prev) => prev ?? null);
+    }
+  }, []);
+
+  useEffect(() => {
+    void refreshTrafficStatus();
+  }, [refreshTrafficStatus]);
+
+  useEffect(() => {
+    const ms = trafficRunning ? 1000 : 5000;
+    const id = window.setInterval(() => void refreshTrafficStatus(), ms);
+    return () => window.clearInterval(id);
+  }, [trafficRunning, refreshTrafficStatus]);
+
+  const startContinuous = useCallback(async () => {
+    setTrafficLoading(true);
+    setTrafficError(null);
+    const runnerEmitAudit = config?.emit_audit_without_f5 === true;
+    try {
+      const s = await startMcpTrafficSim(
+        { host, port },
+        durationMinutes,
+        runnerEmitAudit ? true : undefined
+      );
+      setTrafficStatus(s);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      setTrafficError(
+        msg === "mcp_traffic_sim_already_running"
+          ? t("scenes.mcpToolsInsight.continuous.alreadyRunning")
+          : msg
+      );
+      await refreshTrafficStatus();
+    } finally {
+      setTrafficLoading(false);
+    }
+  }, [config, host, port, durationMinutes, refreshTrafficStatus, t]);
+
+  const stopContinuous = useCallback(async () => {
+    setTrafficLoading(true);
+    setTrafficError(null);
+    try {
+      const s = await stopMcpTrafficSim();
+      setTrafficStatus(s);
+      void checkHealth();
+    } catch (e) {
+      setTrafficError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setTrafficLoading(false);
+    }
   }, [checkHealth]);
 
   const runStream = useCallback(
@@ -185,7 +253,7 @@ export function McpInsightDemo() {
             className="mt-1 w-full rounded border border-slate-600 bg-slate-900 px-2 py-1.5 text-sm"
             value={agent}
             onChange={(e) => setAgent(e.target.value)}
-            disabled={running}
+            disabled={busy}
           >
             {((config?.agent_options as { id: string; label: string }[]) ?? []).map((a) => (
               <option key={a.id} value={a.id}>
@@ -200,7 +268,7 @@ export function McpInsightDemo() {
             className="mt-1 w-full rounded border border-slate-600 bg-slate-900 px-2 py-1.5 text-sm"
             value={tenant}
             onChange={(e) => setTenant(e.target.value)}
-            disabled={running}
+            disabled={busy}
           >
             {((config?.tenant_options as { id: string; label: string }[]) ?? []).map((a) => (
               <option key={a.id} value={a.id}>
@@ -215,7 +283,7 @@ export function McpInsightDemo() {
             className="mt-1 w-full rounded border border-slate-600 bg-slate-900 px-2 py-1.5 text-sm"
             value={host}
             onChange={(e) => setHost(e.target.value)}
-            disabled={running}
+            disabled={busy}
           />
         </label>
         <label className="block text-xs text-slate-400">
@@ -225,7 +293,7 @@ export function McpInsightDemo() {
             className="mt-1 w-full rounded border border-slate-600 bg-slate-900 px-2 py-1.5 text-sm"
             value={port}
             onChange={(e) => setPort(Number(e.target.value))}
-            disabled={running}
+            disabled={busy}
           />
         </label>
       </div>
@@ -235,7 +303,7 @@ export function McpInsightDemo() {
       <div className="flex flex-wrap gap-2">
         <button
           type="button"
-          disabled={running || !config}
+          disabled={busy || !config}
           onClick={() => void runStream("full")}
           className="rounded-md bg-cyan-600 px-4 py-2 text-sm font-medium text-white hover:bg-cyan-500 disabled:opacity-50"
         >
@@ -251,6 +319,76 @@ export function McpInsightDemo() {
         </a>
       </div>
 
+      <div className="rounded-lg border border-cyan-700/40 bg-slate-950/60 p-4 space-y-3">
+        <div>
+          <p className="text-sm font-medium text-cyan-300">
+            {t("scenes.mcpToolsInsight.continuous.title", { defaultValue: "持续 Grafana 数据模拟" })}
+          </p>
+          <p className="mt-1 text-xs text-slate-400">
+            {t("scenes.mcpToolsInsight.continuous.subtitle", {
+              defaultValue:
+                "在设定时长内自动轮询不同 Tenant、Agent 与 MCP 场景（工具调用、Sampling、Elicitation 等），持续向 Adapter 投递审计事件以填充 Grafana 看板。",
+            })}
+          </p>
+        </div>
+        <div className="flex flex-wrap items-end gap-3">
+          <label className="block min-w-[120px] text-xs text-slate-400">
+            {t("scenes.mcpToolsInsight.continuous.durationMinutes", { defaultValue: "模拟时长（分钟）" })}
+            <input
+              type="number"
+              min={1}
+              max={180}
+              className="mt-1 w-full rounded border border-slate-600 bg-slate-900 px-2 py-1.5 text-sm"
+              value={durationMinutes}
+              onChange={(e) => setDurationMinutes(parseInt(e.target.value, 10) || 10)}
+              disabled={busy}
+            />
+          </label>
+          {trafficRunning ? (
+            <button
+              type="button"
+              onClick={() => void stopContinuous()}
+              disabled={trafficLoading}
+              className="rounded-md border border-rose-500/60 bg-rose-500/10 px-4 py-2 text-sm font-medium text-rose-300 hover:bg-rose-500/20 disabled:opacity-50"
+            >
+              {t("scenes.mcpToolsInsight.continuous.stop", { defaultValue: "停止模拟" })}
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => void startContinuous()}
+              disabled={busy || !config || trafficLoading}
+              className="rounded-md bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-500 disabled:opacity-50"
+            >
+              {t("scenes.mcpToolsInsight.continuous.start", { defaultValue: "▶ 启动持续模拟" })}
+            </button>
+          )}
+        </div>
+        {trafficRunning && trafficStatus?.stats ? (
+          <div className="grid grid-cols-2 gap-2 text-xs text-slate-400 sm:grid-cols-4">
+            <span>
+              {t("scenes.mcpToolsInsight.continuous.sessions", { defaultValue: "已完成会话" })}:{" "}
+              {trafficStatus.stats.sessions}
+            </span>
+            <span>
+              {t("scenes.mcpToolsInsight.continuous.toolCalls", { defaultValue: "工具调用" })}:{" "}
+              {trafficStatus.stats.tool_calls}
+            </span>
+            <span>
+              {t("scenes.mcpToolsInsight.continuous.remaining", { defaultValue: "剩余" })}:{" "}
+              {trafficStatus.remaining_seconds}s
+            </span>
+            {trafficStatus.stats.last_agent ? (
+              <span className="truncate font-mono">
+                {trafficStatus.stats.last_agent} / {trafficStatus.stats.last_tenant} ·{" "}
+                {trafficStatus.stats.last_scenario}
+              </span>
+            ) : null}
+          </div>
+        ) : null}
+        {trafficError ? <p className="text-xs text-rose-400">{trafficError}</p> : null}
+      </div>
+
       <div className="flex flex-wrap gap-2">
         {scenarios
           .filter((s) => s.id !== "full")
@@ -258,7 +396,7 @@ export function McpInsightDemo() {
             <button
               key={s.id}
               type="button"
-              disabled={running || !config}
+              disabled={busy || !config}
               onClick={() => void runStream(s.id)}
               className={`rounded border px-2 py-1 text-xs ${
                 scenario === s.id

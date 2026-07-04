@@ -12,6 +12,7 @@ from pydantic import BaseModel, Field
 
 from backend.app.config import MCP_INSIGHT_DEMO
 from backend.app.mcp_client_runner import MCPClientRunner
+from backend.app.mcp_traffic_sim import mcp_traffic_simulator
 from backend.app.proxy import validate_target
 
 router = APIRouter(tags=["mcp-insight"])
@@ -28,6 +29,14 @@ class McpRunRequest(BaseModel):
     agent: str = "monitoring-agent"
     tenant: str = "ops-team"
     scenario: str = "full"
+    emit_audit: bool | None = None
+    adapter_url: str | None = None
+
+
+class McpTrafficStartRequest(BaseModel):
+    host: str = Field(default="127.0.0.1")
+    port: int = Field(default=9001, ge=1, le=65535)
+    duration_minutes: int = Field(default=10, ge=1, le=180)
     emit_audit: bool | None = None
     adapter_url: str | None = None
 
@@ -204,3 +213,34 @@ async def mcp_insight_run_stream(
             await task
 
     return StreamingResponse(event_generator(), media_type="text/event-stream")
+
+
+@router.get("/api/demo/mcp-insight/traffic/status")
+async def mcp_insight_traffic_status() -> dict[str, Any]:
+    return mcp_traffic_simulator.status()
+
+
+@router.post("/api/demo/mcp-insight/traffic/start")
+async def mcp_insight_traffic_start(req: McpTrafficStartRequest) -> dict[str, Any]:
+    try:
+        validate_target(req.host, req.port)
+    except HTTPException:
+        raise
+    emit_audit = _resolve_emit_audit(req.emit_audit)
+    try:
+        return await mcp_traffic_simulator.start(
+            req.host,
+            req.port,
+            req.duration_minutes,
+            emit_audit=emit_audit,
+            adapter_url=_adapter_url(req.adapter_url) if emit_audit else None,
+        )
+    except HTTPException as exc:
+        if exc.status_code == 409:
+            raise HTTPException(status_code=409, detail=exc.detail) from exc
+        raise
+
+
+@router.post("/api/demo/mcp-insight/traffic/stop")
+async def mcp_insight_traffic_stop() -> dict[str, Any]:
+    return await mcp_traffic_simulator.stop()

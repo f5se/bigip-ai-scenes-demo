@@ -390,7 +390,18 @@
         "Demo the collection path from F5 gateway through Adapter to Grafana",
         "Dashboards for call volume, success rate, and latency by tool and agent",
         "Placeholder for cross-linking with token usage and model metrics dashboards"
-      ]
+      ],
+      "continuous": {
+        "title": "Continuous Grafana data simulation",
+        "subtitle": "For the configured duration, automatically rotates tenants, agents, and MCP scenarios (tool calls, sampling, elicitation, etc.) to feed Adapter audit events and populate Grafana dashboards.",
+        "durationMinutes": "Duration (minutes)",
+        "start": "▶ Start continuous sim",
+        "stop": "Stop simulation",
+        "sessions": "Sessions completed",
+        "toolCalls": "Tool calls",
+        "remaining": "Remaining",
+        "alreadyRunning": "Continuous simulation is already running — stop it first"
+      }
     },
     "mcpToolsControl": {
       "title": "MCP Tools Call Control",

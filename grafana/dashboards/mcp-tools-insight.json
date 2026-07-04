@@ -1,0 +1,1798 @@
+{
+  "dashboard": {
+    "id": null,
+    "uid": "mcp-tools-insight",
+    "title": "MCP Tools 调用洞察",
+    "description": "F5 MCP Tools Insight — 工具调用、Agent/Tenant、Sampling/Elicitation、会话与错误率",
+    "tags": [
+      "mcp",
+      "f5",
+      "insight",
+      "tools"
+    ],
+    "timezone": "browser",
+    "schemaVersion": 39,
+    "version": 1,
+    "refresh": "10s",
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    },
+    "graphTooltip": 1,
+    "links": [
+      {
+        "title": "F5 BIG-IP LLM",
+        "url": "/d/admzgfh/f5-big-ip-llm",
+        "type": "link",
+        "icon": "external link"
+      },
+      {
+        "title": "LLM Subagent",
+        "url": "/d/admfw6v/llm-subagent",
+        "type": "link",
+        "icon": "external link"
+      }
+    ],
+    "templating": {
+      "list": [
+        {
+          "name": "datasource",
+          "type": "datasource",
+          "query": "prometheus",
+          "hide": 2
+        },
+        {
+          "name": "tenant_id",
+          "type": "query",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "dfp3flzrl70n4d"
+          },
+          "query": {
+            "query": "label_values(mcp_tool_calls_total, tenant_id)",
+            "refId": "A"
+          },
+          "includeAll": true,
+          "allValue": ".*",
+          "multi": true,
+          "label": "Tenant"
+        },
+        {
+          "name": "agent_identity",
+          "type": "query",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "dfp3flzrl70n4d"
+          },
+          "query": {
+            "query": "label_values(mcp_tool_calls_total{tenant_id=~\"$tenant_id\"}, agent_identity)",
+            "refId": "A"
+          },
+          "includeAll": true,
+          "allValue": ".*",
+          "multi": true,
+          "label": "Agent"
+        },
+        {
+          "name": "tool_name",
+          "type": "query",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "dfp3flzrl70n4d"
+          },
+          "query": {
+            "query": "label_values(mcp_tool_calls_total{tenant_id=~\"$tenant_id\", agent_identity=~\"$agent_identity\"}, tool_name)",
+            "refId": "A"
+          },
+          "includeAll": true,
+          "allValue": ".*",
+          "multi": true,
+          "label": "Tool"
+        }
+      ]
+    },
+    "annotations": {
+      "list": []
+    },
+    "panels": [
+      {
+        "type": "row",
+        "title": "总览 Overview",
+        "gridPos": {
+          "h": 1,
+          "w": 24,
+          "x": 0,
+          "y": 0
+        },
+        "collapsed": false,
+        "panels": [],
+        "id": null
+      },
+      {
+        "type": "stat",
+        "title": "工具调用总数",
+        "gridPos": {
+          "h": 4,
+          "w": 4,
+          "x": 0,
+          "y": 1
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "dfp3flzrl70n4d"
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfp3flzrl70n4d"
+            },
+            "expr": "sum(mcp_tool_calls_total{tenant_id=~\"$tenant_id\", agent_identity=~\"$agent_identity\", tool_name=~\"$tool_name\"})",
+            "legendFormat": "",
+            "refId": "A",
+            "instant": true,
+            "range": false
+          }
+        ],
+        "options": {
+          "reduceOptions": {
+            "calcs": [
+              "lastNotNull"
+            ],
+            "fields": "",
+            "values": false
+          },
+          "orientation": "auto",
+          "textMode": "auto",
+          "colorMode": "value",
+          "graphMode": "area"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short",
+            "decimals": 0,
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                },
+                {
+                  "color": "red",
+                  "value": 80
+                }
+              ]
+            }
+          },
+          "overrides": []
+        }
+      },
+      {
+        "type": "gauge",
+        "title": "工具调用成功率",
+        "gridPos": {
+          "h": 4,
+          "w": 4,
+          "x": 4,
+          "y": 1
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "dfp3flzrl70n4d"
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfp3flzrl70n4d"
+            },
+            "expr": "sum(rate(mcp_tool_calls_total{tenant_id=~\"$tenant_id\", agent_identity=~\"$agent_identity\", tool_name=~\"$tool_name\"}, status=\"success\"[5m])) / sum(rate(mcp_tool_calls_total{tenant_id=~\"$tenant_id\", agent_identity=~\"$agent_identity\", tool_name=~\"$tool_name\"}[5m])) * 100",
+            "legendFormat": "",
+            "refId": "A",
+            "instant": true,
+            "range": false
+          }
+        ],
+        "options": {
+          "reduceOptions": {
+            "calcs": [
+              "lastNotNull"
+            ],
+            "fields": "",
+            "values": false
+          },
+          "orientation": "auto",
+          "showThresholdLabels": false,
+          "showThresholdMarkers": true
+        },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percent",
+            "decimals": 2,
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "red",
+                  "value": null
+                },
+                {
+                  "color": "yellow",
+                  "value": 90
+                },
+                {
+                  "color": "green",
+                  "value": 98
+                }
+              ]
+            },
+            "min": 0,
+            "max": 100
+          },
+          "overrides": []
+        }
+      },
+      {
+        "type": "stat",
+        "title": "活跃 MCP 会话",
+        "gridPos": {
+          "h": 4,
+          "w": 4,
+          "x": 8,
+          "y": 1
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "dfp3flzrl70n4d"
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfp3flzrl70n4d"
+            },
+            "expr": "sum(mcp_sessions_active{tenant_id=~\"$tenant_id\", agent_identity=~\"$agent_identity\"})",
+            "legendFormat": "",
+            "refId": "A",
+            "instant": true,
+            "range": false
+          }
+        ],
+        "options": {
+          "reduceOptions": {
+            "calcs": [
+              "lastNotNull"
+            ],
+            "fields": "",
+            "values": false
+          },
+          "orientation": "auto",
+          "textMode": "auto",
+          "colorMode": "value",
+          "graphMode": "area"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short",
+            "decimals": 0,
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                },
+                {
+                  "color": "red",
+                  "value": 80
+                }
+              ]
+            }
+          },
+          "overrides": []
+        }
+      },
+      {
+        "type": "stat",
+        "title": "P95 工具延迟",
+        "gridPos": {
+          "h": 4,
+          "w": 4,
+          "x": 12,
+          "y": 1
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "dfp3flzrl70n4d"
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfp3flzrl70n4d"
+            },
+            "expr": "histogram_quantile(0.95, sum(rate(mcp_tool_call_latency_ms_bucket{tenant_id=~\"$tenant_id\", agent_identity=~\"$agent_identity\", tool_name=~\"$tool_name\"}[5m])) by (le))",
+            "legendFormat": "",
+            "refId": "A",
+            "instant": true,
+            "range": false
+          }
+        ],
+        "options": {
+          "reduceOptions": {
+            "calcs": [
+              "lastNotNull"
+            ],
+            "fields": "",
+            "values": false
+          },
+          "orientation": "auto",
+          "textMode": "auto",
+          "colorMode": "value",
+          "graphMode": "area"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "ms",
+            "decimals": 0,
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                },
+                {
+                  "color": "red",
+                  "value": 80
+                }
+              ]
+            }
+          },
+          "overrides": []
+        }
+      },
+      {
+        "type": "stat",
+        "title": "MCP 消息总数",
+        "gridPos": {
+          "h": 4,
+          "w": 4,
+          "x": 16,
+          "y": 1
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "dfp3flzrl70n4d"
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfp3flzrl70n4d"
+            },
+            "expr": "sum(mcp_messages_total{tenant_id=~\"$tenant_id\", agent_identity=~\"$agent_identity\"})",
+            "legendFormat": "",
+            "refId": "A",
+            "instant": true,
+            "range": false
+          }
+        ],
+        "options": {
+          "reduceOptions": {
+            "calcs": [
+              "lastNotNull"
+            ],
+            "fields": "",
+            "values": false
+          },
+          "orientation": "auto",
+          "textMode": "auto",
+          "colorMode": "value",
+          "graphMode": "area"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short",
+            "decimals": 0,
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                },
+                {
+                  "color": "red",
+                  "value": 80
+                }
+              ]
+            }
+          },
+          "overrides": []
+        }
+      },
+      {
+        "type": "stat",
+        "title": "重复 trace 丢弃",
+        "gridPos": {
+          "h": 4,
+          "w": 4,
+          "x": 20,
+          "y": 1
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "dfp3flzrl70n4d"
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfp3flzrl70n4d"
+            },
+            "expr": "sum(mcp_adapter_duplicate_drops_total)",
+            "legendFormat": "",
+            "refId": "A",
+            "instant": true,
+            "range": false
+          }
+        ],
+        "options": {
+          "reduceOptions": {
+            "calcs": [
+              "lastNotNull"
+            ],
+            "fields": "",
+            "values": false
+          },
+          "orientation": "auto",
+          "textMode": "auto",
+          "colorMode": "value",
+          "graphMode": "area"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short",
+            "decimals": 0,
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                },
+                {
+                  "color": "orange",
+                  "value": 1
+                }
+              ]
+            }
+          },
+          "overrides": []
+        }
+      },
+      {
+        "type": "row",
+        "title": "工具调用 Tool Calls",
+        "gridPos": {
+          "h": 1,
+          "w": 24,
+          "x": 0,
+          "y": 5
+        },
+        "collapsed": false,
+        "panels": [],
+        "id": null
+      },
+      {
+        "type": "timeseries",
+        "title": "各工具调用速率 (req/s)",
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 6
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "dfp3flzrl70n4d"
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfp3flzrl70n4d"
+            },
+            "expr": "sum by (tool_name) (rate(mcp_tool_calls_total{tenant_id=~\"$tenant_id\", agent_identity=~\"$agent_identity\", tool_name=~\"$tool_name\"}[1m]))",
+            "legendFormat": "{{tool_name}}",
+            "refId": "A",
+            "instant": false,
+            "range": true
+          }
+        ],
+        "options": {
+          "legend": {
+            "displayMode": "table",
+            "placement": "bottom",
+            "calcs": [
+              "lastNotNull",
+              "max"
+            ]
+          },
+          "tooltip": {
+            "mode": "multi",
+            "sort": "desc"
+          }
+        },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "reqps",
+            "custom": {
+              "drawStyle": "line",
+              "lineInterpolation": "smooth",
+              "fillOpacity": 15,
+              "stacking": {
+                "mode": "none"
+              }
+            }
+          },
+          "overrides": []
+        }
+      },
+      {
+        "type": "timeseries",
+        "title": "各工具成功率 (%)",
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 6
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "dfp3flzrl70n4d"
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfp3flzrl70n4d"
+            },
+            "expr": "sum by (tool_name) (rate(mcp_tool_calls_total{tenant_id=~\"$tenant_id\", agent_identity=~\"$agent_identity\", tool_name=~\"$tool_name\"}, status=\"success\"[5m])) / sum by (tool_name) (rate(mcp_tool_calls_total{tenant_id=~\"$tenant_id\", agent_identity=~\"$agent_identity\", tool_name=~\"$tool_name\"}[5m])) * 100",
+            "legendFormat": "{{tool_name}}",
+            "refId": "A",
+            "instant": false,
+            "range": true
+          }
+        ],
+        "options": {
+          "legend": {
+            "displayMode": "table",
+            "placement": "bottom",
+            "calcs": [
+              "lastNotNull",
+              "max"
+            ]
+          },
+          "tooltip": {
+            "mode": "multi",
+            "sort": "desc"
+          }
+        },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percent",
+            "custom": {
+              "drawStyle": "line",
+              "lineInterpolation": "smooth",
+              "fillOpacity": 15,
+              "stacking": {
+                "mode": "none"
+              }
+            }
+          },
+          "overrides": []
+        }
+      },
+      {
+        "type": "bargauge",
+        "title": "各工具 P95 延迟 (ms)",
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 14
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "dfp3flzrl70n4d"
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfp3flzrl70n4d"
+            },
+            "expr": "histogram_quantile(0.95, sum by (tool_name, le) (rate(mcp_tool_call_latency_ms_bucket{tenant_id=~\"$tenant_id\", agent_identity=~\"$agent_identity\", tool_name=~\"$tool_name\"}[5m])))",
+            "legendFormat": "{{tool_name}}",
+            "refId": "A",
+            "instant": true,
+            "range": false
+          }
+        ],
+        "options": {
+          "displayMode": "gradient",
+          "orientation": "horizontal",
+          "reduceOptions": {
+            "calcs": [
+              "lastNotNull"
+            ],
+            "fields": "",
+            "values": false
+          },
+          "showUnfilled": true
+        },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "ms"
+          },
+          "overrides": []
+        }
+      },
+      {
+        "type": "heatmap",
+        "title": "工具延迟分布热力图",
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 14
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "dfp3flzrl70n4d"
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfp3flzrl70n4d"
+            },
+            "expr": "sum by (le) (rate(mcp_tool_call_latency_ms_bucket{tenant_id=~\"$tenant_id\", agent_identity=~\"$agent_identity\", tool_name=~\"$tool_name\"}[5m]))",
+            "legendFormat": "",
+            "refId": "A",
+            "instant": false,
+            "range": true
+          }
+        ],
+        "options": {
+          "calculate": false,
+          "cellGap": 1,
+          "color": {
+            "mode": "scheme",
+            "scheme": "Spectral"
+          },
+          "yAxis": {
+            "axisPlacement": "left"
+          }
+        },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "ms"
+          },
+          "overrides": []
+        }
+      },
+      {
+        "type": "table",
+        "title": "工具 × Agent 调用量",
+        "gridPos": {
+          "h": 8,
+          "w": 24,
+          "x": 0,
+          "y": 22
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "dfp3flzrl70n4d"
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfp3flzrl70n4d"
+            },
+            "expr": "sum by (tool_name, agent_identity, tenant_id) (mcp_tool_calls_total{tenant_id=~\"$tenant_id\", agent_identity=~\"$agent_identity\", tool_name=~\"$tool_name\"})",
+            "legendFormat": "{{tool_name}} / {{agent_identity}}",
+            "refId": "A",
+            "instant": true,
+            "range": false
+          }
+        ],
+        "options": {
+          "showHeader": true,
+          "sortBy": [
+            {
+              "displayName": "Value",
+              "desc": true
+            }
+          ]
+        },
+        "fieldConfig": {
+          "defaults": {},
+          "overrides": []
+        },
+        "transformations": [
+          {
+            "id": "labelsToFields",
+            "options": {
+              "mode": "columns"
+            }
+          },
+          {
+            "id": "organize",
+            "options": {
+              "excludeByName": {
+                "Time": true
+              }
+            }
+          }
+        ]
+      },
+      {
+        "type": "row",
+        "title": "Agent / Tenant 维度",
+        "gridPos": {
+          "h": 1,
+          "w": 24,
+          "x": 0,
+          "y": 30
+        },
+        "collapsed": false,
+        "panels": [],
+        "id": null
+      },
+      {
+        "type": "piechart",
+        "title": "按 Agent 分布",
+        "gridPos": {
+          "h": 8,
+          "w": 8,
+          "x": 0,
+          "y": 31
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "dfp3flzrl70n4d"
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfp3flzrl70n4d"
+            },
+            "expr": "sum by (agent_identity) (mcp_tool_calls_total{tenant_id=~\"$tenant_id\", agent_identity=~\"$agent_identity\", tool_name=~\"$tool_name\"})",
+            "legendFormat": "{{agent_identity}}",
+            "refId": "A",
+            "instant": true,
+            "range": false
+          }
+        ],
+        "options": {
+          "legend": {
+            "displayMode": "table",
+            "placement": "right",
+            "values": [
+              "value",
+              "percent"
+            ]
+          },
+          "pieType": "donut",
+          "reduceOptions": {
+            "calcs": [
+              "lastNotNull"
+            ],
+            "fields": "",
+            "values": false
+          }
+        }
+      },
+      {
+        "type": "piechart",
+        "title": "按 Tenant 分布",
+        "gridPos": {
+          "h": 8,
+          "w": 8,
+          "x": 8,
+          "y": 31
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "dfp3flzrl70n4d"
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfp3flzrl70n4d"
+            },
+            "expr": "sum by (tenant_id) (mcp_tool_calls_total{tenant_id=~\"$tenant_id\", agent_identity=~\"$agent_identity\", tool_name=~\"$tool_name\"})",
+            "legendFormat": "{{tenant_id}}",
+            "refId": "A",
+            "instant": true,
+            "range": false
+          }
+        ],
+        "options": {
+          "legend": {
+            "displayMode": "table",
+            "placement": "right",
+            "values": [
+              "value",
+              "percent"
+            ]
+          },
+          "pieType": "donut",
+          "reduceOptions": {
+            "calcs": [
+              "lastNotNull"
+            ],
+            "fields": "",
+            "values": false
+          }
+        }
+      },
+      {
+        "type": "timeseries",
+        "title": "Agent 调用趋势",
+        "gridPos": {
+          "h": 8,
+          "w": 8,
+          "x": 16,
+          "y": 31
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "dfp3flzrl70n4d"
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfp3flzrl70n4d"
+            },
+            "expr": "sum by (agent_identity) (rate(mcp_tool_calls_total{tenant_id=~\"$tenant_id\", agent_identity=~\"$agent_identity\", tool_name=~\"$tool_name\"}[1m]))",
+            "legendFormat": "{{agent_identity}}",
+            "refId": "A",
+            "instant": false,
+            "range": true
+          }
+        ],
+        "options": {
+          "legend": {
+            "displayMode": "table",
+            "placement": "bottom",
+            "calcs": [
+              "lastNotNull",
+              "max"
+            ]
+          },
+          "tooltip": {
+            "mode": "multi",
+            "sort": "desc"
+          }
+        },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "reqps",
+            "custom": {
+              "drawStyle": "line",
+              "lineInterpolation": "smooth",
+              "fillOpacity": 15,
+              "stacking": {
+                "mode": "none"
+              }
+            }
+          },
+          "overrides": []
+        }
+      },
+      {
+        "type": "row",
+        "title": "MCP 消息类型与生命周期",
+        "gridPos": {
+          "h": 1,
+          "w": 24,
+          "x": 0,
+          "y": 39
+        },
+        "collapsed": false,
+        "panels": [],
+        "id": null
+      },
+      {
+        "type": "timeseries",
+        "title": "消息类型速率 (initialize / tools_list / tool.call / sampling …)",
+        "gridPos": {
+          "h": 8,
+          "w": 16,
+          "x": 0,
+          "y": 40
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "dfp3flzrl70n4d"
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfp3flzrl70n4d"
+            },
+            "expr": "sum by (message_type) (rate(mcp_messages_total{tenant_id=~\"$tenant_id\", agent_identity=~\"$agent_identity\"}[1m]))",
+            "legendFormat": "{{message_type}}",
+            "refId": "A",
+            "instant": false,
+            "range": true
+          }
+        ],
+        "options": {
+          "legend": {
+            "displayMode": "table",
+            "placement": "bottom",
+            "calcs": [
+              "lastNotNull",
+              "max"
+            ]
+          },
+          "tooltip": {
+            "mode": "multi",
+            "sort": "desc"
+          }
+        },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "reqps",
+            "custom": {
+              "drawStyle": "line",
+              "lineInterpolation": "smooth",
+              "fillOpacity": 15,
+              "stacking": {
+                "mode": "normal"
+              }
+            }
+          },
+          "overrides": []
+        }
+      },
+      {
+        "type": "stat",
+        "title": "Discovery 操作",
+        "gridPos": {
+          "h": 4,
+          "w": 4,
+          "x": 16,
+          "y": 40
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "dfp3flzrl70n4d"
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfp3flzrl70n4d"
+            },
+            "expr": "sum(mcp_discovery_operations_total{tenant_id=~\"$tenant_id\", agent_identity=~\"$agent_identity\"})",
+            "legendFormat": "",
+            "refId": "A",
+            "instant": true,
+            "range": false
+          }
+        ],
+        "options": {
+          "reduceOptions": {
+            "calcs": [
+              "lastNotNull"
+            ],
+            "fields": "",
+            "values": false
+          },
+          "orientation": "auto",
+          "textMode": "auto",
+          "colorMode": "value",
+          "graphMode": "area"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short",
+            "decimals": 0,
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                },
+                {
+                  "color": "red",
+                  "value": 80
+                }
+              ]
+            }
+          },
+          "overrides": []
+        }
+      },
+      {
+        "type": "stat",
+        "title": "Resource 读取",
+        "gridPos": {
+          "h": 4,
+          "w": 4,
+          "x": 20,
+          "y": 40
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "dfp3flzrl70n4d"
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfp3flzrl70n4d"
+            },
+            "expr": "sum(mcp_resource_reads_total{tenant_id=~\"$tenant_id\", agent_identity=~\"$agent_identity\"})",
+            "legendFormat": "",
+            "refId": "A",
+            "instant": true,
+            "range": false
+          }
+        ],
+        "options": {
+          "reduceOptions": {
+            "calcs": [
+              "lastNotNull"
+            ],
+            "fields": "",
+            "values": false
+          },
+          "orientation": "auto",
+          "textMode": "auto",
+          "colorMode": "value",
+          "graphMode": "area"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short",
+            "decimals": 0,
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                },
+                {
+                  "color": "red",
+                  "value": 80
+                }
+              ]
+            }
+          },
+          "overrides": []
+        }
+      },
+      {
+        "type": "timeseries",
+        "title": "Discovery 操作趋势",
+        "gridPos": {
+          "h": 6,
+          "w": 12,
+          "x": 0,
+          "y": 48
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "dfp3flzrl70n4d"
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfp3flzrl70n4d"
+            },
+            "expr": "sum by (operation_type) (rate(mcp_discovery_operations_total{tenant_id=~\"$tenant_id\", agent_identity=~\"$agent_identity\"}[1m]))",
+            "legendFormat": "{{operation_type}}",
+            "refId": "A",
+            "instant": false,
+            "range": true
+          }
+        ],
+        "options": {
+          "legend": {
+            "displayMode": "table",
+            "placement": "bottom",
+            "calcs": [
+              "lastNotNull",
+              "max"
+            ]
+          },
+          "tooltip": {
+            "mode": "multi",
+            "sort": "desc"
+          }
+        },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "reqps",
+            "custom": {
+              "drawStyle": "line",
+              "lineInterpolation": "smooth",
+              "fillOpacity": 15,
+              "stacking": {
+                "mode": "none"
+              }
+            }
+          },
+          "overrides": []
+        }
+      },
+      {
+        "type": "timeseries",
+        "title": "Resource 读取趋势",
+        "gridPos": {
+          "h": 6,
+          "w": 12,
+          "x": 12,
+          "y": 48
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "dfp3flzrl70n4d"
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfp3flzrl70n4d"
+            },
+            "expr": "sum by (resource_uri) (rate(mcp_resource_reads_total{tenant_id=~\"$tenant_id\", agent_identity=~\"$agent_identity\"}[1m]))",
+            "legendFormat": "{{resource_uri}}",
+            "refId": "A",
+            "instant": false,
+            "range": true
+          }
+        ],
+        "options": {
+          "legend": {
+            "displayMode": "table",
+            "placement": "bottom",
+            "calcs": [
+              "lastNotNull",
+              "max"
+            ]
+          },
+          "tooltip": {
+            "mode": "multi",
+            "sort": "desc"
+          }
+        },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "reqps",
+            "custom": {
+              "drawStyle": "line",
+              "lineInterpolation": "smooth",
+              "fillOpacity": 15,
+              "stacking": {
+                "mode": "none"
+              }
+            }
+          },
+          "overrides": []
+        }
+      },
+      {
+        "type": "row",
+        "title": "Sampling / Elicitation（Server→Client 反向请求）",
+        "gridPos": {
+          "h": 1,
+          "w": 24,
+          "x": 0,
+          "y": 54
+        },
+        "collapsed": false,
+        "panels": [],
+        "id": null
+      },
+      {
+        "type": "timeseries",
+        "title": "Sampling 请求速率",
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 55
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "dfp3flzrl70n4d"
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfp3flzrl70n4d"
+            },
+            "expr": "sum by (agent_identity, tool_name) (rate(mcp_sampling_requests_total{tenant_id=~\"$tenant_id\", agent_identity=~\"$agent_identity\", tool_name=~\"$tool_name\"}[1m]))",
+            "legendFormat": "{{agent_identity}} / {{tool_name}}",
+            "refId": "A",
+            "instant": false,
+            "range": true
+          }
+        ],
+        "options": {
+          "legend": {
+            "displayMode": "table",
+            "placement": "bottom",
+            "calcs": [
+              "lastNotNull",
+              "max"
+            ]
+          },
+          "tooltip": {
+            "mode": "multi",
+            "sort": "desc"
+          }
+        },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "reqps",
+            "custom": {
+              "drawStyle": "line",
+              "lineInterpolation": "smooth",
+              "fillOpacity": 15,
+              "stacking": {
+                "mode": "none"
+              }
+            }
+          },
+          "overrides": []
+        }
+      },
+      {
+        "type": "timeseries",
+        "title": "Elicitation 请求速率（按 mode）",
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 55
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "dfp3flzrl70n4d"
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfp3flzrl70n4d"
+            },
+            "expr": "sum by (agent_identity, mode) (rate(mcp_elicitation_requests_total{tenant_id=~\"$tenant_id\", agent_identity=~\"$agent_identity\", tool_name=~\"$tool_name\"}[1m]))",
+            "legendFormat": "{{agent_identity}} / {{mode}}",
+            "refId": "A",
+            "instant": false,
+            "range": true
+          }
+        ],
+        "options": {
+          "legend": {
+            "displayMode": "table",
+            "placement": "bottom",
+            "calcs": [
+              "lastNotNull",
+              "max"
+            ]
+          },
+          "tooltip": {
+            "mode": "multi",
+            "sort": "desc"
+          }
+        },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "reqps",
+            "custom": {
+              "drawStyle": "line",
+              "lineInterpolation": "smooth",
+              "fillOpacity": 15,
+              "stacking": {
+                "mode": "none"
+              }
+            }
+          },
+          "overrides": []
+        }
+      },
+      {
+        "type": "stat",
+        "title": "Sampling 累计",
+        "gridPos": {
+          "h": 4,
+          "w": 6,
+          "x": 0,
+          "y": 63
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "dfp3flzrl70n4d"
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfp3flzrl70n4d"
+            },
+            "expr": "sum(mcp_sampling_requests_total{tenant_id=~\"$tenant_id\", agent_identity=~\"$agent_identity\", tool_name=~\"$tool_name\"})",
+            "legendFormat": "",
+            "refId": "A",
+            "instant": true,
+            "range": false
+          }
+        ],
+        "options": {
+          "reduceOptions": {
+            "calcs": [
+              "lastNotNull"
+            ],
+            "fields": "",
+            "values": false
+          },
+          "orientation": "auto",
+          "textMode": "auto",
+          "colorMode": "value",
+          "graphMode": "area"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short",
+            "decimals": 0,
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                },
+                {
+                  "color": "red",
+                  "value": 80
+                }
+              ]
+            }
+          },
+          "overrides": []
+        }
+      },
+      {
+        "type": "stat",
+        "title": "Elicitation 累计",
+        "gridPos": {
+          "h": 4,
+          "w": 6,
+          "x": 6,
+          "y": 63
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "dfp3flzrl70n4d"
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfp3flzrl70n4d"
+            },
+            "expr": "sum(mcp_elicitation_requests_total{tenant_id=~\"$tenant_id\", agent_identity=~\"$agent_identity\", tool_name=~\"$tool_name\"})",
+            "legendFormat": "",
+            "refId": "A",
+            "instant": true,
+            "range": false
+          }
+        ],
+        "options": {
+          "reduceOptions": {
+            "calcs": [
+              "lastNotNull"
+            ],
+            "fields": "",
+            "values": false
+          },
+          "orientation": "auto",
+          "textMode": "auto",
+          "colorMode": "value",
+          "graphMode": "area"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short",
+            "decimals": 0,
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                },
+                {
+                  "color": "red",
+                  "value": 80
+                }
+              ]
+            }
+          },
+          "overrides": []
+        }
+      },
+      {
+        "type": "row",
+        "title": "会话 Sessions",
+        "gridPos": {
+          "h": 1,
+          "w": 24,
+          "x": 0,
+          "y": 67
+        },
+        "collapsed": false,
+        "panels": [],
+        "id": null
+      },
+      {
+        "type": "timeseries",
+        "title": "新会话创建速率",
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 68
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "dfp3flzrl70n4d"
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfp3flzrl70n4d"
+            },
+            "expr": "sum by (agent_identity, tenant_id) (rate(mcp_sessions_total{tenant_id=~\"$tenant_id\", agent_identity=~\"$agent_identity\"}[1m]))",
+            "legendFormat": "{{agent_identity}} / {{tenant_id}}",
+            "refId": "A",
+            "instant": false,
+            "range": true
+          }
+        ],
+        "options": {
+          "legend": {
+            "displayMode": "table",
+            "placement": "bottom",
+            "calcs": [
+              "lastNotNull",
+              "max"
+            ]
+          },
+          "tooltip": {
+            "mode": "multi",
+            "sort": "desc"
+          }
+        },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "reqps",
+            "custom": {
+              "drawStyle": "line",
+              "lineInterpolation": "smooth",
+              "fillOpacity": 15,
+              "stacking": {
+                "mode": "none"
+              }
+            }
+          },
+          "overrides": []
+        }
+      },
+      {
+        "type": "timeseries",
+        "title": "活跃会话数趋势",
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 68
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "dfp3flzrl70n4d"
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfp3flzrl70n4d"
+            },
+            "expr": "sum by (agent_identity, tenant_id) (mcp_sessions_active{tenant_id=~\"$tenant_id\", agent_identity=~\"$agent_identity\"})",
+            "legendFormat": "{{agent_identity}}",
+            "refId": "A",
+            "instant": false,
+            "range": true
+          }
+        ],
+        "options": {
+          "legend": {
+            "displayMode": "table",
+            "placement": "bottom",
+            "calcs": [
+              "lastNotNull",
+              "max"
+            ]
+          },
+          "tooltip": {
+            "mode": "multi",
+            "sort": "desc"
+          }
+        },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short",
+            "custom": {
+              "drawStyle": "line",
+              "lineInterpolation": "smooth",
+              "fillOpacity": 15,
+              "stacking": {
+                "mode": "none"
+              }
+            }
+          },
+          "overrides": []
+        }
+      },
+      {
+        "type": "row",
+        "title": "错误与 Adapter 健康",
+        "gridPos": {
+          "h": 1,
+          "w": 24,
+          "x": 0,
+          "y": 76
+        },
+        "collapsed": false,
+        "panels": [],
+        "id": null
+      },
+      {
+        "type": "piechart",
+        "title": "错误按 message_type",
+        "gridPos": {
+          "h": 8,
+          "w": 8,
+          "x": 0,
+          "y": 77
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "dfp3flzrl70n4d"
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfp3flzrl70n4d"
+            },
+            "expr": "sum by (message_type) (mcp_errors_total{tenant_id=~\"$tenant_id\", agent_identity=~\"$agent_identity\", tool_name=~\"$tool_name\"})",
+            "legendFormat": "{{message_type}}",
+            "refId": "A",
+            "instant": true,
+            "range": false
+          }
+        ],
+        "options": {
+          "legend": {
+            "displayMode": "table",
+            "placement": "right",
+            "values": [
+              "value",
+              "percent"
+            ]
+          },
+          "pieType": "donut",
+          "reduceOptions": {
+            "calcs": [
+              "lastNotNull"
+            ],
+            "fields": "",
+            "values": false
+          }
+        }
+      },
+      {
+        "type": "timeseries",
+        "title": "错误速率趋势",
+        "gridPos": {
+          "h": 8,
+          "w": 8,
+          "x": 8,
+          "y": 77
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "dfp3flzrl70n4d"
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfp3flzrl70n4d"
+            },
+            "expr": "sum by (message_type) (rate(mcp_errors_total{tenant_id=~\"$tenant_id\", agent_identity=~\"$agent_identity\"}[1m]))",
+            "legendFormat": "{{message_type}}",
+            "refId": "A",
+            "instant": false,
+            "range": true
+          }
+        ],
+        "options": {
+          "legend": {
+            "displayMode": "table",
+            "placement": "bottom",
+            "calcs": [
+              "lastNotNull",
+              "max"
+            ]
+          },
+          "tooltip": {
+            "mode": "multi",
+            "sort": "desc"
+          }
+        },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "reqps",
+            "custom": {
+              "drawStyle": "line",
+              "lineInterpolation": "smooth",
+              "fillOpacity": 15,
+              "stacking": {
+                "mode": "none"
+              }
+            }
+          },
+          "overrides": []
+        }
+      },
+      {
+        "type": "timeseries",
+        "title": "工具调用错误 (mcp_tool_call_errors_total)",
+        "gridPos": {
+          "h": 8,
+          "w": 8,
+          "x": 16,
+          "y": 77
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "dfp3flzrl70n4d"
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfp3flzrl70n4d"
+            },
+            "expr": "sum by (tool_name, error_type) (rate(mcp_tool_call_errors_total{tenant_id=~\"$tenant_id\", agent_identity=~\"$agent_identity\", tool_name=~\"$tool_name\"}[1m]))",
+            "legendFormat": "{{tool_name}} / {{error_type}}",
+            "refId": "A",
+            "instant": false,
+            "range": true
+          }
+        ],
+        "options": {
+          "legend": {
+            "displayMode": "table",
+            "placement": "bottom",
+            "calcs": [
+              "lastNotNull",
+              "max"
+            ]
+          },
+          "tooltip": {
+            "mode": "multi",
+            "sort": "desc"
+          }
+        },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "reqps",
+            "custom": {
+              "drawStyle": "line",
+              "lineInterpolation": "smooth",
+              "fillOpacity": 15,
+              "stacking": {
+                "mode": "none"
+              }
+            }
+          },
+          "overrides": []
+        }
+      },
+      {
+        "type": "stat",
+        "title": "解析失败事件",
+        "gridPos": {
+          "h": 4,
+          "w": 6,
+          "x": 0,
+          "y": 85
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "dfp3flzrl70n4d"
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfp3flzrl70n4d"
+            },
+            "expr": "sum(mcp_adapter_parse_failures_total)",
+            "legendFormat": "",
+            "refId": "A",
+            "instant": true,
+            "range": false
+          }
+        ],
+        "options": {
+          "reduceOptions": {
+            "calcs": [
+              "lastNotNull"
+            ],
+            "fields": "",
+            "values": false
+          },
+          "orientation": "auto",
+          "textMode": "auto",
+          "colorMode": "value",
+          "graphMode": "area"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short",
+            "decimals": 0,
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                },
+                {
+                  "color": "red",
+                  "value": 1
+                }
+              ]
+            }
+          },
+          "overrides": []
+        }
+      }
+    ]
+  },
+  "folderId": 0,
+  "overwrite": false
+}

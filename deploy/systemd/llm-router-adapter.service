@@ -1,6 +1,6 @@
 [Unit]
 Description=F5 LLM Observability Adapter (Prometheus metrics)
-Documentation=file:///home/myf5/llm_router_demo_App/adapter_service/README.md
+Documentation=file:///home/myf5/bigip-ai-scenes-demo/adapter_service/README.md
 After=network-online.target
 Wants=network-online.target
 
@@ -8,10 +8,10 @@ Wants=network-online.target
 Type=simple
 User=myf5
 Group=myf5
-WorkingDirectory=/home/myf5/llm_router_demo_App/adapter_service
+WorkingDirectory=/home/myf5/bigip-ai-scenes-demo/adapter_service
 EnvironmentFile=-/etc/llm-router-adapter/env
 Environment=PORT=8090
-ExecStart=/home/myf5/llm_router_demo_App/scripts/run-adapter.sh
+ExecStart=/home/myf5/bigip-ai-scenes-demo/scripts/run-adapter.sh
 Restart=on-failure
 RestartSec=5
 TimeoutStopSec=30

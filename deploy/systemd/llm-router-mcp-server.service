@@ -1,6 +1,6 @@
 [Unit]
-Description=F5 LLM Router Demo (FastAPI + built frontend)
-Documentation=file:///home/myf5/bigip-ai-scenes-demo/README.md
+Description=F5 MCP Tools Insight MCP Server (Streamable HTTP / SSE)
+Documentation=file:///home/myf5/bigip-ai-scenes-demo/MCP-F5-DEPLOY-GUIDE.md
 After=network-online.target
 Wants=network-online.target
 
@@ -9,15 +9,14 @@ Type=simple
 User=myf5
 Group=myf5
 WorkingDirectory=/home/myf5/bigip-ai-scenes-demo
-EnvironmentFile=-/etc/llm-router-demo/env
+EnvironmentFile=-/etc/llm-router-mcp-server/env
 Environment=PYTHONPATH=/home/myf5/bigip-ai-scenes-demo
-Environment=PORT=8080
-ExecStart=/home/myf5/bigip-ai-scenes-demo/scripts/run.sh
+Environment=PORT=9001
+ExecStart=/home/myf5/bigip-ai-scenes-demo/scripts/run-mcp-server.sh
 Restart=on-failure
 RestartSec=5
 TimeoutStopSec=30
 
-# Hardening (adjust if you bind custom paths)
 NoNewPrivileges=true
 PrivateTmp=true
 

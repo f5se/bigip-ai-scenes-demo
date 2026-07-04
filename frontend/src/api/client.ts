@@ -1349,3 +1349,74 @@ export async function runMcpInsightSession(body: {
   }
   return res.json();
 }
+
+export type McpTrafficStatus = {
+  running: boolean;
+  target: Target;
+  duration_minutes: number;
+  emit_audit: boolean;
+  started_at: string | null;
+  ends_at: string | null;
+  elapsed_seconds: number;
+  remaining_seconds: number;
+  stats: {
+    sessions: number;
+    success: number;
+    failed: number;
+    tool_calls: number;
+    sampling: number;
+    elicitation: number;
+    last_error: string | null;
+    last_agent: string | null;
+    last_tenant: string | null;
+    last_scenario: string | null;
+    recent_errors: Array<{
+      agent: string;
+      tenant: string;
+      scenario: string;
+      error: string;
+      at: string;
+    }>;
+  };
+};
+
+export async function fetchMcpTrafficStatus(): Promise<McpTrafficStatus> {
+  const res = await authFetch("/api/demo/mcp-insight/traffic/status");
+  if (!res.ok) throw new Error("Failed to load MCP traffic sim status");
+  return res.json();
+}
+
+export async function startMcpTrafficSim(
+  target: Target,
+  durationMinutes: number,
+  emitAudit?: boolean
+): Promise<McpTrafficStatus> {
+  const res = await authFetch("/api/demo/mcp-insight/traffic/start", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      host: target.host,
+      port: target.port,
+      duration_minutes: durationMinutes,
+      ...(emitAudit !== undefined ? { emit_audit: emitAudit } : {}),
+    }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    const detail = (err as { detail?: string | { message?: string } }).detail;
+    const msg =
+      typeof detail === "object" && detail?.message
+        ? detail.message
+        : typeof detail === "string"
+          ? detail
+          : "MCP traffic sim start failed";
+    throw new Error(msg);
+  }
+  return res.json();
+}
+
+export async function stopMcpTrafficSim(): Promise<McpTrafficStatus> {
+  const res = await authFetch("/api/demo/mcp-insight/traffic/stop", { method: "POST" });
+  if (!res.ok) throw new Error("MCP traffic sim stop failed");
+  return res.json();
+}

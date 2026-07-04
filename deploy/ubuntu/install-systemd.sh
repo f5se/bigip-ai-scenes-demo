@@ -82,10 +82,10 @@ elif [[ ! -d "${INSTALL_DIR}/frontend/dist" ]]; then
   echo "WARN: frontend/dist missing. Set BUILD_FRONTEND=1 or commit dist in git." >&2
 fi
 
-chmod +x "${INSTALL_DIR}/scripts/run.sh" "${INSTALL_DIR}/scripts/run-adapter.sh"
+chmod +x "${INSTALL_DIR}/scripts/run.sh" "${INSTALL_DIR}/scripts/run-adapter.sh" "${INSTALL_DIR}/scripts/run-mcp-server.sh"
 
 echo "==> Installing environment files..."
-install -d -m 0755 /etc/llm-router-demo /etc/llm-router-adapter
+install -d -m 0755 /etc/llm-router-demo /etc/llm-router-adapter /etc/llm-router-mcp-server
 if [[ ! -f /etc/llm-router-demo/env ]]; then
   cp "${INSTALL_DIR}/deploy/systemd/llm-router-demo.env.example" /etc/llm-router-demo/env
   chmod 0640 /etc/llm-router-demo/env
@@ -96,27 +96,36 @@ if [[ ! -f /etc/llm-router-adapter/env ]]; then
   chmod 0640 /etc/llm-router-adapter/env
   chown root:"${APP_USER}" /etc/llm-router-adapter/env
 fi
+if [[ ! -f /etc/llm-router-mcp-server/env ]]; then
+  cp "${INSTALL_DIR}/deploy/systemd/llm-router-mcp-server.env.example" /etc/llm-router-mcp-server/env
+  chmod 0640 /etc/llm-router-mcp-server/env
+  chown root:"${APP_USER}" /etc/llm-router-mcp-server/env
+fi
 
 echo "==> Installing systemd units..."
-sed "s|/home/myf5/llm_router_demo_App|${INSTALL_DIR}|g; s|User=myf5|User=${APP_USER}|g; s|Group=myf5|Group=${APP_USER}|g" \
+sed "s|/home/myf5/bigip-ai-scenes-demo|${INSTALL_DIR}|g; s|User=myf5|User=${APP_USER}|g; s|Group=myf5|Group=${APP_USER}|g" \
   "${INSTALL_DIR}/deploy/systemd/llm-router-demo.service" \
   > /etc/systemd/system/llm-router-demo.service
-sed "s|/home/myf5/llm_router_demo_App|${INSTALL_DIR}|g; s|User=myf5|User=${APP_USER}|g; s|Group=myf5|Group=${APP_USER}|g" \
+sed "s|/home/myf5/bigip-ai-scenes-demo|${INSTALL_DIR}|g; s|User=myf5|User=${APP_USER}|g; s|Group=myf5|Group=${APP_USER}|g" \
   "${INSTALL_DIR}/deploy/systemd/llm-router-adapter.service" \
   > /etc/systemd/system/llm-router-adapter.service
+sed "s|/home/myf5/bigip-ai-scenes-demo|${INSTALL_DIR}|g; s|User=myf5|User=${APP_USER}|g; s|Group=myf5|Group=${APP_USER}|g" \
+  "${INSTALL_DIR}/deploy/systemd/llm-router-mcp-server.service" \
+  > /etc/systemd/system/llm-router-mcp-server.service
 
 systemctl daemon-reload
-systemctl enable llm-router-demo.service llm-router-adapter.service
-systemctl restart llm-router-demo.service llm-router-adapter.service
+systemctl enable llm-router-demo.service llm-router-adapter.service llm-router-mcp-server.service
+systemctl restart llm-router-demo.service llm-router-adapter.service llm-router-mcp-server.service
 
 echo ""
 echo "============================================================"
 echo " Install complete."
 echo " Demo UI:    http://$(hostname -I | awk '{print $1}'):8080"
-echo " Adapter:    http://127.0.0.1:8090/metrics  (BIG-IP posts to :8090/events)"
+echo " Adapter:    http://127.0.0.1:8090/metrics  (F5 iRuleLX posts to :8090/api/mcp-events)"
+echo " MCP Server: http://127.0.0.1:9001/health   (F5 pool member → :9001/mcp)"
 echo ""
 echo " Edit secrets:  sudo nano /etc/llm-router-demo/env"
-echo " Status:        systemctl status llm-router-demo llm-router-adapter"
-echo " Logs:          journalctl -u llm-router-demo -f"
+echo " Status:        systemctl status llm-router-demo llm-router-adapter llm-router-mcp-server"
+echo " Logs:          journalctl -u llm-router-mcp-server -f"
 echo " Update:        sudo -u ${APP_USER} git -C ${INSTALL_DIR} pull && sudo bash ${INSTALL_DIR}/deploy/ubuntu/install-systemd.sh"
 echo "============================================================"

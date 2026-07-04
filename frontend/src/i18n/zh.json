@@ -391,7 +391,18 @@
         "演示工具调用事件从 F5 网关到 Adapter / Grafana 的采集链路",
         "按工具与 Agent 维度的调用量、成功率、时延看板示意",
         "与 Tokens 用量、模型 Metrics 看板的联动分析占位说明"
-      ]
+      ],
+      "continuous": {
+        "title": "持续 Grafana 数据模拟",
+        "subtitle": "在设定时长内自动轮询不同 Tenant、Agent 与 MCP 场景（工具调用、Sampling、Elicitation 等），持续向 Adapter 投递审计事件以填充 Grafana 看板。",
+        "durationMinutes": "模拟时长（分钟）",
+        "start": "▶ 启动持续模拟",
+        "stop": "停止模拟",
+        "sessions": "已完成会话",
+        "toolCalls": "工具调用",
+        "remaining": "剩余",
+        "alreadyRunning": "持续模拟已在运行，请先停止"
+      }
     },
     "mcpToolsControl": {
       "title": "MCP Tools调用管控",
