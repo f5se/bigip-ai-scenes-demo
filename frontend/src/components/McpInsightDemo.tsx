@@ -161,13 +161,12 @@ export function McpInsightDemo() {
 
   const f5AuditMode =
     config?.audit_delivery === "f5" || config?.emit_audit_without_f5 === false;
-  const adapterUrl = f5AuditMode
-    ? (config?.adapter_events_url as string | undefined) ??
-      "http://127.0.0.1:8090/api/mcp-events"
-    : auditSummary?.adapter_url ??
-      (config?.adapter_events_url as string | undefined) ??
-      "http://127.0.0.1:8090/api/mcp-events";
-  const showAuditPanel = running || sessionComplete || auditSummary !== null || f5AuditMode;
+  const adapterUrl =
+    auditSummary?.adapter_url ??
+    (config?.adapter_events_url as string | undefined) ??
+    "http://127.0.0.1:8090/api/mcp-events";
+  const showAuditPanel =
+    !f5AuditMode && (running || sessionComplete || auditSummary !== null);
 
   const scenarios = (config?.scenarios as { id: string; label: string }[]) ?? [];
 
@@ -305,13 +304,7 @@ export function McpInsightDemo() {
               <p className="font-medium">
                 {t("scenes.mcpToolsInsight.auditTitle", { defaultValue: "Adapter 审计日志" })}
               </p>
-              {f5AuditMode ? (
-                <p className="mt-1 text-slate-300">
-                  {t("scenes.mcpToolsInsight.auditF5Mode", {
-                    defaultValue: "由 F5 iRule 投递；Runner 已关闭模拟发送。请查看 Adapter 终端或 /metrics。",
-                  })}
-                </p>
-              ) : running && !auditSummary ? (
+              {running && !auditSummary ? (
                 <p className="mt-1 font-mono animate-pulse">
                   {t("scenes.mcpToolsInsight.auditPosting", { defaultValue: "投递中…" })}
                 </p>
@@ -328,14 +321,8 @@ export function McpInsightDemo() {
                   {t("scenes.mcpToolsInsight.auditNone", { defaultValue: "0 条（未启用或未投递）" })}
                 </p>
               ) : null}
-              <p className="mt-1 truncate text-[10px] opacity-80">
-                {f5AuditMode
-                  ? t("scenes.mcpToolsInsight.auditF5AdapterHint", {
-                      defaultValue: "Runner 不 POST；F5 iRuleLX 目标见 MCP_ADAPTER_HOST",
-                    })
-                  : adapterUrl}
-              </p>
-              {!f5AuditMode && auditSummary && auditSummary.failed > 0 ? (
+              <p className="mt-1 truncate text-[10px] opacity-80">{adapterUrl}</p>
+              {auditSummary && auditSummary.failed > 0 ? (
                 <p className="mt-1 text-[10px] opacity-90">
                   {t("scenes.mcpToolsInsight.auditFailedHint", {
                     defaultValue:
@@ -345,13 +332,14 @@ export function McpInsightDemo() {
               ) : null}
             </div>
           ) : null}
-          <p className="mt-4 text-xs text-slate-500">
-            {t("scenes.mcpToolsInsight.auditHint", {
-              defaultValue: f5AuditMode
-                ? "审计日志由 F5 ir_mcp_audit_logger + iRuleLX 发送；本地联调时将 config emit_audit_without_f5 设为 true。"
-                : "无 F5 时由 Demo 后端模拟审计日志并 POST 至 Adapter；接入 F5 后将 emit_audit_without_f5 设为 false。",
-            })}
-          </p>
+          {!f5AuditMode ? (
+            <p className="mt-4 text-xs text-slate-500">
+              {t("scenes.mcpToolsInsight.auditHint", {
+                defaultValue:
+                  "无 F5 时由 Demo 后端模拟审计日志并 POST 至 Adapter；接入 F5 后将 emit_audit_without_f5 设为 false。",
+              })}
+            </p>
+          ) : null}
         </div>
       </div>
     </div>
