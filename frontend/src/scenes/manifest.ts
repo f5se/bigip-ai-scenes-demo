@@ -77,6 +77,14 @@ export const scenes: Scene[] = [
         ready: true,
         pageKey: "obsMetrics",
       },
+      {
+        id: "mcp-tools-insight",
+        path: "/scene/observability/mcp-tools-insight",
+        titleKey: "nav.mcpToolsInsight",
+        ready: true,
+        versionBadge: true,
+        pageKey: "mcpToolsInsight",
+      },
     ],
   },
   {
@@ -109,14 +117,6 @@ export const scenes: Scene[] = [
         ready: true,
         versionBadge: true,
         pageKey: "maxTokensLimit",
-      },
-      {
-        id: "mcp-tools-insight",
-        path: "/scene/traffic-mgmt/mcp-tools-insight",
-        titleKey: "nav.mcpToolsInsight",
-        ready: true,
-        versionBadge: true,
-        pageKey: "mcpToolsInsight",
       },
       {
         id: "mcp-tools-control",
@@ -268,25 +268,34 @@ export const MERMAID_DIAGRAMS: Record<string, string> = {
   Retry --> Backup[Backup model pool]
   Backup --> Return`,
 
-  observability: `flowchart LR
-  Client[App / Client] --> VS[ BIG-IP Virtual Server ]
-  VS --> ILX[iRuleLX + Logging]
-  ILX --> Event[Structured event llm_request_completed]
-  Event --> Adapter[Observability Adapter /events]
+  observability: `flowchart TB
+  subgraph llm [LLM 推理观测]
+    Client[App / Client] --> VS[LLM Router VS]
+    VS --> ILX[iRuleLX + Logging]
+    ILX --> Event[llm_request_completed]
+    Event --> Adapter[Observability Adapter /events]
+  end
+  subgraph mcp [MCP Tools Insight]
+    Agent[AI Agent] --> MCPVS[F5 MCP Gateway VS]
+    MCPVS --> Audit[Structured MCP audit events]
+    Audit --> Adapter
+  end
   Adapter --> Calc[Dedup + Pricing + Counters]
   Calc --> Prom[Prometheus scrape /metrics]
-  Prom --> Grafana[Grafana Dashboard]
+  Prom --> Grafana[Grafana Dashboards]
   ILX --> LTM[LTM log]
   LTM --> SIEM[SIEM / APM]`,
   observabilityBiz: `flowchart LR
-  Traffic[LLM 业务流量] --> F5[F5 统一网关]
-  F5 --> Metrics[用量/性能/费用数据]
+  LLM[LLM 推理流量] --> F5[F5 统一网关]
+  MCP[Agent MCP 工具调用] --> F5
+  F5 --> Metrics[用量/性能/费用/MCP 调用数据]
   Metrics --> Prom[Prometheus]
   Prom --> Grafana[Grafana 看板]
   Metrics --> Ops[运维与 FinOps 决策]`,
   observabilityBizEn: `flowchart LR
-  Traffic[LLM business traffic] --> F5[F5 Unified Gateway]
-  F5 --> Metrics[Usage/Performance/Cost data]
+  LLM[LLM inference traffic] --> F5[F5 Unified Gateway]
+  MCP[Agent MCP tool calls] --> F5
+  F5 --> Metrics[Usage/Performance/Cost/MCP call data]
   Metrics --> Prom[Prometheus]
   Prom --> Grafana[Grafana Dashboard]
   Metrics --> Ops[Ops and FinOps decisions]`,

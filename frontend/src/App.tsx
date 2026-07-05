@@ -42,6 +42,14 @@ export default function App() {
               path="/scene/observability/metrics"
               element={<ObservabilitySubScenePage pageKey="obsMetrics" />}
             />
+            <Route
+              path="/scene/observability/mcp-tools-insight"
+              element={<McpToolsInsightPage />}
+            />
+            <Route
+              path="/scene/traffic-mgmt/mcp-tools-insight"
+              element={<Navigate to="/scene/observability/mcp-tools-insight" replace />}
+            />
 
             <Route path="/scene/traffic-mgmt" element={<SceneOverviewPage sceneId="traffic-mgmt" />} />
             <Route path="/scene/traffic-mgmt/tblb" element={<TblbPage />} />
@@ -54,16 +62,12 @@ export default function App() {
               element={<MaxTokensPage />}
             />
             <Route
-              path="/scene/traffic-mgmt/mcp-tools-insight"
-              element={<McpToolsInsightPage />}
-            />
-            <Route
               path="/scene/traffic-mgmt/mcp-tools-control"
               element={<PlaceholderSubScenePage pageKey="mcpToolsControl" />}
             />
             <Route
               path="/scene/traffic-mgmt/mcp-gateway"
-              element={<Navigate to="/scene/traffic-mgmt/mcp-tools-insight" replace />}
+              element={<Navigate to="/scene/observability/mcp-tools-insight" replace />}
             />
 
             <Route path="/scene/security" element={<SceneOverviewPage sceneId="security" />} />

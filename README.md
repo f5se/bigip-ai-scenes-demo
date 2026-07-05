@@ -14,10 +14,10 @@
 | | Retry 与 Fallback | `/scene/llm-router/retry-fallback` | ✅ 完整交互（含 F5 iControl） |
 | **场景二：Observability** | Tokens 用量统计 | `/scene/observability/tokens` | ✅ 模拟流量 + Grafana 跳转 |
 | | 模型 Metrics | `/scene/observability/metrics` | ✅ 模拟流量 + Grafana 跳转 |
+| | MCP 工具调用洞察 | `/scene/observability/mcp-tools-insight` | ✅ 完整 MCP 会话 + Grafana 跳转 |
 | **场景三：Traffic MGMT** | LLM Router + TBLB | `/scene/traffic-mgmt/tblb` | ✅ 成员分布测试 |
 | | 模型黑白名单 | `/scene/traffic-mgmt/model-allowlist` | ✅ 完整交互（TMOS v21 JSON Profile） |
 | | max_tokens 上限 | `/scene/traffic-mgmt/max-tokens-limit` | ✅ 完整交互（TMOS v21 JSON Profile） |
-| | MCP 工具调用洞察 | `/scene/traffic-mgmt/mcp-tools-insight` | 🔜 规划中 |
 | | MCP 工具调用管控 | `/scene/traffic-mgmt/mcp-tools-control` | 🔜 规划中 |
 | **场景四：Security** | System prompt 加固 | `/scene/security/system-prompt` | ✅ 完整交互（TMOS v21 JSON Profile） |
 | | 护栏接入 | `/scene/security/guardrails` | ✅ 完整交互 |
@@ -328,6 +328,34 @@ curl -iX POST http://172.16.30.121:8000/v1/chat/completions \
 
 ---
 
+### 场景二 · MCP 工具调用洞察
+
+**能力**：F5 MCP 网关在 MCP JSON-RPC 会话中采集结构化审计事件（`mcp_request_completed` 及 sampling/elicitation 子事件），经 Observability Adapter（`/api/mcp-events`）聚合后导出 Prometheus 指标，Grafana 看板按 tool / agent / tenant 维度展示调用量、成功率与时延。
+
+**测试方法**
+
+1. 启动 MCP Server（默认 `:9001`）、Adapter（`:8090`）与 Demo 后端（`:8080`）；F5 联调时挂载 `ir_mcp_audit_logger` 并设置 `emit_audit_without_f5=false`。
+2. 进入 **MCP Tools 调用 Insight**，配置 MCP Gateway VS（如 `172.16.30.125:9000`）或本地直连 MCP Server（`127.0.0.1:9001`）。
+3. 点击 **运行完整 MCP 会话** 或选择单项 Scenario（tools/call、sampling、elicitation 等），观察左侧 JSON-RPC 时间线。
+4. 可选 **启动持续模拟**，在设定时长内轮询不同 Tenant/Agent/Scenario 填充 Grafana。
+5. 点击 **打开 Grafana** 跳转 UID `mcp-tools-insight` 看板。
+
+**关键说明**
+
+- 路由：`/scene/observability/mcp-tools-insight`（旧路径 `/scene/traffic-mgmt/mcp-tools-insight` 自动重定向）。
+- 与 LLM Observability 共用 Adapter + Prometheus + Grafana 架构；LLM 看板可通过链接跳转 MCP 看板。
+- 本地无 F5 时设置 `emit_audit_without_f5=true`，由 Demo 后端 Runner 模拟 iRule 审计输出。
+
+**相关配置**
+
+| 类型 | 项 | 说明 |
+|------|-----|------|
+| config.py | `MCP_INSIGHT_DEMO` | VS、Adapter URL、Agent/Tenant 选项、Scenario 枚举 |
+| 环境变量 | `LLM_DEMO_MCP_INSIGHT_VS_HOST` 等 | 覆盖默认 VS 与 Adapter 地址 |
+| 部署指南 | `MCP-F5-DEPLOY-GUIDE.md` | F5 VS、iRule、iRuleLX 联调步骤 |
+
+---
+
 ### 场景三 · LLM Router + TBLB
 
 **能力**：Router 按 model 选 Pool 后，TBLB 在 `pool_gpt-4o`、`pool_gemini-1.5-pro` 内按 Scheduler 指标智能选 member；`pool_deepseek-chat` 为标准 LB，无 TBLB。
@@ -428,12 +456,13 @@ curl -iX POST http://172.16.30.124:8000/v1/chat/completions \
 
 ---
 
-### 场景三 · MCP 工具（规划中）
+### 场景三 · MCP 工具管控（规划中）
 
 | 子场景 | 路由 | 状态 |
 |--------|------|------|
-| MCP 工具调用洞察 | `/scene/traffic-mgmt/mcp-tools-insight` | 🔜 占位页，架构图已就绪 |
 | MCP 工具调用管控 | `/scene/traffic-mgmt/mcp-tools-control` | 🔜 占位页，架构图已就绪 |
+
+> MCP 工具调用洞察已移至 **场景二 Observability**（`/scene/observability/mcp-tools-insight`）。
 
 ---
 

@@ -53,7 +53,7 @@
   "nav": {
     "scenes": "Scenes",
     "scene1": "Scene 1: LLM Router",
-    "scene2": "Scene 2: Observability",
+    "scene2": "Scene 2: AI Observability",
     "scene3": "Scene 3: Optimization and Control",
     "scene4": "Scene 4: LLM Security",
     "modelRouting": "Model Based Routing",
@@ -76,8 +76,8 @@
   "home": {
     "pickScene": "Choose a demo scene",
     "scene1Desc": "One LLM entry: model routing, context-size steering, retry & fallback",
-    "scene2Desc": "Token usage, per-model metrics, and LLM traffic observability",
-    "scene3Desc": "Optimize and control inference: TBLB scheduling, model allow/block, max_tokens ceiling, MCP tool gateway (planned)",
+    "scene2Desc": "See what AI costs, how stable it runs, and which tools agents call—unified observability for FinOps and ops",
+    "scene3Desc": "Optimize and control inference: TBLB scheduling, model allow/block, max_tokens ceiling, MCP tool control (planned)",
     "scene4Desc": "System prompt hardening and LLM Guardrail integration at the gateway",
     "hero": {
       "title": "One question — what happens behind the scenes?",
@@ -169,17 +169,18 @@
       ]
     },
     "observability": {
-      "title": "LLM Observability",
-      "tagline": "LLM observability aligned with the live Prometheus pipeline",
-      "introStory": "This demo now mirrors the real collection and computation path: BIG-IP iRuleLX emits structured events, the Adapter receives `/events`, performs request_id dedup, pricing, and metric aggregation, exposes `/metrics` for Prometheus scrape, and Grafana renders live dashboards for requests, tokens, latency, retry/fallback, and cost.",
-      "overviewNote": "The interaction area below shows lightweight dashboard sketches that match Grafana panels. Use the button to open the live board.",
+      "title": "AI Observability & Insight",
+      "tagline": "Bring scattered AI spend, performance, and tool usage into one dashboard—so FinOps, ops, and compliance can see and act fast",
+      "introStory": "After rolling out Copilot and Agentic AI at scale, platform and business leaders often face three blind spots: how much each team spends on AI tokens, why users say “it feels slow” without a clear culprit, and which MCP tools agents call—plus whether volume or patterns pose operational or compliance risk. Without unified observability, finance reconciles vendor consoles one by one while ops jumps between inference logs and scattered tool-server logs—hard to charge back, plan capacity, or alert on anomalies. This scene shows how F5 collects LLM inference and MCP tool-call signals at the unified gateway and feeds one observability platform so leadership, ops, and compliance can drill down by model, department, agent, and tool.",
+      "overviewNote": "Three sub-scenes below cover token usage & cost, model performance, and MCP tool-call insight. Open any for a live demo, or use the Grafana preview to jump to live boards.",
       "bullets": [
-        "Collection path: iRuleLX structured events -> Adapter normalization/pricing -> Prometheus scrape -> Grafana visualization",
-        "Core metrics: RPS, error ratio, Retry/Fallback ratio, TTFT/Latency quantiles, Prompt/Completion tokens, and cost",
-        "Dashboard filters match live variables: model, pool, member, client_ip, and price_version"
+        "Tokens & cost: see AI consumption and trends by team, application, and model—support FinOps chargeback, budgets, and early warning on spikes",
+        "Performance & stability: drill from “it feels slow” to a specific model or server; watch errors, retries, and fallback together to shorten diagnosis",
+        "MCP tool insight: know which tools agents call, volume and success rates—support capacity planning, hotspot detection, and “who called what, when” for compliance",
+        "One observability plane: correlate LLM inference with MCP tool calls on the same platform—less reconciliation and fewer handoffs across teams"
       ],
       "interactionTitle": "Grafana Dashboard Sketch",
-      "interactionSubtitle": "Embedded mini diagrams are illustrative; use Grafana for real-time details",
+      "interactionSubtitle": "Sketches below show board layout; open Grafana for live data and multi-dimensional drill-down (LLM and MCP Tools boards)",
       "openGrafana": "Open Live Grafana Dashboard",
       "linkHint": "Target: {{url}} (last 5 minutes, auto-refresh every 10s)",
       "mockPanels": {
@@ -290,9 +291,9 @@
     },
     "trafficMgmt": {
       "title": "Optimization and Control",
-      "tagline": "Optimize inference resource use and control agent tool access at the unified gateway",
-      "introStory": "After LLM Router picks a pool, two optimization and control needs remain: avoid hot GPUs inside a model pool, and safely connect agents to many MCP tool servers in Agentic AI workloads. Optimization and Control covers both—TBLB for intelligent in-pool inference scheduling, and MCP Tools Call Insight / Control for observability and policy-governed tool access (planned).",
-      "overviewNote": "TBLB, model allow/block, and max_tokens ceiling demos are live; MCP Tools Call Insight / Control are planned placeholders.",
+      "tagline": "Optimize inference resource use and govern agent tool policies at the unified gateway",
+      "introStory": "After LLM Router picks a pool, two optimization and control needs remain: avoid hot GPUs inside a model pool, and safely connect agents to many MCP tool servers in Agentic AI workloads. Optimization and Control covers TBLB for intelligent in-pool scheduling, model allow/block and max_tokens ceilings for LLM request policy, and MCP Tools Call Control (planned) for MCP tool access, auth, rate limits, and routing.",
+      "overviewNote": "TBLB, model allow/block, and max_tokens ceiling demos are live; MCP Tools Call Control is a planned placeholder.",
       "bullets": [
         "Intelligent inference scheduling (TBLB): after Router picks a pool, steer to the best GPU member from live metrics",
         "Model allow/block list: model admission at the unified gateway—prevent agents from calling costly or unapproved models",
@@ -387,7 +388,7 @@
         "Grafana dashboards drill down by tool / agent / tenant and correlate with LLM inference metrics",
         "Planned: same collection path as llm_request_completed events to reduce ops overhead"
       ],
-      "plannedIntro": "MCP Tools Call Insight interactive demo is planned; this page is a capability placeholder and architecture overview.",
+      "plannedIntro": "MCP Tools Call Insight interactive demo is live—run full MCP sessions below and open the Grafana board.",
       "planned": [
         "Demo the collection path from F5 gateway through Adapter to Grafana",
         "Dashboards for call volume, success rate, and latency by tool and agent",

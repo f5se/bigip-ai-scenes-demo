@@ -61,62 +61,68 @@ export function SceneOverviewPage({ sceneId }: Props) {
     </div>
   );
 
-  const observabilityInteraction = (
-    <div className="space-y-4">
-      <div>
-        <p className="text-sm font-medium text-cyan-300">
-          {t("scenes.observability.interactionTitle")}
-        </p>
-        <p className="mt-1 text-xs text-slate-400">
-          {t("scenes.observability.interactionSubtitle")}
-        </p>
-      </div>
+  const subFeatureCards = defaultInteraction;
 
-      <div className="grid gap-3 md:grid-cols-3">
-        <div className="rounded-lg border border-cyan-700/40 bg-slate-900/50 p-3">
-          <p className="mb-2 text-xs font-medium text-cyan-300">
-            {t("scenes.observability.mockPanels.traffic")}
+  const observabilityInteraction = (
+    <div className="space-y-6">
+      {subFeatureCards}
+
+      <div className="space-y-4 border-t border-slate-700/60 pt-6">
+        <div>
+          <p className="text-sm font-medium text-cyan-300">
+            {t("scenes.observability.interactionTitle")}
           </p>
-          <div className="h-16 rounded bg-slate-800/70 p-2">
-            <div className="h-full w-full rounded border border-slate-600/70 bg-gradient-to-r from-cyan-500/20 via-emerald-500/20 to-rose-500/20" />
-          </div>
+          <p className="mt-1 text-xs text-slate-400">
+            {t("scenes.observability.interactionSubtitle")}
+          </p>
         </div>
-        <div className="rounded-lg border border-cyan-700/40 bg-slate-900/50 p-3">
-          <p className="mb-2 text-xs font-medium text-cyan-300">
-            {t("scenes.observability.mockPanels.quality")}
-          </p>
-          <div className="h-16 rounded bg-slate-800/70 p-2">
-            <div className="flex h-full items-end gap-1">
-              <span className="h-4 w-3 rounded-sm bg-cyan-400/50" />
-              <span className="h-7 w-3 rounded-sm bg-cyan-400/60" />
-              <span className="h-10 w-3 rounded-sm bg-cyan-400/70" />
-              <span className="h-8 w-3 rounded-sm bg-cyan-400/60" />
-              <span className="h-12 w-3 rounded-sm bg-cyan-400/80" />
+
+        <div className="grid gap-3 md:grid-cols-3">
+          <div className="rounded-lg border border-cyan-700/40 bg-slate-900/50 p-3">
+            <p className="mb-2 text-xs font-medium text-cyan-300">
+              {t("scenes.observability.mockPanels.traffic")}
+            </p>
+            <div className="h-16 rounded bg-slate-800/70 p-2">
+              <div className="h-full w-full rounded border border-slate-600/70 bg-gradient-to-r from-cyan-500/20 via-emerald-500/20 to-rose-500/20" />
+            </div>
+          </div>
+          <div className="rounded-lg border border-cyan-700/40 bg-slate-900/50 p-3">
+            <p className="mb-2 text-xs font-medium text-cyan-300">
+              {t("scenes.observability.mockPanels.quality")}
+            </p>
+            <div className="h-16 rounded bg-slate-800/70 p-2">
+              <div className="flex h-full items-end gap-1">
+                <span className="h-4 w-3 rounded-sm bg-cyan-400/50" />
+                <span className="h-7 w-3 rounded-sm bg-cyan-400/60" />
+                <span className="h-10 w-3 rounded-sm bg-cyan-400/70" />
+                <span className="h-8 w-3 rounded-sm bg-cyan-400/60" />
+                <span className="h-12 w-3 rounded-sm bg-cyan-400/80" />
+              </div>
+            </div>
+          </div>
+          <div className="rounded-lg border border-cyan-700/40 bg-slate-900/50 p-3">
+            <p className="mb-2 text-xs font-medium text-cyan-300">
+              {t("scenes.observability.mockPanels.cost")}
+            </p>
+            <div className="h-16 rounded bg-slate-800/70 p-2">
+              <div className="h-full w-full rounded border border-slate-600/70 bg-gradient-to-t from-violet-500/20 via-amber-500/20 to-cyan-500/20" />
             </div>
           </div>
         </div>
-        <div className="rounded-lg border border-cyan-700/40 bg-slate-900/50 p-3">
-          <p className="mb-2 text-xs font-medium text-cyan-300">
-            {t("scenes.observability.mockPanels.cost")}
-          </p>
-          <div className="h-16 rounded bg-slate-800/70 p-2">
-            <div className="h-full w-full rounded border border-slate-600/70 bg-gradient-to-t from-violet-500/20 via-amber-500/20 to-cyan-500/20" />
-          </div>
-        </div>
-      </div>
 
-      <div className="flex flex-wrap items-center gap-3">
-        <a
-          href={grafanaUrl}
-          target="_blank"
-          rel="noreferrer"
-          className="inline-flex items-center rounded-md border border-cyan-500/60 bg-cyan-500/10 px-3 py-2 text-sm font-medium text-cyan-300 transition hover:bg-cyan-500/20"
-        >
-          {t("scenes.observability.openGrafana")}
-        </a>
-        <span className="text-xs text-slate-400">
-          {t("scenes.observability.linkHint", { url: grafanaBaseUrl })}
-        </span>
+        <div className="flex flex-wrap items-center gap-3">
+          <a
+            href={grafanaUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center rounded-md border border-cyan-500/60 bg-cyan-500/10 px-3 py-2 text-sm font-medium text-cyan-300 transition hover:bg-cyan-500/20"
+          >
+            {t("scenes.observability.openGrafana")}
+          </a>
+          <span className="text-xs text-slate-400">
+            {t("scenes.observability.linkHint", { url: grafanaBaseUrl })}
+          </span>
+        </div>
       </div>
     </div>
   );

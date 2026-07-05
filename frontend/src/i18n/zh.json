@@ -53,7 +53,7 @@
   "nav": {
     "scenes": "演示场景",
     "scene1": "场景一：LLM Router",
-    "scene2": "场景二：Observability",
+    "scene2": "场景二：AI 可观测洞察",
     "scene3": "场景三：Optimization and Control",
     "scene4": "场景四：LLM 安全",
     "modelRouting": "Model Based Routing",
@@ -76,8 +76,8 @@
   "home": {
     "pickScene": "选择演示场景",
     "scene1Desc": "统一 LLM 入口：按模型分诊、按对话长度分流、故障重试与兜底",
-    "scene2Desc": "LLM 流量 Token 用量、模型级 Metrics 与可观测分析",
-    "scene3Desc": "推理资源优化与流量管控：智能推理调度（TBLB）、模型黑白名单、max_tokens 上限、MCP 工具网关（规划中）",
+    "scene2Desc": "看清 AI 花了多少钱、跑得稳不稳、Agent 调了哪些工具——统一可观测支撑 FinOps 与运维决策",
+    "scene3Desc": "推理资源优化与流量管控：智能推理调度（TBLB）、模型黑白名单、max_tokens 上限、MCP 工具管控（规划中）",
     "scene4Desc": "System prompt 加固与 LLM Guardrail 接入，保障模型调用安全",
     "hero": {
       "title": "一个提问，背后发生了什么？",
@@ -169,17 +169,18 @@
       ]
     },
     "observability": {
-      "title": "LLM Observability",
-      "tagline": "基于真实 Prometheus 采集链路的 LLM 可观测展示",
-      "introStory": "当前演示已采用真实采集与计算架构：BIG-IP iRuleLX 输出结构化事件，Adapter 在 /events 接收后执行 request_id 去重、价格计算与指标聚合，并通过 /metrics 暴露给 Prometheus 抓取，最终在 Grafana 统一展示请求、Token、时延、重试与费用等看板。",
-      "overviewNote": "下方交互区展示与 Grafana 看板一致的简化示意，点击按钮可直接跳转到实时仪表盘。",
+      "title": "AI 可观测洞察",
+      "tagline": "把分散的 AI 消耗、性能与工具调用收敛到统一看板——让 FinOps、运维与合规团队看得清、查得快",
+      "introStory": "企业全面推广大模型 Copilot 与 Agentic AI 后，平台与业务负责人常面临三类「看不见」的困境：各团队 AI 用了多少 Token、花了多少钱；用户抱怨「变慢了」却找不到是哪个模型或哪台服务器的问题；Agent 究竟调用了哪些 MCP 工具、是否存在异常调用或合规风险。若缺少统一观测，FinOps 只能逐一对账各模型厂商后台，运维只能在推理日志与工具服务日志之间来回切换，难以做部门成本分摊、容量规划与异常告警。本场景展示 F5 如何在统一网关上采集 LLM 推理与 MCP 工具调用的关键数据，汇入同一可观测平台，让管理层、运维与合规团队按模型、部门、Agent、工具等维度一目了然。",
+      "overviewNote": "下方三个子场景分别演示 Token 用量与费用、模型性能体验、MCP 工具调用洞察；可进入任一子场景体验交互，或通过 Grafana 预览区打开实时看板。",
       "bullets": [
-        "采集链路：iRuleLX 结构化事件 -> Adapter 标准化与费用计算 -> Prometheus 抓取 -> Grafana 展示",
-        "核心指标：RPS、错误率、Retry/Fallback 比率、TTFT/Latency 分位、Prompt/Completion Tokens、Cost",
-        "多维筛选：model、pool、member、client_ip、price_version，与当前看板变量保持一致"
+        "Token 与费用：按团队、应用、模型看清 AI 消耗与趋势，支撑 FinOps 成本分摊、预算管控与异常增长预警",
+        "性能与稳定性：从「用户觉得慢」快速下钻到具体模型与服务器，同步观察错误、重试与兜底，缩短排障时间",
+        "MCP 工具洞察：掌握 Agent 调用了哪些工具、调用量与成功率，辅助容量评估、热点发现与「谁在何时调用了什么」的合规追溯",
+        "统一观测面：LLM 推理与 MCP 工具调用在同一平台关联分析，避免多系统对账与跨团队排障的低效重复"
       ],
       "interactionTitle": "Grafana 看板预览示意",
-      "interactionSubtitle": "界面内展示简图，详细数据请进入 Grafana 实时查看",
+      "interactionSubtitle": "下方为看板结构示意；实时数据与多维下钻请进入 Grafana（含 LLM 与 MCP Tools 看板）",
       "openGrafana": "打开 Grafana 实时看板",
       "linkHint": "目标地址：{{url}}（默认近 5 分钟，10s 自动刷新）",
       "mockPanels": {
@@ -291,14 +292,14 @@
     },
     "trafficMgmt": {
       "title": "Optimization and Control",
-      "tagline": "在统一网关之上优化推理资源利用，并管控 Agent 与工具调用",
-      "introStory": "企业完成 LLM Router 选池之后，仍面临两类优化与管控诉求：同一模型池内如何避开热点 GPU、提升推理效率；Agentic AI 场景下如何安全、可控地接入大量 MCP 工具服务。Optimization and Control 场景聚焦这两层能力——TBLB 负责池内智能推理调度，MCP Tools调用Insight 与 MCP Tools调用管控 分别负责工具调用的可观测洞察与网关侧策略管控（规划中）。",
-      "overviewNote": "「TBLB」「模型黑白名单」「max_tokens 上限控制」可现场演示；「MCP Tools 调用 Insight / 管控」为规划占位。",
+      "tagline": "在统一网关之上优化推理资源利用，并管控 Agent 工具调用策略",
+      "introStory": "企业完成 LLM Router 选池之后，仍面临两类优化与管控诉求：同一模型池内如何避开热点 GPU、提升推理效率；Agentic AI 场景下如何在网关层安全、可控地接入大量 MCP 工具服务。Optimization and Control 场景聚焦这两层能力——TBLB 负责池内智能推理调度，模型黑白名单与 max_tokens 上限负责 LLM 请求侧策略管控，MCP Tools 调用管控（规划中）负责 MCP 工具接入、鉴权、限流与路由策略。",
+      "overviewNote": "「TBLB」「模型黑白名单」「max_tokens 上限控制」可现场演示；「MCP Tools 调用管控」为规划占位。",
       "bullets": [
         "智能推理调度（TBLB）：Router 选池后，按 GPU 实时指标在池内选出最优推理成员",
         "模型黑白名单：在统一网关按 model 准入控制，防止 Agent 越权调用高成本或未审批模型",
         "max_tokens 上限：网关 iRule Layer 0 限制单次请求 max_tokens，防止 Agent 设置过大生成长度",
-        "MCP Tools调用管控（规划中）：在网关层统一执行 MCP 工具接入、鉴权、限流与路由策略"
+        "MCP Tools 调用管控（规划中）：在网关层统一执行 MCP 工具接入、鉴权、限流与路由策略"
       ]
     },
     "tblb": {
@@ -388,7 +389,7 @@
         "Grafana 看板支持按 tool / agent / tenant 变量下钻，联动 LLM 推理指标做端到端分析",
         "规划支持与现有 llm_request_completed 事件同链路采集，降低运维接入成本"
       ],
-      "plannedIntro": "MCP Tools调用Insight 交互演示规划中，当前为能力占位与架构导览。",
+      "plannedIntro": "MCP Tools 调用 Insight 交互演示已就绪；下方可运行完整 MCP 会话并跳转 Grafana 看板。",
       "planned": [
         "演示工具调用事件从 F5 网关到 Adapter / Grafana 的采集链路",
         "按工具与 Agent 维度的调用量、成功率、时延看板示意",
