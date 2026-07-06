@@ -119,6 +119,8 @@ def record_mcp_event(payload: dict[str, Any]) -> None:
     if message_type == "lifecycle.initialize":
         MCP_SESSIONS_TOTAL.labels(agent, tenant).inc()
         MCP_SESSIONS_ACTIVE.labels(agent, tenant).inc()
+    elif message_type == "lifecycle.session_terminate":
+        MCP_SESSIONS_ACTIVE.labels(agent, tenant).dec()
 
     if message_type.startswith("discovery."):
         op = message_type.replace("discovery.", "")

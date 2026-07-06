@@ -424,6 +424,7 @@ class MCPClientRunner:
                 },
             }
         )
+        self.session_id = None
 
     def _client_info(self) -> dict[str, str]:
         """MCP initialize clientInfo — reflects selected Agent / Tenant in the demo UI."""
@@ -459,50 +460,55 @@ class MCPClientRunner:
         self._audit_results.clear()
         self._stats = {"tool_calls": 0, "sampling": 0, "elicitation": 0, "messages": 0, "duration_ms": 0}
 
-        if scenario_id == "full":
-            await self._run_full_flow()
-        elif scenario_id == "lifecycle":
-            await self.ensure_session()
-            await self.post_delete()
-        elif scenario_id == "tools_list":
-            await self.ensure_session()
-            await self.post({"jsonrpc": "2.0", "id": self.next_id(), "method": "tools/list"})
-        elif scenario_id == "tool_call_alert":
-            await self.ensure_session()
-            await self._tool_call(
-                "query_alert", {"severity": "critical", "time_range": "1h"}
-            )
-        elif scenario_id == "tool_call_restart":
-            await self.ensure_session()
-            await self._tool_call(
-                "restart_service",
-                {"service_name": "payment-api", "environment": "test", "instance_id": "auto"},
-            )
-        elif scenario_id == "prompts_get":
-            await self.ensure_session()
-            await self.post(
-                {
-                    "jsonrpc": "2.0",
-                    "id": self.next_id(),
-                    "method": "prompts/get",
-                    "params": {
-                        "name": "incident_analysis",
-                        "arguments": {"incident_id": "INC-20260703-001"},
-                    },
-                }
-            )
-        elif scenario_id == "resources_read":
-            await self.ensure_session()
-            await self.post(
-                {
-                    "jsonrpc": "2.0",
-                    "id": self.next_id(),
-                    "method": "resources/read",
-                    "params": {"uri": "ops://metrics/cpu-usage"},
-                }
-            )
-        else:
-            raise ValueError(f"Unknown scenario: {scenario_id}")
+        closed_session_id: str | None = None
+        try:
+            if scenario_id == "full":
+                await self._run_full_flow()
+            elif scenario_id == "lifecycle":
+                await self.ensure_session()
+            elif scenario_id == "tools_list":
+                await self.ensure_session()
+                await self.post({"jsonrpc": "2.0", "id": self.next_id(), "method": "tools/list"})
+            elif scenario_id == "tool_call_alert":
+                await self.ensure_session()
+                await self._tool_call(
+                    "query_alert", {"severity": "critical", "time_range": "1h"}
+                )
+            elif scenario_id == "tool_call_restart":
+                await self.ensure_session()
+                await self._tool_call(
+                    "restart_service",
+                    {"service_name": "payment-api", "environment": "test", "instance_id": "auto"},
+                )
+            elif scenario_id == "prompts_get":
+                await self.ensure_session()
+                await self.post(
+                    {
+                        "jsonrpc": "2.0",
+                        "id": self.next_id(),
+                        "method": "prompts/get",
+                        "params": {
+                            "name": "incident_analysis",
+                            "arguments": {"incident_id": "INC-20260703-001"},
+                        },
+                    }
+                )
+            elif scenario_id == "resources_read":
+                await self.ensure_session()
+                await self.post(
+                    {
+                        "jsonrpc": "2.0",
+                        "id": self.next_id(),
+                        "method": "resources/read",
+                        "params": {"uri": "ops://metrics/cpu-usage"},
+                    }
+                )
+            else:
+                raise ValueError(f"Unknown scenario: {scenario_id}")
+        finally:
+            if self.session_id:
+                closed_session_id = self.session_id
+                await self.post_delete()
 
         await self.flush_audit()
         self._stats["duration_ms"] = int((time.perf_counter() - self._session_start) * 1000)
@@ -521,7 +527,7 @@ class MCPClientRunner:
             "events": self.events,
             "audit_results": self._audit_results if self.emit_audit else [],
             "audit_summary": audit_summary,
-            "session_id": self.session_id,
+            "session_id": closed_session_id,
         }
 
     async def _tool_call(self, name: str, arguments: dict[str, Any]) -> None:
@@ -576,4 +582,3 @@ class MCPClientRunner:
                 "assignee": "ops-team",
             },
         )
-        await self.post_delete()
