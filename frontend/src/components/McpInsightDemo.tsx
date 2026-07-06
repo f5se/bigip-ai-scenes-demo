@@ -317,14 +317,6 @@ export function McpInsightDemo() {
         >
           {t(`${PREFIX}.runFull`)}
         </button>
-        <a
-          href={grafanaUrl}
-          target="_blank"
-          rel="noreferrer"
-          className="rounded-md border border-cyan-500/60 px-4 py-2 text-sm text-cyan-300 hover:bg-cyan-500/10"
-        >
-          {t(`${PREFIX}.openGrafana`)}
-        </a>
       </div>
 
       <div className="rounded-lg border border-cyan-700/40 bg-slate-950/60 p-4 space-y-3">
@@ -368,6 +360,14 @@ export function McpInsightDemo() {
               {t(`${PREFIX}.continuous.start`)}
             </button>
           )}
+          <a
+            href={grafanaUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center rounded-md border border-cyan-500/60 bg-cyan-500/10 px-4 py-2 text-sm font-medium text-cyan-300 transition hover:bg-cyan-500/20"
+          >
+            {t(`${PREFIX}.openGrafana`)}
+          </a>
         </div>
         {trafficRunning && trafficStatus?.stats ? (
           <div className="grid grid-cols-2 gap-2 text-xs text-slate-400 sm:grid-cols-4">
