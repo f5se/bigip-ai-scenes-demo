@@ -1,0 +1,47 @@
+# Adapter only (Prometheus / Grafana stay outside this stack).
+# Usage:
+#   docker compose -f docker-compose.adapter.yaml up -d
+# Or after loading a prebuilt image:
+#   IMAGE=llm-observability-adapter:1.0.0 docker compose -f docker-compose.adapter.yaml up -d
+
+services:
+  adapter:
+    image: ${IMAGE:-llm-observability-adapter:1.0.0}
+    build:
+      context: .
+      dockerfile: Dockerfile
+      # Uncomment / set when the build host needs a proxy:
+      # args:
+      #   HTTP_PROXY: ${HTTP_PROXY:-}
+      #   HTTPS_PROXY: ${HTTPS_PROXY:-}
+      #   NO_PROXY: ${NO_PROXY:-localhost,127.0.0.1}
+    container_name: llm-observability-adapter
+    restart: unless-stopped
+    ports:
+      - "${ADAPTER_HOST_PORT:-8090}:8090"
+    environment:
+      ADAPTER_PRICING_RULES_PATH: /app/pricing_rules.json
+      ADAPTER_DEDUP_TTL_SECONDS: ${ADAPTER_DEDUP_TTL_SECONDS:-300}
+      # ADAPTER_EVENT_DEBUG: "1"
+      # ADAPTER_MCP_EVENT_DEBUG: "1"
+    # Optional: mount a host pricing file without rebuilding the image
+    # volumes:
+    #   - ./pricing_rules.json:/app/pricing_rules.json:ro
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8090/health', timeout=3)",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    # Cap docker json-file log growth on disk
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

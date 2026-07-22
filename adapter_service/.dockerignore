@@ -1,0 +1,8 @@
+# Whitelist-only: keep the image free of docs, tests, Prom/Grafana, and local junk.
+*
+
+!requirements.txt
+!main.py
+!mcp_events.py
+!mcp_metrics.py
+!pricing_rules.json

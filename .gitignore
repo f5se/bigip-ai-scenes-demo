@@ -10,6 +10,7 @@ __pycache__/
 !README.md
 !requirements.txt
 !README_irulelx.md
+!adapter_service/DOCKER.md
 
 # Local virtualenvs (created on each machine)
 .venv/
@@ -39,3 +40,5 @@ temp-dev.txt
 adapter_service/docker-compose.yaml
 
 bigip-tmos-v21.1-mcp-features-discussion.md
+
+temp-ppt/*
