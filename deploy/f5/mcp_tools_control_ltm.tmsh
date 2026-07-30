@@ -1,8 +1,8 @@
 # MCP Tools Control Tier 1 — LTM objects (pools / iRule / VS)
 # VIP: 172.16.30.125:9010 (same IP as vs_mcp_insight:9000)
 # Backend: 172.16.40.122:9001 (ops) / :9002 (finance)
-# Demo passwords (APM LocalDB, non-prod): AgentDemo@2018
-# OAuth client secret (demo): McpControlDemoSecret2018
+# Demo passwords (APM LocalDB, non-prod): xxx
+# OAuth client secret (demo): xxx
 #
 # APM OAuth AS / Access Profile are created via GUI or separate script;
 # this file covers LTM pieces that can be applied with tmsh.
