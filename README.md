@@ -484,15 +484,35 @@ curl -iX POST http://172.16.30.124:8000/v1/chat/completions \
 
 ---
 
-### 场景三 · MCP 工具管控（规划中）
+### 场景三 · MCP 工具调用管控
 
+**能力**：基于 BIG-IP APM + MCP Profile 实现两层访问控制演示。
 
-| 子场景        | 路由                                      | 状态            |
-| ---------- | --------------------------------------- | ------------- |
-| MCP 工具调用管控 | `/scene/traffic-mgmt/mcp-tools-control` | 🔜 占位页，架构图已就绪 |
+- **Tier 1（Server 级）**：按 `mcp_groups` 与 `X-Mcp-Target-Server` 决定是否可访问 `ops`/`finance` MCP Server。
+- **Tier 2（Tool 级）**：当前采用 **路径 C**（LTM `JSON_REQUEST` 内直接执行 `mcp_role/tool_name` ACL，未命中 fail-close 到 deny pool）。
 
+**测试方法**
 
-> MCP 工具调用洞察已移至 **场景二 Observability**（`/scene/observability/mcp-tools-insight`）。
+1. 进入 **MCP 工具调用管控**，路由 `**/scene/traffic-mgmt/mcp-tools-control`**。
+2. 在 **Tier1** 视图选择 Agent 身份与目标 Server，点击运行，观察 Allow/Deny 与 `initialize` 结果。
+3. 在 **Tier2** 视图选择 tool（如 `query_alert` / `restart_service`），比较 `ops-admin` 与 `ops-readonly` 的差异结果。
+4. 对照时间线确认：Token 获取 → Tier1 判定 → Tier2 判定（若为 tools/call）→ 网关返回。
+
+**关键说明**
+
+- 与“场景二 MCP Tools Insight”复用同一 MCP 基础设施，但目标不同：场景二偏观测，场景三偏访问控制策略演示。
+- Tier2 不依赖 PRP perflow 传递；按实验室结论统一为路径 C。
+- 文档口径以 `deploy/f5/MCP-TOOLS-CONTROL-TIER2-TOOL-RBAC.md` 与 `mcp-tools-control-tier1-design-plan.md` 为准。
+
+**相关配置**
+
+| 类型        | 项                                    | 说明 |
+| --------- | ------------------------------------ | ---- |
+| config.py | `MCP_CONTROL_DEMO`                   | Agent 身份、目标 Server、OAuth 与 VS 配置 |
+| API       | `/api/demo/mcp-tools-control/*`      | 配置拉取、执行演示、健康检查 |
+| 部署文档      | `deploy/f5/MCP-TOOLS-CONTROL-*.md`   | APM 对象、Tier1/Tier2 策略与验证手册 |
+
+> MCP 工具调用洞察位于 **场景二 Observability**（`/scene/observability/mcp-tools-insight`）。
 
 ---
 
@@ -628,6 +648,9 @@ uvicorn main:app --host 0.0.0.0 --port 8090
 | GET      | `/api/demo/max-tokens/config`          | max_tokens 上限演示配置                            |
 | GET      | `/api/demo/max-tokens/policy`          | 查询 max_tokens 策略                             |
 | POST     | `/api/demo/max-tokens/run`             | 发送 max_tokens 演示请求                           |
+| GET      | `/api/demo/mcp-tools-control/config`   | MCP Tools 管控配置（Agent/Server 选项）              |
+| POST     | `/api/demo/mcp-tools-control/run`      | MCP Tools 管控执行（Tier1/Tier2）                   |
+| GET      | `/api/demo/mcp-tools-control/health`   | MCP Tools 管控健康检查                              |
 | POST     | `/api/proxy/chat/completions`          | 通用 OpenAI 兼容代理                               |
 
 
@@ -673,7 +696,9 @@ llm_router_demo_App/
 │   ├── obs_traffic_sim.py       # Observability 流量模拟
 │   ├── system_prompt.py         # System prompt wrapper 预览/分析
 │   ├── model_allowlist_demo.py  # 模型准入策略
-│   └── max_tokens_demo.py       # max_tokens 策略
+│   ├── max_tokens_demo.py       # max_tokens 策略
+│   ├── mcp_control_demo.py      # MCP Tools 管控 API
+│   └── mcp_control_runner.py    # MCP Tools 管控执行器（Token + MCP 调用）
 ├── adapter_service/             # 结构化日志 → Prometheus（独立进程）
 ├── frontend/src/
 │   ├── scenes/manifest.ts       # 场景/子场景路由定义
