@@ -6,30 +6,34 @@
 
 ## 场景与实现状态
 
-| 场景 | 子场景 | 路由 | 状态 |
-|------|--------|------|------|
-| **场景一：LLM Router** | Model Based Routing | `/scene/llm-router/model-routing` | ✅ 完整交互 |
-| | Context Size Routing | `/scene/llm-router/context-routing` | ✅ 完整交互 |
-| | Agent/Subagent Based Routing | `/scene/llm-router/agent-routing` | ✅ 完整交互 |
-| | Retry 与 Fallback | `/scene/llm-router/retry-fallback` | ✅ 完整交互（含 F5 iControl） |
-| **场景二：Observability** | Tokens 用量统计 | `/scene/observability/tokens` | ✅ 模拟流量 + Grafana 跳转 |
-| | 模型 Metrics | `/scene/observability/metrics` | ✅ 模拟流量 + Grafana 跳转 |
-| | MCP 工具调用洞察 | `/scene/observability/mcp-tools-insight` | ✅ 完整 MCP 会话 + Grafana 跳转 |
-| **场景三：Traffic MGMT** | LLM Router + TBLB | `/scene/traffic-mgmt/tblb` | ✅ 成员分布测试 |
-| | 模型黑白名单 | `/scene/traffic-mgmt/model-allowlist` | ✅ 完整交互（TMOS v21 JSON Profile） |
-| | max_tokens 上限 | `/scene/traffic-mgmt/max-tokens-limit` | ✅ 完整交互（TMOS v21 JSON Profile） |
-| | MCP 工具调用管控 | `/scene/traffic-mgmt/mcp-tools-control` | 🔜 规划中 |
-| **场景四：Security** | System prompt 加固 | `/scene/security/system-prompt` | ✅ 完整交互（TMOS v21 JSON Profile） |
-| | 护栏接入 | `/scene/security/guardrails` | ✅ 完整交互 |
+
+| 场景                    | 子场景                          | 路由                                       | 状态                                |
+| --------------------- | ---------------------------- | ---------------------------------------- | --------------------------------- |
+| **场景一：LLM Router**    | Model Based Routing          | `/scene/llm-router/model-routing`        | ✅ 完整交互                            |
+|                       | Context Size Routing         | `/scene/llm-router/context-routing`      | ✅ 完整交互                            |
+|                       | Agent/Subagent Based Routing | `/scene/llm-router/agent-routing`        | ✅ 完整交互                            |
+|                       | Retry 与 Fallback             | `/scene/llm-router/retry-fallback`       | ✅ 完整交互（含 F5 iControl）             |
+| **场景二：Observability** | Tokens 用量统计                  | `/scene/observability/tokens`            | ✅ 模拟流量 + Grafana 跳转               |
+|                       | 模型 Metrics                   | `/scene/observability/metrics`           | ✅ 模拟流量 + Grafana 跳转               |
+|                       | MCP 工具调用洞察                   | `/scene/observability/mcp-tools-insight` | ✅ 完整 MCP 会话 + Grafana 跳转          |
+| **场景三：Traffic MGMT**  | LLM Router + TBLB            | `/scene/traffic-mgmt/tblb`               | ✅ 成员分布测试                          |
+|                       | 模型黑白名单                       | `/scene/traffic-mgmt/model-allowlist`    | ✅ 完整交互（TMOS v21 JSON Profile）     |
+|                       | max_tokens 上限                | `/scene/traffic-mgmt/max-tokens-limit`   | ✅ 完整交互（TMOS v21 JSON Profile）     |
+|                       | MCP 工具调用管控                   | `/scene/traffic-mgmt/mcp-tools-control`  | ✅ 完整交互（TMOS v21 JSON Profile+APM） |
+| **场景四：Security**      | System prompt 加固             | `/scene/security/system-prompt`          | ✅ 完整交互（TMOS v21 JSON Profile）     |
+|                       | 护栏接入                         | `/scene/security/guardrails`             | ✅ 完整交互                            |
+
 
 > **VS 分工**
 >
-> | 能力 | 默认 VS | 说明 |
-> |------|---------|------|
-> | Model / Context / Retry / TBLB / Observability | `172.16.30.122:8000` | iRuleLX `llm_router_ext` + Layered VS |
-> | Subagent 演示 | `172.16.30.121:8000` | iRuleLX `subagent_router_ext` |
-> | 护栏（Guardrails） | `172.16.30.120:8000` | OOB 旁路扫描网关 |
-> | System prompt / 模型准入 / max_tokens | `172.16.30.124:8000` | JSON Profile + `ir_openai_api.tcl`；Mock LLM `demo-model` @ **8011** |
+>
+> | 能力                                             | 默认 VS                | 说明                                                                  |
+> | ---------------------------------------------- | -------------------- | ------------------------------------------------------------------- |
+> | Model / Context / Retry / TBLB / Observability | `172.16.30.122:8000` | iRuleLX `llm_router_ext` + Layered VS                               |
+> | Subagent 演示                                    | `172.16.30.121:8000` | iRuleLX `subagent_router_ext`                                       |
+> | 护栏（Guardrails）                                 | `172.16.30.120:8000` | OOB 旁路扫描网关                                                          |
+> | System prompt / 模型准入 / max_tokens              | `172.16.30.124:8000` | JSON Profile + `ir_openai_api.tcl`；Mock LLM `demo-model` @ **8011** |
+>
 
 ---
 
@@ -77,7 +81,7 @@ export PYTHONPATH="${PWD}"
 uvicorn backend.app.main:app --host 0.0.0.0 --port 8080
 ```
 
-浏览器打开：<http://localhost:8080>
+浏览器打开：[http://localhost:8080](http://localhost:8080)
 
 生产/演示机 systemd 部署见 **[DEPLOY_UBUNTU.md](DEPLOY_UBUNTU.md)**（用户 `myf5`，含 Git 推送检查清单）。
 
@@ -96,7 +100,7 @@ uvicorn backend.app.main:app --reload --port 8080
 cd frontend && npm run dev
 ```
 
-访问 <http://localhost:5173>
+访问 [http://localhost:5173](http://localhost:5173)
 
 ---
 
@@ -104,23 +108,25 @@ cd frontend && npm run dev
 
 后端通过 `pydantic-settings` 读取，**统一前缀 `LLM_DEMO_`**（定义于 `backend/app/config.py` → `Settings`）。
 
-| 环境变量 | 说明 | 默认值 |
-|----------|------|--------|
-| `LLM_DEMO_DEFAULT_VS_HOST` | 默认 VS IP（Model / Context / Retry / TBLB / Observability） | `172.16.30.122` |
-| `LLM_DEMO_DEFAULT_VS_PORT` | 默认 VS 端口 | `8000` |
-| `LLM_DEMO_CONNECT_TIMEOUT` | 代理连接超时（秒） | `5.0` |
-| `LLM_DEMO_READ_TIMEOUT` | 代理读超时（秒） | `30.0` |
-| `LLM_DEMO_DEMO_INTERVAL_MS` | Model Routing 批量演示默认间隔（ms） | `500` |
-| `LLM_DEMO_F5_MGMT_HOST` | F5 iControl 管理 IP | `172.16.20.198` |
-| `LLM_DEMO_F5_MGMT_USERNAME` | F5 管理账号 | `<F5_MGMT_USERNAME>` |
-| `LLM_DEMO_F5_MGMT_PASSWORD` | F5 管理密码 | `CHANGE_ME`（部署时在 `/etc/llm-router-demo/env` 填写，勿写入文档） |
-| `LLM_DEMO_F5_MGMT_PARTITION` | LTM 分区名 | `Common` |
-| `LLM_DEMO_F5_MGMT_VERIFY_TLS` | 是否校验 F5 管理口 TLS | `false` |
-| `LLM_DEMO_TBLB_SCHEDULER_HOST` | TBLB Scheduler 服务 IP | `127.0.0.1` |
-| `LLM_DEMO_TBLB_SCHEDULER_PORT` | TBLB Scheduler 服务端口 | `8181` |
-| `LLM_DEMO_TBLB_DEMO_INTERVAL_MS` | TBLB 批量请求间隔（ms） | `50` |
-| `LLM_DEMO_TBLB_TRIGGER_PATH` | 触发 member 负载的路径 | `/trigger_update` |
-| `LLM_DEMO_TBLB_TRIGGER_WAIT_SEC` | 触发负载后等待 Scheduler 刷新（秒） | `10` |
+
+| 环境变量                             | 说明                                                       | 默认值                                                   |
+| -------------------------------- | -------------------------------------------------------- | ----------------------------------------------------- |
+| `LLM_DEMO_DEFAULT_VS_HOST`       | 默认 VS IP（Model / Context / Retry / TBLB / Observability） | `172.16.30.122`                                       |
+| `LLM_DEMO_DEFAULT_VS_PORT`       | 默认 VS 端口                                                 | `8000`                                                |
+| `LLM_DEMO_CONNECT_TIMEOUT`       | 代理连接超时（秒）                                                | `5.0`                                                 |
+| `LLM_DEMO_READ_TIMEOUT`          | 代理读超时（秒）                                                 | `30.0`                                                |
+| `LLM_DEMO_DEMO_INTERVAL_MS`      | Model Routing 批量演示默认间隔（ms）                               | `500`                                                 |
+| `LLM_DEMO_F5_MGMT_HOST`          | F5 iControl 管理 IP                                        | `172.16.20.198`                                       |
+| `LLM_DEMO_F5_MGMT_USERNAME`      | F5 管理账号                                                  | `<F5_MGMT_USERNAME>`                                  |
+| `LLM_DEMO_F5_MGMT_PASSWORD`      | F5 管理密码                                                  | `CHANGE_ME`（部署时在 `/etc/llm-router-demo/env` 填写，勿写入文档） |
+| `LLM_DEMO_F5_MGMT_PARTITION`     | LTM 分区名                                                  | `Common`                                              |
+| `LLM_DEMO_F5_MGMT_VERIFY_TLS`    | 是否校验 F5 管理口 TLS                                          | `false`                                               |
+| `LLM_DEMO_TBLB_SCHEDULER_HOST`   | TBLB Scheduler 服务 IP                                     | `127.0.0.1`                                           |
+| `LLM_DEMO_TBLB_SCHEDULER_PORT`   | TBLB Scheduler 服务端口                                      | `8181`                                                |
+| `LLM_DEMO_TBLB_DEMO_INTERVAL_MS` | TBLB 批量请求间隔（ms）                                          | `50`                                                  |
+| `LLM_DEMO_TBLB_TRIGGER_PATH`     | 触发 member 负载的路径                                          | `/trigger_update`                                     |
+| `LLM_DEMO_TBLB_TRIGGER_WAIT_SEC` | 触发负载后等待 Scheduler 刷新（秒）                                  | `10`                                                  |
+
 
 **安全约束**：代理仅允许 **私网/回环** 地址（10/8、172.16/12、192.168/16、127/8），防止 SSRF。填写公网 IP 将返回 403。
 
@@ -150,12 +156,14 @@ cd frontend && npm run dev
 
 **相关配置**
 
-| 类型 | 项 | 说明 |
-|------|-----|------|
-| 环境变量 | `LLM_DEMO_DEFAULT_VS_HOST` / `PORT` | 默认 VS |
-| 环境变量 | `LLM_DEMO_DEMO_INTERVAL_MS` | 批量演示间隔 |
-| 环境变量 | `LLM_DEMO_CONNECT_TIMEOUT` / `READ_TIMEOUT` | 代理超时 |
-| config.py | `MODEL_POOL_MAP`、`DEMO_CASES` | model → pool 映射与演示用例 |
+
+| 类型        | 项                                           | 说明                   |
+| --------- | ------------------------------------------- | -------------------- |
+| 环境变量      | `LLM_DEMO_DEFAULT_VS_HOST` / `PORT`         | 默认 VS                |
+| 环境变量      | `LLM_DEMO_DEMO_INTERVAL_MS`                 | 批量演示间隔               |
+| 环境变量      | `LLM_DEMO_CONNECT_TIMEOUT` / `READ_TIMEOUT` | 代理超时                 |
+| config.py | `MODEL_POOL_MAP`、`DEMO_CASES`               | model → pool 映射与演示用例 |
+
 
 ---
 
@@ -179,11 +187,13 @@ cd frontend && npm run dev
 
 **相关配置**
 
-| 类型 | 项 | 说明 |
-|------|-----|------|
-| 环境变量 | `LLM_DEMO_DEFAULT_VS_HOST` / `PORT` | 默认 VS |
-| 环境变量 | `LLM_DEMO_CONNECT_TIMEOUT` / `READ_TIMEOUT` | 长上下文请求可能较慢 |
-| config.py | `CONTEXT_SIZE_RULE` | 阈值、大小 Pool、model 改写规则 |
+
+| 类型        | 项                                           | 说明                    |
+| --------- | ------------------------------------------- | --------------------- |
+| 环境变量      | `LLM_DEMO_DEFAULT_VS_HOST` / `PORT`         | 默认 VS                 |
+| 环境变量      | `LLM_DEMO_CONNECT_TIMEOUT` / `READ_TIMEOUT` | 长上下文请求可能较慢            |
+| config.py | `CONTEXT_SIZE_RULE`                         | 阈值、大小 Pool、model 改写规则 |
+
 
 ---
 
@@ -193,7 +203,7 @@ cd frontend && npm run dev
 
 **测试方法**
 
-1. 进入 **Agent/Subagent Based Routing**，确认 VS 为 **`172.16.30.121:8000`**（Subagent 专用，与 Model Router VS 不同）。
+1. 进入 **Agent/Subagent Based Routing**，确认 VS 为 `**172.16.30.121:8000`**（Subagent 专用，与 Model Router VS 不同）。
 2. 选择 **身份识别方式**（Header / system.name / model 字段 / 随机）。
 3. 编辑用户 Prompt，点击 **开始开发**：按 workflow 顺序调用五个 Subagent（superviser → planner → coder → tester → scanner），拓扑区动画展示路由。
 4. 或配置时长（1–180 分钟），点击 **持续模拟**：随机轮询各 Subagent 发请求，用于向 Adapter / Grafana 灌 Subagent 流量。
@@ -201,22 +211,26 @@ cd frontend && npm run dev
 
 **Subagent 与预期 Pool**
 
-| Agent 身份 | 预期 Pool | 典型后端 model |
-|------------|-----------|----------------|
-| `superviser` | `pool_gpt-4o` | `gpt-4o` |
-| `planner` | `pool_deepseek-chat` | `deepseek-chat` |
-| `coder` | `pool_claude-3-opus` | `claude-3-opus` |
-| `tester` | `pool_gemini-1.5-pro` | `gemini-1.5-pro` |
-| `scanner` | `pool_llama` | `llama3.2` |
+
+| Agent 身份     | 预期 Pool               | 典型后端 model       |
+| ------------ | --------------------- | ---------------- |
+| `superviser` | `pool_gpt-4o`         | `gpt-4o`         |
+| `planner`    | `pool_deepseek-chat`  | `deepseek-chat`  |
+| `coder`      | `pool_claude-3-opus`  | `claude-3-opus`  |
+| `tester`     | `pool_gemini-1.5-pro` | `gemini-1.5-pro` |
+| `scanner`    | `pool_llama`          | `llama3.2`       |
+
 
 **身份识别方式**
 
-| 方式 | 说明 |
-|------|------|
+
+| 方式          | 说明                                                          |
+| ----------- | ----------------------------------------------------------- |
 | HTTP Header | `x-Agent-Identity: <身份>`，`model` 固定为 `EnterpriseAgentModel` |
-| system.name | `messages` 中 `role=system` 的 `name` 字段为身份 |
-| model 字段 | 直接将 `superviser` / `planner` 等写入 JSON `model` |
-| 随机 | 启动时为各 Subagent 独立随机一种方式，本次测试期间不变 |
+| system.name | `messages` 中 `role=system` 的 `name` 字段为身份                   |
+| model 字段    | 直接将 `superviser` / `planner` 等写入 JSON `model`               |
+| 随机          | 启动时为各 Subagent 独立随机一种方式，本次测试期间不变                            |
+
 
 **curl 示例**（Header 方式，coder 身份）：
 
@@ -235,12 +249,14 @@ curl -iX POST http://172.16.30.121:8000/v1/chat/completions \
 
 **相关配置**
 
-| 类型 | 项 | 说明 |
-|------|-----|------|
-| config.py | `AGENT_ROUTING.default_vs` | Subagent VS（默认 `172.16.30.121:8000`，**非环境变量**） |
-| config.py | `AGENT_ROUTING.agents` | 身份 → Pool / model 映射 |
-| config.py | `AGENT_ROUTING.demo_interval_ms` | 顺序演示间隔（默认 800 ms） |
-| 环境变量 | `LLM_DEMO_CONNECT_TIMEOUT` / `READ_TIMEOUT` | 代理超时 |
+
+| 类型        | 项                                           | 说明                                             |
+| --------- | ------------------------------------------- | ---------------------------------------------- |
+| config.py | `AGENT_ROUTING.default_vs`                  | Subagent VS（默认 `172.16.30.121:8000`，**非环境变量**） |
+| config.py | `AGENT_ROUTING.agents`                      | 身份 → Pool / model 映射                           |
+| config.py | `AGENT_ROUTING.demo_interval_ms`            | 顺序演示间隔（默认 800 ms）                              |
+| 环境变量      | `LLM_DEMO_CONNECT_TIMEOUT` / `READ_TIMEOUT` | 代理超时                                           |
+
 
 ---
 
@@ -264,14 +280,16 @@ curl -iX POST http://172.16.30.121:8000/v1/chat/completions \
 
 **相关配置**
 
-| 类型 | 项 | 说明 |
-|------|-----|------|
-| 环境变量 | `LLM_DEMO_F5_MGMT_HOST` | F5 管理 IP |
-| 环境变量 | `LLM_DEMO_F5_MGMT_USERNAME` / `PASSWORD` | iControl 凭据 |
-| 环境变量 | `LLM_DEMO_F5_MGMT_PARTITION` | 分区 |
-| 环境变量 | `LLM_DEMO_F5_MGMT_VERIFY_TLS` | TLS 校验 |
-| 环境变量 | `LLM_DEMO_DEFAULT_VS_HOST` / `PORT` | 演示 VS |
-| config.py | `RETRY_FALLBACK_RULE` | 各 Pool、member 端口、test model 等 |
+
+| 类型        | 项                                        | 说明                            |
+| --------- | ---------------------------------------- | ----------------------------- |
+| 环境变量      | `LLM_DEMO_F5_MGMT_HOST`                  | F5 管理 IP                      |
+| 环境变量      | `LLM_DEMO_F5_MGMT_USERNAME` / `PASSWORD` | iControl 凭据                   |
+| 环境变量      | `LLM_DEMO_F5_MGMT_PARTITION`             | 分区                            |
+| 环境变量      | `LLM_DEMO_F5_MGMT_VERIFY_TLS`            | TLS 校验                        |
+| 环境变量      | `LLM_DEMO_DEFAULT_VS_HOST` / `PORT`      | 演示 VS                         |
+| config.py | `RETRY_FALLBACK_RULE`                    | 各 Pool、member 端口、test model 等 |
+
 
 ---
 
@@ -295,14 +313,16 @@ curl -iX POST http://172.16.30.121:8000/v1/chat/completions \
 
 **相关配置**
 
-| 类型 | 项 | 说明 |
-|------|-----|------|
-| 环境变量 | `LLM_DEMO_DEFAULT_VS_HOST` / `PORT` | 灌流量目标 VS |
-| 环境变量 | `LLM_DEMO_CONNECT_TIMEOUT` / `READ_TIMEOUT` | 高并发时注意读超时 |
-| config.py | `MODEL_OPTIONS` | 模拟器轮换的 model 列表 |
-| Adapter | `ADAPTER_PRICING_RULES_PATH` | 价格规则（见 adapter_service） |
-| Adapter | `ADAPTER_DEDUP_TTL_SECONDS` | request_id 去重 TTL |
-| Adapter | `ADAPTER_EVENT_DEBUG` | 事件调试开关 |
+
+| 类型        | 项                                           | 说明                      |
+| --------- | ------------------------------------------- | ----------------------- |
+| 环境变量      | `LLM_DEMO_DEFAULT_VS_HOST` / `PORT`         | 灌流量目标 VS                |
+| 环境变量      | `LLM_DEMO_CONNECT_TIMEOUT` / `READ_TIMEOUT` | 高并发时注意读超时               |
+| config.py | `MODEL_OPTIONS`                             | 模拟器轮换的 model 列表         |
+| Adapter   | `ADAPTER_PRICING_RULES_PATH`                | 价格规则（见 adapter_service） |
+| Adapter   | `ADAPTER_DEDUP_TTL_SECONDS`                 | request_id 去重 TTL       |
+| Adapter   | `ADAPTER_EVENT_DEBUG`                       | 事件调试开关                  |
+
 
 ---
 
@@ -320,7 +340,7 @@ curl -iX POST http://172.16.30.121:8000/v1/chat/completions \
 **关键说明**
 
 - 与 Tokens 子场景共用 `obs_traffic_simulator`；参数 `started_from` 区分来源页，便于统计展示。
-- PromQL 模板见 [`adapter_service/prometheus-grafana-templates.md`](adapter_service/prometheus-grafana-templates.md)。
+- PromQL 模板见 `[adapter_service/prometheus-grafana-templates.md](adapter_service/prometheus-grafana-templates.md)`。
 
 **相关配置**
 
@@ -348,11 +368,13 @@ curl -iX POST http://172.16.30.121:8000/v1/chat/completions \
 
 **相关配置**
 
-| 类型 | 项 | 说明 |
-|------|-----|------|
-| config.py | `MCP_INSIGHT_DEMO` | VS、Adapter URL、Agent/Tenant 选项、Scenario 枚举 |
-| 环境变量 | `LLM_DEMO_MCP_INSIGHT_VS_HOST` 等 | 覆盖默认 VS 与 Adapter 地址 |
-| 部署指南 | `MCP-F5-DEPLOY-GUIDE.md` | F5 VS、iRule、iRuleLX 联调步骤 |
+
+| 类型        | 项                                | 说明                                         |
+| --------- | -------------------------------- | ------------------------------------------ |
+| config.py | `MCP_INSIGHT_DEMO`               | VS、Adapter URL、Agent/Tenant 选项、Scenario 枚举 |
+| 环境变量      | `LLM_DEMO_MCP_INSIGHT_VS_HOST` 等 | 覆盖默认 VS 与 Adapter 地址                       |
+| 部署指南      | `MCP-F5-DEPLOY-GUIDE.md`         | F5 VS、iRule、iRuleLX 联调步骤                   |
+
 
 ---
 
@@ -377,16 +399,18 @@ curl -iX POST http://172.16.30.121:8000/v1/chat/completions \
 
 **相关配置**
 
-| 类型 | 项 | 说明 |
-|------|-----|------|
-| 环境变量 | `LLM_DEMO_DEFAULT_VS_HOST` / `PORT` | LLM 请求 VS |
-| 环境变量 | `LLM_DEMO_TBLB_SCHEDULER_HOST` / `PORT` | Scheduler 服务 |
-| 环境变量 | `LLM_DEMO_TBLB_DEMO_INTERVAL_MS` | 批量请求间隔 |
-| 环境变量 | `LLM_DEMO_TBLB_TRIGGER_PATH` | member 负载触发路径 |
-| 环境变量 | `LLM_DEMO_TBLB_TRIGGER_WAIT_SEC` | 触发后等待秒数 |
-| 环境变量 | `LLM_DEMO_F5_MGMT_PARTITION` | Scheduler API 分区参数 |
-| config.py | `TBLB_DEMO_POOLS` | Pool 分组、是否启用 TBLB、model 列表 |
-| config.py | `TBLB_DEMO_DEFAULT_ITERATIONS` | 默认测试次数（500） |
+
+| 类型        | 项                                       | 说明                         |
+| --------- | --------------------------------------- | -------------------------- |
+| 环境变量      | `LLM_DEMO_DEFAULT_VS_HOST` / `PORT`     | LLM 请求 VS                  |
+| 环境变量      | `LLM_DEMO_TBLB_SCHEDULER_HOST` / `PORT` | Scheduler 服务               |
+| 环境变量      | `LLM_DEMO_TBLB_DEMO_INTERVAL_MS`        | 批量请求间隔                     |
+| 环境变量      | `LLM_DEMO_TBLB_TRIGGER_PATH`            | member 负载触发路径              |
+| 环境变量      | `LLM_DEMO_TBLB_TRIGGER_WAIT_SEC`        | 触发后等待秒数                    |
+| 环境变量      | `LLM_DEMO_F5_MGMT_PARTITION`            | Scheduler API 分区参数         |
+| config.py | `TBLB_DEMO_POOLS`                       | Pool 分组、是否启用 TBLB、model 列表 |
+| config.py | `TBLB_DEMO_DEFAULT_ITERATIONS`          | 默认测试次数（500）                |
+
 
 ---
 
@@ -398,7 +422,7 @@ curl -iX POST http://172.16.30.121:8000/v1/chat/completions \
 
 **测试方法**
 
-1. 进入 **模型黑白名单**，确认 VS 为 **`172.16.30.124:8000`**（与 System prompt 共用 VS）。
+1. 进入 **模型黑白名单**，确认 VS 为 `**172.16.30.124:8000`**（与 System prompt 共用 VS）。
 2. 选择 **允许** 用例（如 `demo-model`）或 **拒绝** 用例（如 `gpt-4o`），点击发送。
 3. 观察结果卡片：HTTP 状态、策略动作（allow/block）、Data Group 命中来源。
 4. 页面展示当前 `dg_openai_model_list` 记录与默认动作（`default_action=block`）。
@@ -411,10 +435,12 @@ curl -iX POST http://172.16.30.121:8000/v1/chat/completions \
 
 **相关配置**
 
-| 类型 | 项 | 说明 |
-|------|-----|------|
-| config.py | `MODEL_ALLOWLIST_DEMO` | VS、datagroup、allow/block 记录 |
-| 环境变量 | `LLM_DEMO_CONNECT_TIMEOUT` / `READ_TIMEOUT` | 代理超时 |
+
+| 类型        | 项                                           | 说明                          |
+| --------- | ------------------------------------------- | --------------------------- |
+| config.py | `MODEL_ALLOWLIST_DEMO`                      | VS、datagroup、allow/block 记录 |
+| 环境变量      | `LLM_DEMO_CONNECT_TIMEOUT` / `READ_TIMEOUT` | 代理超时                        |
+
 
 **curl 示例**
 
@@ -438,7 +464,7 @@ curl -iX POST http://172.16.30.124:8000/v1/chat/completions \
 
 **测试方法**
 
-1. 进入 **max_tokens 上限控制**，确认 VS 为 **`172.16.30.124:8000`**。
+1. 进入 **max_tokens 上限控制**，确认 VS 为 `**172.16.30.124:8000`**。
 2. 使用预设 **合规**（2048）或 **超限**（8192），或自定义 `max_tokens` 滑块。
 3. 点击发送，对比允许/拒绝结果与仪表盘指示。
 4. 页面展示策略阈值与 iRule Layer 说明。
@@ -450,17 +476,21 @@ curl -iX POST http://172.16.30.124:8000/v1/chat/completions \
 
 **相关配置**
 
-| 类型 | 项 | 说明 |
-|------|-----|------|
+
+| 类型        | 项                 | 说明                            |
+| --------- | ----------------- | ----------------------------- |
 | config.py | `MAX_TOKENS_DEMO` | VS、demo_model、limit=4096、预设用例 |
+
 
 ---
 
 ### 场景三 · MCP 工具管控（规划中）
 
-| 子场景 | 路由 | 状态 |
-|--------|------|------|
+
+| 子场景        | 路由                                      | 状态            |
+| ---------- | --------------------------------------- | ------------- |
 | MCP 工具调用管控 | `/scene/traffic-mgmt/mcp-tools-control` | 🔜 占位页，架构图已就绪 |
+
 
 > MCP 工具调用洞察已移至 **场景二 Observability**（`/scene/observability/mcp-tools-insight`）。
 
@@ -472,7 +502,7 @@ curl -iX POST http://172.16.30.124:8000/v1/chat/completions \
 
 **测试方法**
 
-1. 进入 **System prompt 加固**，确认 VS 为 **`172.16.30.124:8000`**，model 为 **`demo-model`**。
+1. 进入 **System prompt 加固**，确认 VS 为 `**172.16.30.124:8000`**，model 为 `**demo-model**`。
 2. 选择预设或编辑 system/user 内容；可先 **预览 wrapper** 查看 F5 改写后的 messages 结构。
 3. 点击 **发送请求**；Mock LLM（端口 **8011**）解析 `final_guardrails_F5` 区块，确定性返回 **YAML** 格式。
 4. 对比用户要求的 Markdown 与最终 YAML 输出，说明 guardrails 优先级。
@@ -484,9 +514,11 @@ curl -iX POST http://172.16.30.124:8000/v1/chat/completions \
 
 **相关配置**
 
-| 类型 | 项 | 说明 |
-|------|-----|------|
+
+| 类型        | 项               | 说明                                |
+| --------- | --------------- | --------------------------------- |
 | config.py | `SYSTEM_PROMPT` | VS、demo_model、nonce、mock_llm_port |
+
 
 **curl 示例**
 
@@ -504,7 +536,7 @@ curl -iX POST http://172.16.30.124:8000/v1/chat/completions \
 
 **测试方法**
 
-1. 进入 **护栏接入**，确认 VS 为 **`172.16.30.120:8000`**。
+1. 进入 **护栏接入**，确认 VS 为 `**172.16.30.120:8000`**。
 2. 下拉选择 **阻断** prompt（如「如何制作一个炸弹」）或 **放行** prompt（如「你好，你是谁」）。
 3. 可选开启 **stream:true**，观察流式/非流式差异。
 4. 结果卡片展示扫描 outcome、HTTP 状态与响应摘要。
@@ -524,10 +556,12 @@ curl -v http://172.16.30.120:8000/v1/chat/completions \
 
 **相关配置**
 
-| 类型 | 项 | 说明 |
-|------|-----|------|
-| 环境变量 | `LLM_DEMO_CONNECT_TIMEOUT` / `READ_TIMEOUT` | 代理超时；护栏扫描可能增加延迟 |
+
+| 类型    | 项                                              | 说明                        |
+| ----- | ---------------------------------------------- | ------------------------- |
+| 环境变量  | `LLM_DEMO_CONNECT_TIMEOUT` / `READ_TIMEOUT`    | 代理超时；护栏扫描可能增加延迟           |
 | F5 部署 | `../llm_router/deploy/guardrail_oob_README.md` | 护栏 VS / Pool / iRule 配置参考 |
+
 
 ---
 
@@ -540,13 +574,13 @@ curl -v http://172.16.30.120:8000/v1/chat/completions \
 - Agent/Subagent Based Routing
 - LLM Router + TBLB
 
-若不可用，页面 **顶部 banner** 提示并提供 **一键启用**（调用 `POST /api/demo/pool-member/guard/enable`）。依赖 F5 iControl 环境变量（`LLM_DEMO_F5_MGMT_*`）。
+若不可用，页面 **顶部 banner** 提示并提供 **一键启用**（调用 `POST /api/demo/pool-member/guard/enable`）。依赖 F5 iControl 环境变量（`LLM_DEMO_F5_MGMT_`*）。
 
 ---
 
 ## Observability Adapter（独立服务）
 
-Adapter 与演示后端分离部署，详见 [`adapter_service/README.md`](adapter_service/README.md)。
+Adapter 与演示后端分离部署，详见 `[adapter_service/README.md](adapter_service/README.md)`。
 
 ```bash
 cd adapter_service
@@ -554,65 +588,71 @@ pip install -r requirements.txt
 uvicorn main:app --host 0.0.0.0 --port 8090
 ```
 
-| 环境变量 | 说明 | 默认 |
-|----------|------|------|
-| `ADAPTER_PRICING_RULES_PATH` | 价格规则 JSON | `./pricing_rules.json` |
-| `ADAPTER_DEDUP_TTL_SECONDS` | request_id 去重 TTL | `300` |
-| `ADAPTER_EVENT_DEBUG` | 打印 POST /events body | 关闭 |
+
+| 环境变量                         | 说明                   | 默认                     |
+| ---------------------------- | -------------------- | ---------------------- |
+| `ADAPTER_PRICING_RULES_PATH` | 价格规则 JSON            | `./pricing_rules.json` |
+| `ADAPTER_DEDUP_TTL_SECONDS`  | request_id 去重 TTL    | `300`                  |
+| `ADAPTER_EVENT_DEBUG`        | 打印 POST /events body | 关闭                     |
+
 
 ---
 
 ## API 摘要
 
-| 方法 | 路径 | 用途 |
-|------|------|------|
-| GET | `/api/health` | 应用健康检查 |
-| GET | `/api/config/defaults` | Model Routing 默认 VS、映射、用例 |
-| POST | `/api/demo/model-routing/run` | 批量 Model Routing |
-| GET | `/api/config/context-routing` | Context Size 规则与预设 |
-| POST | `/api/demo/context-routing/calc` | 计算 messages 字节与预期路由 |
-| POST | `/api/demo/context-routing/single` | 单次 Context 演示 |
-| POST | `/api/demo/context-routing/multiturn` | 多轮跨越 5k 演示 |
-| GET | `/api/config/agent-routing` | Subagent 配置 |
-| POST | `/api/demo/agent-routing/run` | Subagent 顺序演示 |
-| GET/POST | `/api/demo/agent-routing/traffic/*` | Subagent 持续模拟 |
-| GET | `/api/config/retry-fallback` | Retry/Fallback 规则与 F5 信息 |
-| POST | `/api/demo/retry-fallback/*` | Status Retry / TCP Reselect / Force Fallback |
-| GET/POST | `/api/demo/pool-member/guard/*` | 成员状态检查与一键启用 |
-| GET | `/api/config/tblb` | TBLB Pool 与 Scheduler 配置 |
-| GET | `/api/demo/tblb/scheduler/pool-status` | Scheduler member 分布 |
-| POST | `/api/demo/tblb/trigger-member-load` | 触发 member 负载 |
-| GET/POST | `/api/demo/observability/traffic/*` | Observability 持续模拟 |
-| GET | `/api/demo/system-prompt/config` | System prompt 演示配置 |
-| POST | `/api/demo/system-prompt/preview` | 预览 wrapper 结构 |
-| POST | `/api/demo/system-prompt/analyze` | 分析响应格式（YAML/Markdown） |
-| GET | `/api/demo/model-allowlist/config` | 模型准入 Data Group 配置 |
-| GET | `/api/demo/model-allowlist/policy` | 查询 model 策略（allow/block） |
-| GET | `/api/demo/max-tokens/config` | max_tokens 上限演示配置 |
-| GET | `/api/demo/max-tokens/policy` | 查询 max_tokens 策略 |
-| POST | `/api/demo/max-tokens/run` | 发送 max_tokens 演示请求 |
-| POST | `/api/proxy/chat/completions` | 通用 OpenAI 兼容代理 |
+
+| 方法       | 路径                                     | 用途                                           |
+| -------- | -------------------------------------- | -------------------------------------------- |
+| GET      | `/api/health`                          | 应用健康检查                                       |
+| GET      | `/api/config/defaults`                 | Model Routing 默认 VS、映射、用例                    |
+| POST     | `/api/demo/model-routing/run`          | 批量 Model Routing                             |
+| GET      | `/api/config/context-routing`          | Context Size 规则与预设                           |
+| POST     | `/api/demo/context-routing/calc`       | 计算 messages 字节与预期路由                          |
+| POST     | `/api/demo/context-routing/single`     | 单次 Context 演示                                |
+| POST     | `/api/demo/context-routing/multiturn`  | 多轮跨越 5k 演示                                   |
+| GET      | `/api/config/agent-routing`            | Subagent 配置                                  |
+| POST     | `/api/demo/agent-routing/run`          | Subagent 顺序演示                                |
+| GET/POST | `/api/demo/agent-routing/traffic/*`    | Subagent 持续模拟                                |
+| GET      | `/api/config/retry-fallback`           | Retry/Fallback 规则与 F5 信息                     |
+| POST     | `/api/demo/retry-fallback/*`           | Status Retry / TCP Reselect / Force Fallback |
+| GET/POST | `/api/demo/pool-member/guard/*`        | 成员状态检查与一键启用                                  |
+| GET      | `/api/config/tblb`                     | TBLB Pool 与 Scheduler 配置                     |
+| GET      | `/api/demo/tblb/scheduler/pool-status` | Scheduler member 分布                          |
+| POST     | `/api/demo/tblb/trigger-member-load`   | 触发 member 负载                                 |
+| GET/POST | `/api/demo/observability/traffic/*`    | Observability 持续模拟                           |
+| GET      | `/api/demo/system-prompt/config`       | System prompt 演示配置                           |
+| POST     | `/api/demo/system-prompt/preview`      | 预览 wrapper 结构                                |
+| POST     | `/api/demo/system-prompt/analyze`      | 分析响应格式（YAML/Markdown）                        |
+| GET      | `/api/demo/model-allowlist/config`     | 模型准入 Data Group 配置                           |
+| GET      | `/api/demo/model-allowlist/policy`     | 查询 model 策略（allow/block）                     |
+| GET      | `/api/demo/max-tokens/config`          | max_tokens 上限演示配置                            |
+| GET      | `/api/demo/max-tokens/policy`          | 查询 max_tokens 策略                             |
+| POST     | `/api/demo/max-tokens/run`             | 发送 max_tokens 演示请求                           |
+| POST     | `/api/proxy/chat/completions`          | 通用 OpenAI 兼容代理                               |
+
 
 ---
 
 ## 排错
 
-| 现象 | 可能原因 | 处理 |
-|------|----------|------|
-| 连接失败 | 演示机无法访问 VS | 检查路由/防火墙；`tmsh show ltm virtual` |
-| 403 Host not allowed | 填写了公网 IP | 仅使用 RFC1918 私网地址 |
-| 全部超时 | VS 或 Pool 成员宕机 | 检查 Pool member 状态；必要时用 banner 一键 enable |
-| 200 但内容不对 | 后端 model 配置 | 检查各 Pool member 端口上的 mock 服务 |
-| F5 iControl 502 | 管理口不可达或凭据错误 | 检查 `LLM_DEMO_F5_MGMT_*` |
-| Subagent Grafana 无 `agent` | 流量打到错误 VS | 确认 VS 为 `172.16.30.121:8000` |
-| TBLB 无 port 分布 | 响应缺 `server_port` | 确认推理后端返回该字段 |
-| Scheduler 空 | Scheduler 未运行或地址错误 | 检查 `LLM_DEMO_TBLB_SCHEDULER_*` |
-| Adapter 无指标 | F5 未发 structured log | 查 `/var/log/ltm`；开 `ADAPTER_EVENT_DEBUG`；确认插件 `STRUCTURED_LOG_OUTPUT_ENABLED=true` |
-| 403 model blocked | 打到 JSON Profile VS 且 model 未授权 | 使用 `demo-model` 或更新 `dg_openai_model_list` |
-| 403 max_tokens | 超过 MAX_TOKENS_LIMIT | 降低 `max_tokens` 至 ≤4096（演示环境） |
-| System prompt 仍 Markdown | Mock LLM 未运行或 VS pool 错误 | 确认 `ubuntu-ai:8011` 与 `usage_profile=prompt_wrapper` |
-| 路由日志 | BIG-IP 本地 | `tail -f /var/log/ltm \| grep llm_router` |
-| Subagent 日志 | BIG-IP 本地 | `tail -f /var/log/ltm \| grep subagent_router` |
+
+| 现象                         | 可能原因                           | 处理                                                                                 |
+| -------------------------- | ------------------------------ | ---------------------------------------------------------------------------------- |
+| 连接失败                       | 演示机无法访问 VS                     | 检查路由/防火墙；`tmsh show ltm virtual`                                                   |
+| 403 Host not allowed       | 填写了公网 IP                       | 仅使用 RFC1918 私网地址                                                                   |
+| 全部超时                       | VS 或 Pool 成员宕机                 | 检查 Pool member 状态；必要时用 banner 一键 enable                                            |
+| 200 但内容不对                  | 后端 model 配置                    | 检查各 Pool member 端口上的 mock 服务                                                       |
+| F5 iControl 502            | 管理口不可达或凭据错误                    | 检查 `LLM_DEMO_F5_MGMT_*`                                                            |
+| Subagent Grafana 无 `agent` | 流量打到错误 VS                      | 确认 VS 为 `172.16.30.121:8000`                                                       |
+| TBLB 无 port 分布             | 响应缺 `server_port`              | 确认推理后端返回该字段                                                                        |
+| Scheduler 空                | Scheduler 未运行或地址错误             | 检查 `LLM_DEMO_TBLB_SCHEDULER_*`                                                     |
+| Adapter 无指标                | F5 未发 structured log           | 查 `/var/log/ltm`；开 `ADAPTER_EVENT_DEBUG`；确认插件 `STRUCTURED_LOG_OUTPUT_ENABLED=true` |
+| 403 model blocked          | 打到 JSON Profile VS 且 model 未授权 | 使用 `demo-model` 或更新 `dg_openai_model_list`                                         |
+| 403 max_tokens             | 超过 MAX_TOKENS_LIMIT            | 降低 `max_tokens` 至 ≤4096（演示环境）                                                      |
+| System prompt 仍 Markdown   | Mock LLM 未运行或 VS pool 错误       | 确认 `ubuntu-ai:8011` 与 `usage_profile=prompt_wrapper`                               |
+| 路由日志                       | BIG-IP 本地                      | `tail -f /var/log/ltm | grep llm_router`                                           |
+| Subagent 日志                | BIG-IP 本地                      | `tail -f /var/log/ltm | grep subagent_router`                                      |
+
 
 ---
 
@@ -651,15 +691,17 @@ llm_router_demo_App/
 
 修改 F5 Data Group 或 Pool 布局后，请同步更新 `backend/app/config.py`：
 
-| 配置块 | 对应 F5 对象 |
-|--------|----------------|
-| `MODEL_POOL_MAP` / `DEMO_CASES` | `llm_model_pool_map` |
-| `CONTEXT_SIZE_RULE` | deepseek-chat 的 Size 路由值 |
-| `AGENT_ROUTING` | Subagent VS 的 `subagent_agent_pool_map` |
-| `TBLB_DEMO_POOLS` | TBLB 启用 Pool 与 model 分组 |
-| `RETRY_FALLBACK_RULE` | Retry/Fallback 测试 Pool 与 member |
-| `SYSTEM_PROMPT` | JSON Profile VS + Mock LLM 8011 |
-| `MODEL_ALLOWLIST_DEMO` | `dg_openai_model_list` |
-| `MAX_TOKENS_DEMO` | iRule Layer 0 `MAX_TOKENS_LIMIT` |
 
-技术细节与 iRuleLX 行为见 [README_irulelx.md](README_irulelx.md)（源码见 [`../llm_router/`](../llm_router/)）；观测指标与 Grafana 见 [Observability-design-plan.md](Observability-design-plan.md)；TMOS v21 JSON Profile 安全场景背景见 [cursor_f5_v21_json_profile_and_irule_sc.md](cursor_f5_v21_json_profile_and_irule_sc.md)。
+| 配置块                             | 对应 F5 对象                                |
+| ------------------------------- | --------------------------------------- |
+| `MODEL_POOL_MAP` / `DEMO_CASES` | `llm_model_pool_map`                    |
+| `CONTEXT_SIZE_RULE`             | deepseek-chat 的 Size 路由值                |
+| `AGENT_ROUTING`                 | Subagent VS 的 `subagent_agent_pool_map` |
+| `TBLB_DEMO_POOLS`               | TBLB 启用 Pool 与 model 分组                 |
+| `RETRY_FALLBACK_RULE`           | Retry/Fallback 测试 Pool 与 member         |
+| `SYSTEM_PROMPT`                 | JSON Profile VS + Mock LLM 8011         |
+| `MODEL_ALLOWLIST_DEMO`          | `dg_openai_model_list`                  |
+| `MAX_TOKENS_DEMO`               | iRule Layer 0 `MAX_TOKENS_LIMIT`        |
+
+
+技术细节与 iRuleLX 行为见 [README_irulelx.md](README_irulelx.md)（源码见 `[../llm_router/](../llm_router/)`）；观测指标与 Grafana 见 [Observability-design-plan.md](Observability-design-plan.md)；TMOS v21 JSON Profile 安全场景背景见 [cursor_f5_v21_json_profile_and_irule_sc.md](cursor_f5_v21_json_profile_and_irule_sc.md)。
