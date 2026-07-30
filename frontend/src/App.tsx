@@ -8,12 +8,12 @@ import { ContextRoutingPage } from "@/pages/ContextRoutingPage";
 import { AgentRoutingPage } from "@/pages/AgentRoutingPage";
 import { RetryFallbackPage } from "@/pages/RetryFallbackPage";
 import { ObservabilitySubScenePage } from "@/pages/ObservabilitySubScenePage";
-import { PlaceholderSubScenePage } from "@/pages/PlaceholderSubScenePage";
 import { TblbPage } from "@/pages/TblbPage";
 import { GuardrailsPage } from "@/pages/GuardrailsPage";
 import { ModelAllowlistPage } from "@/pages/ModelAllowlistPage";
 import { MaxTokensPage } from "@/pages/MaxTokensPage";
 import { McpToolsInsightPage } from "@/pages/McpToolsInsightPage";
+import { McpToolsControlPage } from "@/pages/McpToolsControlPage";
 import { SystemPromptPage } from "@/pages/SystemPromptPage";
 
 export default function App() {
@@ -63,7 +63,7 @@ export default function App() {
             />
             <Route
               path="/scene/traffic-mgmt/mcp-tools-control"
-              element={<PlaceholderSubScenePage pageKey="mcpToolsControl" />}
+              element={<McpToolsControlPage />}
             />
             <Route
               path="/scene/traffic-mgmt/mcp-gateway"

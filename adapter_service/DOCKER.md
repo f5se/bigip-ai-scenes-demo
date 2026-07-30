@@ -8,11 +8,13 @@
 
 ## 镜像内包含什么
 
-| 包含 | 不包含 |
-|------|--------|
-| `main.py` / `mcp_events.py` / `mcp_metrics.py` | `scripts/` 压测与 mock 脚本 |
-| `pricing_rules.json` | `README.md`、模板 md、checklist |
-| `requirements.txt` 依赖 | `prometheus.yaml`、Grafana、compose 中的 Prom/Grafana |
+
+| 包含                                             | 不包含                                               |
+| ---------------------------------------------- | ------------------------------------------------- |
+| `main.py` / `mcp_events.py` / `mcp_metrics.py` | `scripts/` 压测与 mock 脚本                            |
+| `pricing_rules.json`                           | `README.md`、模板 md、checklist                       |
+| `requirements.txt` 依赖                          | `prometheus.yaml`、Grafana、compose 中的 Prom/Grafana |
+
 
 由 `.dockerignore` 白名单控制，构建上下文再大也不会把无关文件打进镜像。
 
@@ -64,7 +66,7 @@ export NO_PROXY=localhost,127.0.0.1
 ```bash
 cd adapter_service
 
-docker build \
+sudo docker build \
   --platform linux/amd64 \
   --build-arg HTTP_PROXY="${HTTP_PROXY}" \
   --build-arg HTTPS_PROXY="${HTTPS_PROXY}" \
@@ -196,13 +198,15 @@ docker run ... -e ADAPTER_EVENT_DEBUG=1 -e ADAPTER_MCP_EVENT_DEBUG=1 ...
 
 ## 5. 环境变量
 
-| 变量 | 说明 | 默认 |
-|------|------|------|
-| `ADAPTER_PRICING_RULES_PATH` | 价格规则路径 | `/app/pricing_rules.json` |
-| `ADAPTER_DEDUP_TTL_SECONDS` | `request_id` / MCP `trace_id` 去重 TTL | `300` |
-| `ADAPTER_EVENT_DEBUG` | 打印 `POST /events` body | 关 |
-| `ADAPTER_MCP_EVENT_DEBUG` | 打印 MCP 事件 body | 关 |
-| `PORT` | 监听端口（容器内） | `8090` |
+
+| 变量                           | 说明                                   | 默认                        |
+| ---------------------------- | ------------------------------------ | ------------------------- |
+| `ADAPTER_PRICING_RULES_PATH` | 价格规则路径                               | `/app/pricing_rules.json` |
+| `ADAPTER_DEDUP_TTL_SECONDS`  | `request_id` / MCP `trace_id` 去重 TTL | `300`                     |
+| `ADAPTER_EVENT_DEBUG`        | 打印 `POST /events` body               | 关                         |
+| `ADAPTER_MCP_EVENT_DEBUG`    | 打印 MCP 事件 body                       | 关                         |
+| `PORT`                       | 监听端口（容器内）                            | `8090`                    |
+
 
 对外端口：`8090`（HTTP：`/events`、`/api/mcp-events`、`/metrics`、`/health`）。
 
@@ -210,10 +214,36 @@ Prometheus / Grafana 在**客户现有监控系统**中配置 scrape `adapter:80
 
 ---
 
-## 6. 快速自检
+## 6. 同机三件套（Adapter + Prometheus + Grafana）
+
+若 Adapter、Prometheus、Grafana 部署在**同一台机器**，使用：
+
+```bash
+cd adapter_service
+docker compose -f docker-compose.stack.yaml up -d --build
+```
+
+| 服务 | 默认地址 |
+|------|----------|
+| Adapter | `http://<host>:8090` |
+| Prometheus | `http://<host>:9090`（Targets 应见 `adapter:8090` UP） |
+| Grafana | `http://<host>:3001`（默认 `admin` / `admin`） |
+
+要点：
+
+- Prometheus 抓取目标为 Compose 服务名 `adapter:8090`（见 `prometheus.stack.yaml`），无需 `host.docker.internal`
+- Grafana 仅启动空实例；数据源与看板由用户自行在 UI 中配置（同网内 Prometheus URL 一般为 `http://prometheus:9090`）
+- 从 `172.16.40.122` 导出看板 JSON、新环境导入与数据源 UID 处理见仓库根目录旁文档：[`grafana/GRAFANA-DASHBOARD-MIGRATE.md`](../grafana/GRAFANA-DASHBOARD-MIGRATE.md)
+- 三个服务均配置了 `json-file` 日志轮转（`10m` × 3）
+- 仅 Adapter 时仍用 `docker-compose.adapter.yaml`
+
+---
+
+## 7. 快速自检
 
 ```bash
 curl -sS http://127.0.0.1:8090/health
 curl -sS http://127.0.0.1:8090/metrics | head
 docker logs --tail 50 llm-observability-adapter
 ```
+

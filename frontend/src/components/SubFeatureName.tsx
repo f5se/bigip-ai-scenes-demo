@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 type Props = {
   titleKey: string;
   versionBadge?: boolean;
+  versionBadgeKey?: string;
   planned?: boolean;
   available?: boolean;
   titleClassName?: string;
@@ -14,6 +15,7 @@ type Props = {
 export function SubFeatureName({
   titleKey,
   versionBadge,
+  versionBadgeKey = "nav.tmosMinVersion",
   planned,
   available,
   titleClassName = "",
@@ -22,12 +24,14 @@ export function SubFeatureName({
   availableClassName = "rounded bg-emerald-950/60 px-1.5 py-0.5 text-[10px] font-medium text-emerald-400",
 }: Props) {
   const { t } = useTranslation();
+  const effectiveBadgeKey =
+    titleKey === "nav.mcpToolsControl" ? "nav.tmosMinVersionApm" : versionBadgeKey;
 
   return (
     <span className={`inline-flex flex-wrap items-center gap-1 ${titleClassName}`}>
       <span>{t(titleKey)}</span>
       {versionBadge ? (
-        <span className={badgeClassName}>{t("nav.tmosMinVersion")}</span>
+        <span className={badgeClassName}>{t(effectiveBadgeKey)}</span>
       ) : null}
       {planned ? (
         <span className={plannedClassName}>{t("nav.planned")}</span>

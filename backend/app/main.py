@@ -49,6 +49,7 @@ from backend.app.max_tokens_demo import (
     resolve_max_tokens_policy,
 )
 from backend.app.mcp_insight_demo import router as mcp_insight_router
+from backend.app.mcp_control_demo import router as mcp_control_router
 from backend.app.model_allowlist_demo import get_model_allowlist_config, resolve_model_policy
 from backend.app.system_prompt import (
     DEMO_MODEL,
@@ -76,6 +77,7 @@ app.add_middleware(
 
 install_auth(app)
 app.include_router(mcp_insight_router)
+app.include_router(mcp_control_router)
 
 
 class Target(BaseModel):

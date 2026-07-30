@@ -1,0 +1,25 @@
+[Unit]
+Description=F5 MCP Tools Control finance MCP Server (port 9002)
+Documentation=file:///home/myf5/bigip-ai-scenes-demo/mcp-tools-control-tier1-design-plan.md
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=myf5
+Group=myf5
+WorkingDirectory=/home/myf5/bigip-ai-scenes-demo
+EnvironmentFile=-/etc/llm-router-mcp-server-finance/env
+Environment=PYTHONPATH=/home/myf5/bigip-ai-scenes-demo
+Environment=PORT=9002
+Environment=MCP_SERVER_LABEL=finance-tools-server
+ExecStart=/home/myf5/bigip-ai-scenes-demo/scripts/run-mcp-server.sh
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=30
+
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

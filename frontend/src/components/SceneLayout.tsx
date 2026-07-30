@@ -9,6 +9,8 @@ type Props = {
   /** Optional second bullet list under「方案技术特性」 */
   techFeatureKeys?: string[];
   versionBadge?: boolean;
+  /** Optional i18n key for badge text (default: nav.tmosMinVersion) */
+  versionBadgeKey?: string;
   diagramBusiness: ReactNode;
   diagramTechnical: ReactNode;
   interaction: ReactNode;
@@ -22,6 +24,7 @@ export function SceneLayout({
   bulletKeys,
   techFeatureKeys,
   versionBadge,
+  versionBadgeKey = "nav.tmosMinVersion",
   diagramBusiness,
   diagramTechnical,
   interaction,
@@ -30,6 +33,7 @@ export function SceneLayout({
   const { t } = useTranslation();
   const [architectureOpen, setArchitectureOpen] = useState(true);
   const [diagramTab, setDiagramTab] = useState<"business" | "technical">("business");
+  const showApmTag = versionBadge && versionBadgeKey === "nav.tmosMinVersionApm";
 
   return (
     <div className="space-y-6">
@@ -39,7 +43,12 @@ export function SceneLayout({
           {t(titleKey)}
           {versionBadge ? (
             <span className="ml-2 text-sm font-normal text-slate-500">
-              {t("nav.tmosMinVersion")}
+              {t(versionBadgeKey)}
+            </span>
+          ) : null}
+          {showApmTag ? (
+            <span className="ml-2 rounded bg-fuchsia-950/60 px-1.5 py-0.5 text-xs font-medium text-fuchsia-300">
+              {t("nav.apmRequiredTag")}
             </span>
           ) : null}
         </h1>

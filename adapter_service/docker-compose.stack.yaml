@@ -1,0 +1,114 @@
+# Same-host stack: Adapter + Prometheus + Grafana
+#
+# Usage:
+#   cd adapter_service
+#   docker compose -f docker-compose.stack.yaml up -d --build
+#
+# URLs (defaults):
+#   Adapter    http://<host>:8090   (/events, /metrics, /health)
+#   Prometheus http://<host>:9090
+#   Grafana    http://<host>:3001   (admin / see GF_SECURITY_ADMIN_PASSWORD)
+#
+# Image mirrors: default docker.1ms.run (override via *_IMAGE env if needed).
+
+services:
+  adapter:
+    image: ${ADAPTER_IMAGE:-llm-observability-adapter:1.0.0}
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        HTTP_PROXY: ${HTTP_PROXY:-}
+        HTTPS_PROXY: ${HTTPS_PROXY:-}
+        http_proxy: ${HTTP_PROXY:-}
+        https_proxy: ${HTTPS_PROXY:-}
+        NO_PROXY: ${NO_PROXY:-localhost,127.0.0.1}
+        no_proxy: ${NO_PROXY:-localhost,127.0.0.1}
+        PIP_INDEX_URL: ${PIP_INDEX_URL:-}
+        PIP_TRUSTED_HOST: ${PIP_TRUSTED_HOST:-}
+    container_name: llm-observability-adapter
+    restart: unless-stopped
+    ports:
+      - "${ADAPTER_HOST_PORT:-8090}:8090"
+    environment:
+      ADAPTER_PRICING_RULES_PATH: /app/pricing_rules.json
+      ADAPTER_DEDUP_TTL_SECONDS: ${ADAPTER_DEDUP_TTL_SECONDS:-300}
+      # ADAPTER_EVENT_DEBUG: "1"
+      # ADAPTER_MCP_EVENT_DEBUG: "1"
+    # volumes:
+    #   - ./pricing_rules.json:/app/pricing_rules.json:ro
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8090/health', timeout=3)",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - observability
+
+  prometheus:
+    image: ${PROMETHEUS_IMAGE:-docker.1ms.run/prom/prometheus:v2.54.1}
+    container_name: llm-observability-prometheus
+    restart: unless-stopped
+    depends_on:
+      adapter:
+        condition: service_healthy
+    ports:
+      - "${PROMETHEUS_HOST_PORT:-9090}:9090"
+    volumes:
+      - ./prometheus.stack.yaml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=${PROMETHEUS_RETENTION:-15d}
+      - --web.enable-lifecycle
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - observability
+
+  grafana:
+    image: ${GRAFANA_IMAGE:-docker.1ms.run/grafana/grafana:11.2.0}
+    container_name: llm-observability-grafana
+    restart: unless-stopped
+    depends_on:
+      - prometheus
+    ports:
+      - "${GRAFANA_HOST_PORT:-3001}:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GF_SECURITY_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GF_SECURITY_ADMIN_PASSWORD:-admin}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_SERVER_ROOT_URL: ${GF_SERVER_ROOT_URL:-http://localhost:3001}
+    volumes:
+      - grafana_data:/var/lib/grafana
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - observability
+
+networks:
+  observability:
+    driver: bridge
+
+volumes:
+  prometheus_data:
+  grafana_data:

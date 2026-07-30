@@ -32,6 +32,7 @@ export function HomePage() {
                     <SubFeatureName
                       titleKey={sf.titleKey}
                       versionBadge={sf.versionBadge}
+                      versionBadgeKey={sf.versionBadgeKey}
                       planned={!sf.ready}
                       titleClassName="font-medium text-slate-300"
                       badgeClassName="text-[11px] font-normal text-slate-500"

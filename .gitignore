@@ -11,6 +11,7 @@ __pycache__/
 !requirements.txt
 !README_irulelx.md
 !adapter_service/DOCKER.md
+!grafana/GRAFANA-DASHBOARD-MIGRATE.md
 
 # Local virtualenvs (created on each machine)
 .venv/

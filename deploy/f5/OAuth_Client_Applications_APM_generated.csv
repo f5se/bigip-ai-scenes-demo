@@ -1,0 +1,2 @@
+Name,Client ID,Application Name,Type,Authentication Type,Secret,Client Certificate Distinguished Name,Scope,Grant Type,Redirect URI(s)
+/Common/mcp_demo_backend_client,6d37988eeb83fbe70c212fa8a321005056b3ac5958cd696a,mcp_demo_backend_client,Static,Secret,4e5260b7ef7d1e7d593b36cc99d4acc9bf0c2e2fe963005056b3ac5958cd696a,,,"[Resource Owner Password Credentials]",

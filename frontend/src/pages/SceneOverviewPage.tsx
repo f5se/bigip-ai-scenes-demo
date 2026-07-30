@@ -50,6 +50,7 @@ export function SceneOverviewPage({ sceneId }: Props) {
             <SubFeatureName
               titleKey={sf.titleKey}
               versionBadge={sf.versionBadge}
+              versionBadgeKey={sf.versionBadgeKey}
               available={sf.ready}
               planned={!sf.ready}
               titleClassName="font-medium text-cyan-400"

@@ -1420,3 +1420,92 @@ export async function stopMcpTrafficSim(): Promise<McpTrafficStatus> {
   if (!res.ok) throw new Error("MCP traffic sim stop failed");
   return res.json();
 }
+
+export type McpControlConfig = {
+  agent_identities: { id: string; label: string }[];
+  target_servers: { id: string; label: string }[];
+  default_vs: Target;
+  oauth_token_url?: string;
+  token_mode?: string;
+  client_id?: string;
+  matrix_hint?: Record<string, string[]>;
+};
+
+export type McpControlRunResult = {
+  agent: string;
+  agent_label?: string;
+  target_server: string;
+  scenario?: "tier1" | "tier2" | string;
+  tool_name?: string | null;
+  token_obtained: boolean;
+  token_mode?: string;
+  token_source?: string;
+  decision?: "allow" | "deny" | string;
+  error?: string;
+  error_body?: string;
+  token_summary?: {
+    mcp_groups?: unknown;
+    mcp_role?: string;
+    expires_in?: number;
+    token_type?: string;
+    claim_keys?: string[];
+  };
+  init_result?: {
+    status_code: number;
+    allowed: boolean;
+    location?: string | null;
+    content_type?: string | null;
+    mcp_session_id?: string | null;
+    body_preview?: string;
+  } | null;
+  gateway_result?: {
+    status_code: number;
+    allowed: boolean;
+    location?: string | null;
+    content_type?: string | null;
+    mcp_session_id?: string | null;
+    body_preview?: string;
+  } | null;
+  apm_route?: {
+    ending: string;
+    pool: string;
+    pool_role: "authorized" | "fail_close" | string;
+  } | null;
+  vs?: Target;
+};
+
+export type McpControlHealth = {
+  vs: { host: string; port: number; ok: boolean; detail: string | null };
+  backends: Record<string, { ok: boolean; target: string; detail: string }>;
+  oauth_token_url?: string;
+};
+
+export async function fetchMcpControlConfig(): Promise<McpControlConfig> {
+  const res = await authFetch("/api/demo/mcp-tools-control/config");
+  if (!res.ok) throw new Error("Failed to load MCP control config");
+  return res.json();
+}
+
+export async function fetchMcpControlHealth(): Promise<McpControlHealth> {
+  const res = await authFetch("/api/demo/mcp-tools-control/health");
+  if (!res.ok) throw new Error("MCP control health check failed");
+  return res.json();
+}
+
+export async function runMcpControl(body: {
+  agent_id: string;
+  target_server_id: string;
+  scenario?: "tier1" | "tier2";
+  tool_name?: string;
+}): Promise<McpControlRunResult> {
+  const res = await authFetch("/api/demo/mcp-tools-control/run", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error((err as { detail?: string }).detail || "MCP control run failed");
+  }
+  return res.json();
+}

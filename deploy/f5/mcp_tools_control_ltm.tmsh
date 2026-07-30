@@ -1,0 +1,45 @@
+# MCP Tools Control Tier 1 — LTM objects (pools / iRule / VS)
+# VIP: 172.16.30.125:9010 (same IP as vs_mcp_insight:9000)
+# Backend: 172.16.40.122:9001 (ops) / :9002 (finance)
+# Demo passwords (APM LocalDB, non-prod): AgentDemo@2018
+# OAuth client secret (demo): McpControlDemoSecret2018
+#
+# APM OAuth AS / Access Profile are created via GUI or separate script;
+# this file covers LTM pieces that can be applied with tmsh.
+
+tmsh create ltm rule ir_mcp_target_capture {
+when ACCESS_SESSION_STARTED {
+    set target_server [HTTP::header value "X-Mcp-Target-Server"]
+    if { $target_server eq "" } {
+        set target_server "unspecified"
+    }
+    ACCESS::session data set session.custom.target_server $target_server
+}
+}
+
+tmsh create ltm pool pool_mcp_ctl_ops \
+    members add { 172.16.40.122:9001 { address 172.16.40.122 } } \
+    monitor tcp_half_open
+
+tmsh create ltm pool pool_mcp_ctl_finance \
+    members add { 172.16.40.122:9002 { address 172.16.40.122 } } \
+    monitor tcp_half_open
+
+tmsh create ltm virtual vs_mcp_tools_control \
+    destination 172.16.30.125:9010 \
+    ip-protocol tcp \
+    profiles add {
+        tcp { }
+        mcp_http_profile { }
+        mcp_json_profile { context http }
+        mcp_sse_profile { context http }
+        aimcp { }
+        mcp_irulelx_profile { }
+    } \
+    persist add { mcp_persistence_profile { default yes } } \
+    rules { ir_mcp_target_capture ir_mcp_audit_logger } \
+    source-address-translation { type automap } \
+    translate-address enabled \
+    translate-port enabled
+
+tmsh save sys config

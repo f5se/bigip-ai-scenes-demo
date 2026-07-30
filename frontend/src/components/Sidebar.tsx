@@ -53,6 +53,7 @@ export function Sidebar({ collapsed = false }: Props) {
                       <SubFeatureName
                         titleKey={sf.titleKey}
                         versionBadge={sf.versionBadge}
+                        versionBadgeKey={sf.versionBadgeKey}
                         planned={!sf.ready}
                       />
                     </NavLink>

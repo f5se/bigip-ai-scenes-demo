@@ -112,7 +112,7 @@ cd frontend && npm run dev
 | `LLM_DEMO_READ_TIMEOUT` | 代理读超时（秒） | `30.0` |
 | `LLM_DEMO_DEMO_INTERVAL_MS` | Model Routing 批量演示默认间隔（ms） | `500` |
 | `LLM_DEMO_F5_MGMT_HOST` | F5 iControl 管理 IP | `172.16.20.198` |
-| `LLM_DEMO_F5_MGMT_USERNAME` | F5 管理账号 | `admin` |
+| `LLM_DEMO_F5_MGMT_USERNAME` | F5 管理账号 | `<F5_MGMT_USERNAME>` |
 | `LLM_DEMO_F5_MGMT_PASSWORD` | F5 管理密码 | `CHANGE_ME`（部署时在 `/etc/llm-router-demo/env` 填写，勿写入文档） |
 | `LLM_DEMO_F5_MGMT_PARTITION` | LTM 分区名 | `Common` |
 | `LLM_DEMO_F5_MGMT_VERIFY_TLS` | 是否校验 F5 管理口 TLS | `false` |
@@ -281,7 +281,7 @@ curl -iX POST http://172.16.30.121:8000/v1/chat/completions \
 
 **测试方法**
 
-1. 确保 [adapter_service](adapter_service/README.md) 已运行（默认 `:8090`），Prometheus 抓取 `/metrics`，Grafana 导入看板。
+1. 确保 [adapter_service](adapter_service/README.md) 已运行（默认 `:8090`），Prometheus 抓取 `/metrics`，Grafana 导入看板（跨环境导出/导入与数据源 UID 见 [grafana/GRAFANA-DASHBOARD-MIGRATE.md](grafana/GRAFANA-DASHBOARD-MIGRATE.md)）。
 2. 进入 **Tokens 用量统计**，配置 VS、时长、并发数、流式模式（non_stream / stream / mixed）。
 3. 点击 **开始持续模拟**：后台随机轮换 `MODEL_OPTIONS` 中的 model 向 VS 发请求（mixed 模式约一半 model 带 `stream:true`）。
 4. 点击 **在 Grafana 中查看** 打开预置看板（默认 `localhost:3001`，可按环境修改前端 `ObservabilitySubScenePage.tsx` 中的 URL）。

@@ -1,0 +1,17 @@
+# Prometheus config for docker-compose.stack.yaml
+# Scrape target uses the Compose service name on the shared network.
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: llm-observability-adapter
+    scrape_interval: 15s
+    metrics_path: /metrics
+    static_configs:
+      - targets:
+          - adapter:8090
+        labels:
+          env: demo
+          service: llm-adapter

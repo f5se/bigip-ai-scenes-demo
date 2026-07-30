@@ -3,7 +3,12 @@ from __future__ import annotations
 import json
 from typing import Any
 
-SERVER_INFO = {"name": "IT-Ops-MCP-Server", "version": "1.0.0"}
+import os
+
+SERVER_INFO = {
+    "name": os.environ.get("MCP_SERVER_LABEL", "IT-Ops-MCP-Server"),
+    "version": "1.0.0",
+}
 SERVER_CAPABILITIES = {
     "tools": {"listChanged": True},
     "prompts": {"listChanged": True},

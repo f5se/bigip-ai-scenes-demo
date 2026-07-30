@@ -5,6 +5,8 @@ export type SubFeature = {
   ready: boolean;
   /** Show TMOS v21 minimum version badge after sub-scene title */
   versionBadge?: boolean;
+  /** Optional i18n key for badge text (default: nav.tmosMinVersion) */
+  versionBadgeKey?: string;
   /** i18n prefix under scenes.* for placeholder pages */
   pageKey?: string;
 };
@@ -122,7 +124,9 @@ export const scenes: Scene[] = [
         id: "mcp-tools-control",
         path: "/scene/traffic-mgmt/mcp-tools-control",
         titleKey: "nav.mcpToolsControl",
-        ready: false,
+        ready: true,
+        versionBadge: true,
+        versionBadgeKey: "nav.tmosMinVersionApm",
         pageKey: "mcpToolsControl",
       },
     ],
@@ -512,20 +516,89 @@ export const MERMAID_DIAGRAMS: Record<string, string> = {
   Agents[Enterprise AI agents] --> Gateway[F5 MCP Gateway]
   Gateway --> Logs[Tool-call audit and metrics]
   Logs --> Insight[Insight by tool, agent, and tenant]`,
-  mcpToolsControl: `flowchart LR
-  Agent[AI Agent / Client] --> VS[F5 MCP Gateway VS]
-  VS --> Auth[Auth + policy]
-  VS --> Route[MCP server routing]
-  Route --> S1[MCP Server A]
-  Route --> S2[MCP Server B]`,
+  mcpToolsControl: `flowchart TB
+  subgraph AgentClient[Agent / Demo Backend]
+    C1[请求 Token ROPC]
+    C2[initialize]
+    C3[tools/call]
+  end
+
+  subgraph OAuthAS[F5 APM OAuth AS]
+    AS1[校验 Client + 用户凭据]
+    AS2[签发 JWT<br/>mcp_groups + mcp_role]
+  end
+
+  subgraph Gateway[F5 MCP Gateway VS]
+    G1[Tier1: OAuth Scope 校验 JWT]
+    G2[Tier1: 目标 Server 匹配<br/>X-Mcp-Target-Server]
+    G3{Tier1 是否通过}
+    G4[Tier2: JSON_REQUEST 解析<br/>method + params.name]
+    G5{role-tool allowlist<br/>dg_mcp_tool_allow}
+    G6[Pool Assign: pool_mcp_ctl_ops/finance]
+    G7[Fail-close: pool_mcp_ctl_deny]
+  end
+
+  subgraph MCPBackends[MCP Servers]
+    M1[ops-tools-server]
+    M2[finance-tools-server]
+    M3[deny stub]
+  end
+
+  C1 --> AS1 --> AS2 -->|Bearer JWT| C2
+  C2 --> G1 --> G2 --> G3
+  G3 -->|No| G7 --> M3
+  G3 -->|Yes| G6 --> M1
+  C3 --> G1 --> G2 --> G3
+  G3 -->|No| G7 --> M3
+  G3 -->|Yes| G4 --> G5
+  G5 -->|Allow| G6 --> M1
+  G5 -->|Deny| G7 --> M3`,
+
   mcpToolsControlBiz: `flowchart LR
-  Agents[企业 AI Agent] --> Gateway[F5 MCP 网关]
-  Gateway --> Policy[鉴权 / 限流 / 路由策略]
-  Policy --> Tools[统一管控 MCP 工具暴露与调用]`,
+  subgraph Roles[业务角色]
+    OpsA[运维 Agent<br/>告警 / 变更]
+    FinA[财务 Agent<br/>报表 / 对账]
+    Guest[访客 / 未授权 Agent]
+  end
+
+  Gate[企业 MCP 统一入口<br/>先认身份 · 再定工具域]
+
+  subgraph Domains[工具域]
+    OpsT[运维工具集]
+    FinT[财务工具集]
+  end
+
+  Closed[安全关闭<br/>拒绝进入未授权工具域]
+
+  OpsA --> Gate
+  FinA --> Gate
+  Guest --> Gate
+  Gate -->|工牌含运维权限| OpsT
+  Gate -->|工牌含财务权限| FinT
+  Gate -->|跨域或无权限| Closed`,
+
   mcpToolsControlBizEn: `flowchart LR
-  Agents[Enterprise AI agents] --> Gateway[F5 MCP Gateway]
-  Gateway --> Policy[Auth / rate limits / routing policy]
-  Policy --> Tools[Governed MCP tool access]`,
+  subgraph Roles[Business roles]
+    OpsA[Ops Agent<br/>alerts / changes]
+    FinA[Finance Agent<br/>reports / reconciliation]
+    Guest[Guest / unauthorized Agent]
+  end
+
+  Gate[Enterprise MCP entry<br/>Identity first · then tool domain]
+
+  subgraph Domains[Tool domains]
+    OpsT[Ops toolset]
+    FinT[Finance toolset]
+  end
+
+  Closed[Fail closed<br/>Block unauthorized domains]
+
+  OpsA --> Gate
+  FinA --> Gate
+  Guest --> Gate
+  Gate -->|Ops entitlement| OpsT
+  Gate -->|Finance entitlement| FinT
+  Gate -->|Cross-domain or none| Closed`,
 
   modelAllowlist: `sequenceDiagram
   participant C as Client

@@ -70,6 +70,8 @@
     "systemPrompt": "System prompt 加固",
     "guardrails": "LLM Guardrail接入",
     "tmosMinVersion": "(TMOS Ver ≥ v21)",
+    "tmosMinVersionApm": "(TMOS Ver ≥ v21 · APM)",
+    "apmRequiredTag": "需 APM 模块",
     "planned": "规划中",
     "available": "可演示"
   },
@@ -477,26 +479,110 @@
     },
     "mcpToolsControl": {
       "title": "MCP Tools调用管控",
-      "tagline": "在网关层统一管控 MCP 工具接入与调用策略",
-      "introStory": "Agentic AI 应用往往需同时调用数据库、知识库、工单系统、代码仓库等多类 MCP 工具。若每个 Agent 自行对接不同工具地址与鉴权方式，集成复杂、安全风险高，也难以统一执行配额与访问策略。MCP Tools调用管控 在 F5 统一入口集中代理 MCP 协议流量，对工具服务做路由、鉴权、限流与 Fail-close 策略——Agent 只认一个网关地址，企业则在网关侧统一管控工具暴露范围与调用权限。",
+      "tagline": "像大楼门禁一样：先认 Agent 身份，再决定能进哪一类工具房",
+      "introStory": "当企业同时上线运维助手、财务助手等多类 Agent 时，它们会调用不同 MCP 工具。Tier1 先解决“这个 Agent 能不能进这个 MCP Server（工具域）”；Tier2 再解决“进了该域后能不能调用具体某个 Tool”。这样可以把跨域访问和高危工具调用都收敛在统一入口治理，避免权限散落在各业务系统代码中。",
       "bullets": [
-        "Agent 与 Copilot 只需对接一个 MCP 网关地址，即可访问企业批准的工具服务集合，降低集成与密钥分散管理成本",
-        "在网关侧统一执行鉴权、配额与调用频率限制，满足 Agent 调用外部工具时的合规要求",
-        "可按业务线、环境或 Agent 身份将工具流量路由到不同 MCP Server 集群，支撑多租户与分级发布",
-        "Fail-close 与健康检查策略确保异常工具服务不会拖垮整体 Agent 工作流"
+        "Tier1（Server 级）解决“域隔离”：运维 Agent 不能跨到财务 MCP Server，访客不能进入任何生产工具域",
+        "Tier2（Tool 级）解决“最小权限”：同属运维域内，readonly 只能查告警，admin 才能执行 restart_service",
+        "跨域或越权调用都在网关侧 Fail-close，未授权请求不会到达业务 MCP Server",
+        "统一入口治理把权限策略从应用代码剥离，降低多 Agent 场景下的权限漂移与误配风险"
       ],
       "techFeatures": [
-        "F5 Virtual Server 作为 MCP 协议（HTTP/SSE）统一入口，代理 Agent 与后端 MCP Server 之间的 JSON-RPC 会话",
-        "Data Group 或策略表维护「工具名 / Server 标识 → 后端 MCP Server Pool」映射",
-        "网关层注入鉴权 Token 校验、调用频率限制与工具白名单策略",
-        "规划支持 Streamable HTTP / SSE 长连接场景下的连接保持与成员级负载均衡"
+        "Tier1 实现：OAuth AS 签发 JWT（mcp_groups/mcp_role）→ APM OAuth Scope 校验 → 按 X-Mcp-Target-Server 做域授权分流",
+        "Tier2 实现：LTM JSON_REQUEST 解析 method/params.name（tools/call）+ JWT mcp_role，对 dg_mcp_tool_allow 做 Tool ACL 判定",
+        "拒绝路径统一 Fail-close 到 pool_mcp_ctl_deny（策略 Ending 可为 Allow，但业务效果是阻断）",
+        "Demo Runner 已实现 MCP 双向交互：可自动应答 sampling/createMessage 与 elicitation/create，避免 tools/call 长等待"
       ],
-      "plannedIntro": "MCP Tools调用管控 交互演示规划中，当前为能力占位与架构导览。",
-      "planned": [
-        "演示 Agent 经 F5 网关调用多个 MCP Server 的路由与鉴权流程",
-        "工具白名单、配额限流与 Fail-close 策略占位说明",
-        "MCP Server 健康检查与池内成员切换示意"
-      ]
+      "identityNote": "此处切换的是模拟 Agent 身份，用于演示不同角色的访问权限，与您当前登录 Demo 系统的账号无关，切换不会影响登录状态。",
+      "labels": {
+        "agent": "模拟 Agent 身份",
+        "target": "目标 MCP Server",
+        "tool": "目标 Tool（Tier2）",
+        "quickTests": "一键预期组合"
+      },
+      "tabs": {
+        "tier1": "Tier1：Server 级访问",
+        "tier2": "Tier2：Tool 级访问"
+      },
+      "tools": {
+        "queryAlert": "query_alert（只读）",
+        "restartService": "restart_service（高危变更）"
+      },
+      "agents": {
+        "ops-admin-agent": "运维管理 Agent",
+        "ops-readonly-agent": "运维只读 Agent",
+        "finance-agent": "财务分析 Agent",
+        "guest-agent": "无授权访客 Agent"
+      },
+      "targets": {
+        "ops": "ops-tools-server（运维）",
+        "finance": "finance-tools-server（财务）"
+      },
+      "runOnce": "发起调用",
+      "running": "调用中…",
+      "resultAllow": "放行",
+      "resultAllowTier1": "Tier1 放行：目标 MCP Server 访问通过",
+      "resultAllowTier2": "Tier2 放行：目标 Tool 调用通过",
+      "resultFailClose": "阻断（Fail-close）",
+      "resultDeny": "阻断（Fail-close）",
+      "resultUnknown": "结果未知",
+      "quick": {
+        "t1AllowOps": "Tier1：ops-admin → ops（预期放行）",
+        "t1DenyCrossDomain": "Tier1：ops-admin → finance（预期跨域阻断）",
+        "t1DenyNoGroup": "Tier1：guest → ops（预期无组阻断）",
+        "t2AllowReadonlyTool": "Tier2：ops-readonly 调 query_alert（预期放行）",
+        "t2DenyPrivilegedTool": "Tier2：ops-readonly 调 restart_service（预期工具阻断）",
+        "t2AllowAdminTool": "Tier2：ops-admin 调 restart_service（预期放行）",
+        "opsToFinance": "ops-admin → finance（预期 Fail-close）",
+        "financeAllow": "finance-agent → finance（预期放行）",
+        "guestDeny": "guest-agent → ops（预期 Fail-close）"
+      },
+      "reason": {
+        "tier1NoGroup": "Tier1 阻断：JWT 中无可用 mcp_groups，未命中任何 Server 授权",
+        "tier1ServerDenied": "Tier1 阻断：Agent 角色与目标 MCP Server 不匹配（跨域）",
+        "tier2BlockedByTier1": "Tier2 未执行：先在 Tier1（Server 级）被阻断",
+        "tier2ToolDenied": "Tier2 阻断：角色无权调用该 Tool（Tool allowlist 未命中）"
+      },
+      "health": {
+        "vsOk": "VS 可达（{{detail}}）",
+        "vsDown": "VS 不可达（{{detail}}）",
+        "backendOk": "{{id}} OK ({{target}})",
+        "backendDown": "{{id}} DOWN ({{target}})",
+        "checkFailed": "健康检查失败"
+      },
+      "timeline": {
+        "steps": {
+          "token": "向 APM OAuth AS 请求 Token（ROPC）",
+          "gateway": "携带 Bearer（JWT） + X-Mcp-Target-Server 调用 F5 网关",
+          "decision": "Tier1 决策（Server 级）",
+          "mcp": "后端响应（授权 MCP 或 deny stub）"
+        },
+        "tokenOk": "已获取 JWT；mcp_groups = {{groups}}",
+        "tokenFail": "换取 Token 失败：{{error}}",
+        "gatewayCalled": "已调用目标 {{target}}，HTTP {{status}}",
+        "gatewaySkipped": "未到达网关（Token 阶段失败）",
+        "decisionAllow": "APM Ending={{ending}} → Pool Assign {{pool}}（角色匹配目标 Server）",
+        "decisionFailClose": "APM Ending={{ending}} → Pool Assign {{pool}}（fail-close；HTTP {{status}}）。策略未走 Deny Ending",
+        "decisionDeny": "APM Ending=Allow → pool_mcp_ctl_deny（HTTP {{status}}）",
+        "decisionUnknown": "尚未决策",
+        "mcpOk": "已转发到授权 MCP Server，initialize 有响应",
+        "mcpFailClose": "已转发到 fail-close 池 {{pool}}，stub 返回 HTTP {{status}}",
+        "mcpDenied": "已转发到 fail-close 池，未到达业务 MCP Server",
+        "mcpSkipped": "跳过"
+      },
+      "notes": {
+        "explain": [
+          "业务上「拒绝」在本演示中对应 fail-close：请求仍被策略 Accept，但只进入拒绝池，不会到达未授权的 MCP Server。",
+          "Tier 1 管控到「工具域 / MCP Server」一级；Tier 2 在同一工具域内进一步细化到具体 Tool 级授权。",
+          "运维管理与运维只读在 Server 级权限相同，差异留给后续 Tool 级策略。",
+          "演示中的 Agent 身份与 Demo 登录账号无关，可安全切换对比。",
+          "本 Demo 基于静态 OAuth 客户端注册（预先在 APM 登记 Client Application）。生产环境 Agent/App 数量会快速增长，建议采用动态客户端注册（Dynamic Client Registration），避免手工逐个登记。"
+        ],
+        "dcrNote": "生产环境建议采用动态 Agent 客户端注册模式，详见 F5 社区文章：",
+        "dcrLinkLabel": "Stop Registering AI Agents and Apps by Hand — Explore Dynamic Client Registration",
+        "dcrLinkUrl": "https://community.f5.com/kb/technicalarticles/stop-registering-ai-agents-and-apps-by-hand---explore-dynamic-client-registratio/346866#community-346866-mcetoc_1jronog87_6",
+        "opsTip": "VS 172.16.30.125:9010 · Token http://172.16.30.125:9009/f5-oauth2/v1/token · backends 172.16.40.122:9001/9002 · deny stub :9003"
+      }
     },
     "security": {
       "title": "LLM 安全",

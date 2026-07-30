@@ -1,0 +1,341 @@
+# ir_mcp_audit_logger — MCP Tools Insight 审计采集（iRuleLX 外发版）
+# 修复说明：
+#   1. SSE_RESPONSE / HTTP_RESPONSE_RELEASE 均内联日志，不用 call proc
+#      → proc 内 ILX::call/notify 无 flow context 会静默失败
+#      → SSE_RESPONSE 用 call proc 触发检查器 ltmEventCategoryHierarchy(SSE) bug
+#   2. 所有 ILX::notify 替代 ILX::call：日志投递无需等待响应，不阻塞 TMM
+#   3. SSE data 字段改用正确命令 SSE::field get data（SSE::data 命令不存在）
+#   4. JSON_REQUEST：所有可选键（method/id/params）先用 keys 再 get；先 switch 再解析 id
+#   5. 可选键用 JSON::object keys 判断后再 get，避免 catch 吞错导致 message_type=unknown
+#   6. string match 模式统一用花括号，Content-Type 匹配加引号保护
+
+# proc 仅用于拼装 JSON 字符串并返回，不执行任何 ILX 操作
+proc build_mcp_log_json { event_type trace_id session_id agent_id tenant_id
+                          client_ip tool_name msg_id message_type params_summary
+                          latency_ms error_info pool_member http_method
+                          sse_event_count sse_sampling_count sse_elicitation_count } {
+    set ts [clock format [clock seconds] -format "%Y-%m-%dT%H:%M:%SZ" -gmt true]
+    regsub -all {\\} $params_summary {\\\\} params_summary
+    regsub -all {"} $params_summary {\"} params_summary
+    regsub -all {\\} $error_info {\\\\} error_info
+    regsub -all {"} $error_info {\"} error_info
+    regsub -all {\\} $tool_name {\\\\} tool_name
+    regsub -all {"} $tool_name {\"} tool_name
+    set status "success"
+    if { $error_info ne "" } { set status "error" }
+    return "\{\"schema_version\":\"$static::SCHEMA_VERSION\",\
+\"event_type\":\"$event_type\",\
+\"event_time\":\"$ts\",\
+\"trace_id\":\"$trace_id\",\
+\"mcp_session_id\":\"$session_id\",\
+\"agent_identity\":\"$agent_id\",\
+\"tenant_id\":\"$tenant_id\",\
+\"client_ip\":\"$client_ip\",\
+\"message_type\":\"$message_type\",\
+\"tool_name\":\"$tool_name\",\
+\"jsonrpc_id\":\"$msg_id\",\
+\"params_summary\":\"$params_summary\",\
+\"latency_ms\":$latency_ms,\
+\"status\":\"$status\",\
+\"error_info\":\"$error_info\",\
+\"mcp_protocol_version\":\"2025-11-25\",\
+\"http_method\":\"$http_method\",\
+\"pool_member\":\"$pool_member\",\
+\"sse_event_count\":$sse_event_count,\
+\"sse_sampling_count\":$sse_sampling_count,\
+\"sse_elicitation_count\":$sse_elicitation_count\}"
+}
+
+when RULE_INIT {
+    set static::SCHEMA_VERSION "mcp_v1"
+    set static::LOG_PARAMS_SUMMARY 1
+    set static::MAX_PARAMS_LEN 512
+    set static::LOG_SSE_EVENTS 1
+}
+
+when HTTP_REQUEST {
+    set mcp_http_method [HTTP::method]
+    # 仅审计 MCP JSON-RPC POST；跳过 GET /health（Demo 健康检查、F5 monitor 等）
+    if { $mcp_http_method ne "POST" } { return }
+
+    # ILX::init 每次请求重新获取句柄，不做 static:: 缓存。
+    # 理由：ILX::init 只是查找已运行 Node.js 进程的引用，开销极低（内存查表）。
+    # 若用 static:: 缓存，sdmd 重启后旧句柄失效，ILX::notify 将持续失败（Bug ID 502213）。
+    # ILX::init 第一参数是 Plugin 名（ilx plugin 对象），不是 Workspace 名
+    # Plugin 需单独创建：tmsh create ilx plugin mcp_audit_lx_plugin from-workspace mcp_audit_lx_workspace
+    set static::ILX_HANDLE [ILX::init mcp_audit_lx_plugin mcp_audit_ext]
+    set mcp_trace_id "mcp-[clock clicks -milliseconds]-[expr {int(rand()*99999)}]"
+    set mcp_req_start_ms [clock clicks -milliseconds]
+    set mcp_agent_identity [HTTP::header value "X-Agent-Identity"]
+    if { $mcp_agent_identity eq "" } { set mcp_agent_identity "unknown" }
+    set mcp_tenant_id [HTTP::header value "X-Tenant-Id"]
+    if { $mcp_tenant_id eq "" } { set mcp_tenant_id "default" }
+    set mcp_session_id [HTTP::header value "Mcp-Session-Id"]
+    if { $mcp_session_id eq "" } { set mcp_session_id "new" }
+    set mcp_client_ip [IP::client_addr]
+    set mcp_jsonrpc_method ""
+    set mcp_jsonrpc_id ""
+    set mcp_tool_name ""
+    set mcp_params_summary ""
+    set mcp_message_type "unknown"
+    set mcp_pool_member ""
+    set mcp_sse_event_count 0
+    set mcp_sse_sampling_count 0
+    set mcp_sse_elicitation_count 0
+    set mcp_final_result_error ""
+    set mcp_resp_type "json"
+}
+
+when JSON_REQUEST {
+    if { [HTTP::method] ne "POST" } { return }
+    catch {
+        set root [JSON::root]
+        if { $root eq "" } { return }
+        if { [JSON::type $root] ne "object" } { return }
+        set jobj [JSON::get $root object]
+        set jobj_keys [JSON::object keys $jobj]
+
+        # method 可选：JSON-RPC 响应（Sampling/Elicitation 回包）只有 id+result，无 method
+        set mcp_jsonrpc_method ""
+        if { [lsearch -exact $jobj_keys method] >= 0 } {
+            set _mn [JSON::object get $jobj "method"]
+            if { $_mn ne "" && [JSON::type $_mn] eq "string" } {
+                set mcp_jsonrpc_method [JSON::get $_mn string]
+            }
+        }
+
+        # 必须先 switch 再解析 id：通知无 id；响应无 method — 均须 keys 守卫，否则 get 抛错 → catch → unknown
+        switch -glob $mcp_jsonrpc_method {
+            "initialize"             { set mcp_message_type "lifecycle.initialize" }
+            "notifications/initialized" { set mcp_message_type "lifecycle.initialized" }
+            "tools/list"             { set mcp_message_type "discovery.tools_list" }
+            "prompts/list"           { set mcp_message_type "discovery.prompts_list" }
+            "resources/list"         { set mcp_message_type "discovery.resources_list" }
+            "tools/call" {
+                set mcp_message_type "tool.call"
+                if { [lsearch -exact [JSON::object keys $jobj] params] >= 0 } {
+                    set params_elem [JSON::object get $jobj "params"]
+                    if { $params_elem ne "" && [JSON::type $params_elem] eq "object" } {
+                        set params_obj [JSON::get $params_elem object]
+                        if { [lsearch -exact [JSON::object keys $params_obj] name] >= 0 } {
+                            set name_elem [JSON::object get $params_obj "name"]
+                            if { $name_elem ne "" && [JSON::type $name_elem] eq "string" } {
+                                set mcp_tool_name [JSON::get $name_elem string]
+                            }
+                        }
+                        if { $static::LOG_PARAMS_SUMMARY && [lsearch -exact [JSON::object keys $params_obj] arguments] >= 0 } {
+                            set args_elem [JSON::object get $params_obj "arguments"]
+                            if { $args_elem ne "" } {
+                                set mcp_params_summary "tool=$mcp_tool_name,args=[string range [JSON::render $args_elem] 0 $static::MAX_PARAMS_LEN]"
+                            }
+                        }
+                    }
+                }
+            }
+            "prompts/get"    { set mcp_message_type "prompts.get" }
+            "resources/read" { set mcp_message_type "resources.read" }
+            default {
+                if { $mcp_jsonrpc_method eq "" } {
+                    if { [lsearch -exact $jobj_keys result] >= 0 } {
+                        set mcp_message_type "response.client_to_server"
+                    } elseif { [lsearch -exact $jobj_keys error] >= 0 } {
+                        set mcp_message_type "response.error"
+                    } else {
+                        set mcp_message_type "unknown"
+                    }
+                } else {
+                    set mcp_message_type "other.$mcp_jsonrpc_method"
+                }
+            }
+        }
+
+        # id 可选：通知类请求无 id
+        set mcp_jsonrpc_id ""
+        if { [lsearch -exact $jobj_keys id] >= 0 } {
+            set _in [JSON::object get $jobj "id"]
+            if { $_in ne "" } {
+                set _type [JSON::type $_in]
+                if { $_type eq "string" } {
+                    set mcp_jsonrpc_id [JSON::get $_in string]
+                } elseif { $_type eq "integer" } {
+                    set mcp_jsonrpc_id [JSON::get $_in integer]
+                } else {
+                    set mcp_jsonrpc_id [JSON::render $_in]
+                }
+            }
+        }
+    }
+}
+
+when LB_SELECTED {
+    set mcp_pool_member "[LB::server addr]:[LB::server port]"
+}
+
+when HTTP_RESPONSE {
+    set mcp_new_session_id [HTTP::header value "Mcp-Session-Id"]
+    if { $mcp_new_session_id ne "" && $mcp_session_id eq "new" } {
+        set mcp_session_id $mcp_new_session_id
+    }
+    set ct [HTTP::header value "Content-Type"]
+    # 花括号保护模式，避免 Content-Type 含空格时被错误分词
+    if { [string match {*text/event-stream*} $ct] } {
+        set mcp_resp_type "sse_stream"
+    } else {
+        set mcp_resp_type "json"
+    }
+}
+
+when SSE_RESPONSE {
+    # 注意1：不使用 call proc（规避 ltmEventCategoryHierarchy(SSE) 检查器 bug）
+    # 注意2：使用 ILX::notify 代替 ILX::call，fire-and-forget，不阻塞 TMM
+    # 注意3：MCP Server json.dumps 输出为 "method": "xxx"（冒号后有空格），
+    #        勿用 *"method":"sampling* 无空格模式，否则匹配失败、sse_sampling_count 恒为 0
+    # 方向：sampling/createMessage、elicitation/create 为 Server→Client 反向请求（见开发计划 §4）
+    if { !$static::LOG_SSE_EVENTS } { return }
+    incr mcp_sse_event_count
+    set sse_data [SSE::field get data]
+    if { $sse_data eq "" } { return }
+
+    set _sse_jsonrpc_id ""
+    regexp {"id"\s*:\s*([0-9]+)} $sse_data -> _sse_jsonrpc_id
+
+    if { [string match {*"method"*"sampling/createMessage"*} $sse_data] } {
+        incr mcp_sse_sampling_count
+        set _sampling_ps "server→client,sampling/createMessage"
+        if { [regexp {"maxTokens"\s*:\s*([0-9]+)} $sse_data -> _mt] } {
+            set _sampling_ps "server→client,maxTokens=$_mt,sampling/createMessage"
+        }
+        regsub -all {\\} $_sampling_ps {\\\\} _sampling_ps
+        regsub -all {"} $_sampling_ps {\"} _sampling_ps
+        set _log_json "\{\"schema_version\":\"$static::SCHEMA_VERSION\",\
+\"event_type\":\"mcp_sse_sampling_request\",\
+\"event_time\":\"[clock format [clock seconds] -format {%Y-%m-%dT%H:%M:%SZ} -gmt true]\",\
+\"trace_id\":\"${mcp_trace_id}-sampling\",\
+\"mcp_session_id\":\"$mcp_session_id\",\
+\"agent_identity\":\"$mcp_agent_identity\",\
+\"tenant_id\":\"$mcp_tenant_id\",\
+\"client_ip\":\"$mcp_client_ip\",\
+\"message_type\":\"server.sampling_request\",\
+\"tool_name\":\"$mcp_tool_name\",\
+\"jsonrpc_id\":\"$_sse_jsonrpc_id\",\
+\"params_summary\":\"$_sampling_ps\",\
+\"latency_ms\":0,\
+\"status\":\"success\",\
+\"error_info\":\"\",\
+\"mcp_protocol_version\":\"2025-11-25\",\
+\"http_method\":\"$mcp_http_method\",\
+\"pool_member\":\"$mcp_pool_member\",\
+\"sse_event_count\":$mcp_sse_event_count,\
+\"sse_sampling_count\":$mcp_sse_sampling_count,\
+\"sse_elicitation_count\":$mcp_sse_elicitation_count\}"
+        catch { ILX::notify $static::ILX_HANDLE send_mcp_log $_log_json }
+
+    } elseif { [string match {*"method"*"elicitation/create"*} $sse_data] } {
+        incr mcp_sse_elicitation_count
+        set _elic_ps "server→client,elicitation/create"
+        if { [regexp {"mode"\s*:\s*"([^"]+)"} $sse_data -> _em] } {
+            set _elic_ps "server→client,mode=$_em,elicitation/create"
+        }
+        regsub -all {\\} $_elic_ps {\\\\} _elic_ps
+        regsub -all {"} $_elic_ps {\"} _elic_ps
+        set _log_json "\{\"schema_version\":\"$static::SCHEMA_VERSION\",\
+\"event_type\":\"mcp_sse_elicitation_request\",\
+\"event_time\":\"[clock format [clock seconds] -format {%Y-%m-%dT%H:%M:%SZ} -gmt true]\",\
+\"trace_id\":\"${mcp_trace_id}-elicitation\",\
+\"mcp_session_id\":\"$mcp_session_id\",\
+\"agent_identity\":\"$mcp_agent_identity\",\
+\"tenant_id\":\"$mcp_tenant_id\",\
+\"client_ip\":\"$mcp_client_ip\",\
+\"message_type\":\"server.elicitation_request\",\
+\"tool_name\":\"$mcp_tool_name\",\
+\"jsonrpc_id\":\"$_sse_jsonrpc_id\",\
+\"params_summary\":\"$_elic_ps\",\
+\"latency_ms\":0,\
+\"status\":\"success\",\
+\"error_info\":\"\",\
+\"mcp_protocol_version\":\"2025-11-25\",\
+\"http_method\":\"$mcp_http_method\",\
+\"pool_member\":\"$mcp_pool_member\",\
+\"sse_event_count\":$mcp_sse_event_count,\
+\"sse_sampling_count\":$mcp_sse_sampling_count,\
+\"sse_elicitation_count\":$mcp_sse_elicitation_count\}"
+        catch { ILX::notify $static::ILX_HANDLE send_mcp_log $_log_json }
+
+    } elseif { [regexp {"id"\s*:\s*[0-9]+} $sse_data] && ![string match {*"method"*} $sse_data] } {
+        # 最终响应（有 id、无 method）：计算延迟并发送完成日志
+        set mcp_latency_ms [expr {[clock clicks -milliseconds] - $mcp_req_start_ms}]
+        if { [string match {*"error"*} $sse_data] } {
+            set mcp_final_result_error "sse_error"
+        }
+        set _ps $mcp_params_summary
+        regsub -all {\\} $_ps {\\\\} _ps
+        regsub -all {"} $_ps {\"} _ps
+        set _tn $mcp_tool_name
+        regsub -all {\\} $_tn {\\\\} _tn
+        regsub -all {"} $_tn {\"} _tn
+        set _final_jsonrpc_id $mcp_jsonrpc_id
+        if { $_final_jsonrpc_id eq "" } { set _final_jsonrpc_id $_sse_jsonrpc_id }
+        set _status [expr { $mcp_final_result_error ne "" ? "error" : "success" }]
+        set _log_json "\{\"schema_version\":\"$static::SCHEMA_VERSION\",\
+\"event_type\":\"mcp_request_completed\",\
+\"event_time\":\"[clock format [clock seconds] -format {%Y-%m-%dT%H:%M:%SZ} -gmt true]\",\
+\"trace_id\":\"$mcp_trace_id\",\
+\"mcp_session_id\":\"$mcp_session_id\",\
+\"agent_identity\":\"$mcp_agent_identity\",\
+\"tenant_id\":\"$mcp_tenant_id\",\
+\"client_ip\":\"$mcp_client_ip\",\
+\"message_type\":\"$mcp_message_type\",\
+\"tool_name\":\"$_tn\",\
+\"jsonrpc_id\":\"$_final_jsonrpc_id\",\
+\"params_summary\":\"$_ps\",\
+\"latency_ms\":$mcp_latency_ms,\
+\"status\":\"$_status\",\
+\"error_info\":\"$mcp_final_result_error\",\
+\"mcp_protocol_version\":\"2025-11-25\",\
+\"http_method\":\"$mcp_http_method\",\
+\"pool_member\":\"$mcp_pool_member\",\
+\"sse_event_count\":$mcp_sse_event_count,\
+\"sse_sampling_count\":$mcp_sse_sampling_count,\
+\"sse_elicitation_count\":$mcp_sse_elicitation_count\}"
+        catch { ILX::notify $static::ILX_HANDLE send_mcp_log $_log_json }
+    }
+}
+
+when HTTP_RESPONSE_RELEASE {
+    # 仅 POST 的 MCP 请求；GET /health 等已在 HTTP_REQUEST 跳过，此处双保险
+    if { $mcp_http_method ne "POST" } { return }
+    # SSE 请求的完成日志已在 SSE_RESPONSE 的最终响应分支中发送，此处跳过
+    if { $mcp_resp_type eq "sse_stream" } { return }
+    # 非 SSE（notifications 的 202、DELETE 的 204、JSON 直接响应）：内联发送完成日志
+    set mcp_latency_ms [expr {[clock clicks -milliseconds] - $mcp_req_start_ms}]
+    if { [HTTP::status] >= 400 } { set mcp_final_result_error "http_[HTTP::status]" }
+    set _ps $mcp_params_summary
+    regsub -all {\\} $_ps {\\\\} _ps
+    regsub -all {"} $_ps {\"} _ps
+    set _tn $mcp_tool_name
+    regsub -all {\\} $_tn {\\\\} _tn
+    regsub -all {"} $_tn {\"} _tn
+    set _status [expr { $mcp_final_result_error ne "" ? "error" : "success" }]
+    set _log_json "\{\"schema_version\":\"$static::SCHEMA_VERSION\",\
+\"event_type\":\"mcp_request_completed\",\
+\"event_time\":\"[clock format [clock seconds] -format {%Y-%m-%dT%H:%M:%SZ} -gmt true]\",\
+\"trace_id\":\"$mcp_trace_id\",\
+\"mcp_session_id\":\"$mcp_session_id\",\
+\"agent_identity\":\"$mcp_agent_identity\",\
+\"tenant_id\":\"$mcp_tenant_id\",\
+\"client_ip\":\"$mcp_client_ip\",\
+\"message_type\":\"$mcp_message_type\",\
+\"tool_name\":\"$_tn\",\
+\"jsonrpc_id\":\"$mcp_jsonrpc_id\",\
+\"params_summary\":\"$_ps\",\
+\"latency_ms\":$mcp_latency_ms,\
+\"status\":\"$_status\",\
+\"error_info\":\"$mcp_final_result_error\",\
+\"mcp_protocol_version\":\"2025-11-25\",\
+\"http_method\":\"$mcp_http_method\",\
+\"pool_member\":\"$mcp_pool_member\",\
+\"sse_event_count\":$mcp_sse_event_count,\
+\"sse_sampling_count\":$mcp_sse_sampling_count,\
+\"sse_elicitation_count\":$mcp_sse_elicitation_count\}"
+    catch { ILX::notify $static::ILX_HANDLE send_mcp_log $_log_json }
+}

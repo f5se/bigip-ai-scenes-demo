@@ -250,3 +250,57 @@ MAX_TOKENS_DEMO: dict[str, object] = {
         {"id": "overflow", "max_tokens": 8192, "expected": "block"},
     ],
 }
+
+# MCP Tools Insight demo (Observability · scene 2) — copy into config.py as needed
+# MCP_INSIGHT_DEMO: dict[str, object] = { ... }
+
+# MCP Tools Control Tier 1 demo (Traffic Mgmt · scene 3)
+MCP_CONTROL_DEMO: dict[str, object] = {
+    "token_mode": "apm_ropc",  # or "demo_local" for lab fallback without APM AS
+    "oauth_token_url": "http://172.16.30.125:9009/f5-oauth2/v1/token",
+    "default_vs": {"host": "172.16.30.125", "port": 9010},
+    "client_id": "6d37988eeb83fbe70c212fa8a321005056b3ac5958cd696a",
+    "client_secret_env": "MCP_CONTROL_CLIENT_SECRET",
+    "agent_identities": [
+        {
+            "id": "ops-admin-agent",
+            "label": "运维管理 Agent",
+            "localdb_username": "agent_ops_admin",
+            "password_env": "MCP_CONTROL_PWD_OPS_ADMIN",
+            "mcp_groups": "grp_mcp_ops",
+            "mcp_role": "ops-admin",
+        },
+        {
+            "id": "ops-readonly-agent",
+            "label": "运维只读 Agent",
+            "localdb_username": "agent_ops_readonly",
+            "password_env": "MCP_CONTROL_PWD_OPS_READONLY",
+            "mcp_groups": "grp_mcp_ops",
+            "mcp_role": "ops-readonly",
+        },
+        {
+            "id": "finance-agent",
+            "label": "财务分析 Agent",
+            "localdb_username": "agent_finance",
+            "password_env": "MCP_CONTROL_PWD_FINANCE",
+            "mcp_groups": "grp_mcp_finance",
+            "mcp_role": "finance",
+        },
+        {
+            "id": "guest-agent",
+            "label": "无授权访客 Agent",
+            "localdb_username": "agent_guest",
+            "password_env": "MCP_CONTROL_PWD_GUEST",
+            "mcp_groups": "",
+            "mcp_role": "guest",
+        },
+    ],
+    "target_servers": [
+        {"id": "ops", "label": "ops-tools-server（运维工具）"},
+        {"id": "finance", "label": "finance-tools-server（财务工具）"},
+    ],
+    "backend_servers": [
+        {"id": "ops", "host": "172.16.40.122", "port": 9001},
+        {"id": "finance", "host": "172.16.40.122", "port": 9002},
+    ],
+}

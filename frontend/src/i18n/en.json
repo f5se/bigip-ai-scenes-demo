@@ -70,6 +70,8 @@
     "systemPrompt": "System prompt hardening",
     "guardrails": "LLM Guardrail integration",
     "tmosMinVersion": "(TMOS Ver ≥ v21)",
+    "tmosMinVersionApm": "(TMOS Ver ≥ v21 · APM)",
+    "apmRequiredTag": "APM required",
     "planned": "Planned",
     "available": "Live demo"
   },
@@ -476,26 +478,110 @@
     },
     "mcpToolsControl": {
       "title": "MCP Tools Call Control",
-      "tagline": "Unified MCP tool access and call policy at the gateway",
-      "introStory": "Agentic AI apps often call databases, knowledge bases, ticketing, code repos, and more via MCP. If every agent wires its own tool URLs and credentials, integration fragments and policy enforcement becomes hard. MCP Tools Call Control proxies MCP traffic at the F5 entry—routing, auth, rate limits, and fail-close—so agents see one gateway while the enterprise governs which tools are exposed and how they are called.",
+      "tagline": "Like building access control: identify the Agent first, then open only the right tool domain",
+      "introStory": "In enterprise multi-Agent deployments, Tier1 answers \"can this Agent access this MCP Server domain?\" and Tier2 answers \"within that domain, can this Agent call this specific Tool?\". This split lets teams enforce both cross-domain isolation and least-privilege tool control at one gateway, instead of scattering ACL logic across every business app.",
       "bullets": [
-        "Agents and Copilots use one MCP gateway URL for approved tool servers—less integration and credential sprawl",
-        "Central auth, quotas, and rate limits at the gateway for compliant tool use",
-        "Route tool traffic by business line, environment, or agent identity for multi-tenant and staged rollouts",
-        "Fail-close and health-check policies keep unhealthy MCP servers from breaking agent workflows"
+        "Tier1 (Server level) enforces domain isolation: ops Agents cannot cross into finance MCP Server, guests cannot enter production tool domains",
+        "Tier2 (Tool level) enforces least privilege inside a domain: readonly can query alerts while admin can execute restart_service",
+        "Cross-domain and over-privileged requests fail closed at gateway and never reach business MCP servers",
+        "Centralized gateway policy removes duplicated ACL logic from each app and reduces privilege drift"
       ],
       "techFeatures": [
-        "F5 Virtual Server as MCP (HTTP/SSE) entry, proxying JSON-RPC sessions between agents and MCP server pools",
-        "Data Group or policy table maps tool name / server id → backend MCP server pool",
-        "Gateway enforces token auth, rate limits, and tool allowlists",
-        "Planned: Streamable HTTP / SSE long-lived sessions with member-level load balancing"
+        "Tier1 implementation: OAuth AS issues JWT claims (mcp_groups/mcp_role), APM OAuth Scope validates token, then routes by X-Mcp-Target-Server",
+        "Tier2 implementation: LTM JSON_REQUEST parses method/params.name for tools/call and applies role-tool ACL via dg_mcp_tool_allow",
+        "Denied paths are unified as fail-close into pool_mcp_ctl_deny (policy ending may stay Allow, business effect is blocked)",
+        "Demo runner now supports full MCP bidirectional flow by auto-replying sampling/createMessage and elicitation/create"
       ],
-      "plannedIntro": "MCP Tools Call Control interactive demo is planned; this page is a capability placeholder and architecture overview.",
-      "planned": [
-        "Demo routing and auth when an agent calls multiple MCP servers via F5",
-        "Placeholder for tool allowlists, quota limits, and fail-close policy",
-        "MCP server health checks and in-pool member failover illustration"
-      ]
+      "identityNote": "This selector is a simulated Agent identity for RBAC demo only. It does not change your Demo login session.",
+      "labels": {
+        "agent": "Simulated Agent identity",
+        "target": "Target MCP Server",
+        "tool": "Target tool (Tier2)",
+        "quickTests": "One-click expected combinations"
+      },
+      "tabs": {
+        "tier1": "Tier1: Server-level access",
+        "tier2": "Tier2: Tool-level access"
+      },
+      "tools": {
+        "queryAlert": "query_alert (read-only)",
+        "restartService": "restart_service (privileged change)"
+      },
+      "agents": {
+        "ops-admin-agent": "Ops admin Agent",
+        "ops-readonly-agent": "Ops readonly Agent",
+        "finance-agent": "Finance Agent",
+        "guest-agent": "Guest Agent (no groups)"
+      },
+      "targets": {
+        "ops": "ops-tools-server",
+        "finance": "finance-tools-server"
+      },
+      "runOnce": "Run call",
+      "running": "Running…",
+      "resultAllow": "Permit",
+      "resultAllowTier1": "Tier1 permit: target MCP Server access granted",
+      "resultAllowTier2": "Tier2 permit: target Tool call granted",
+      "resultFailClose": "Blocked (fail-close)",
+      "resultDeny": "Blocked (fail-close)",
+      "resultUnknown": "Unknown result",
+      "quick": {
+        "t1AllowOps": "Tier1: ops-admin -> ops (expect permit)",
+        "t1DenyCrossDomain": "Tier1: ops-admin -> finance (expect cross-domain block)",
+        "t1DenyNoGroup": "Tier1: guest -> ops (expect no-group block)",
+        "t2AllowReadonlyTool": "Tier2: ops-readonly -> query_alert (expect permit)",
+        "t2DenyPrivilegedTool": "Tier2: ops-readonly -> restart_service (expect tool deny)",
+        "t2AllowAdminTool": "Tier2: ops-admin -> restart_service (expect permit)",
+        "opsToFinance": "ops-admin → finance (expect fail-close)",
+        "financeAllow": "finance-agent → finance (expect permit)",
+        "guestDeny": "guest-agent → ops (expect fail-close)"
+      },
+      "reason": {
+        "tier1NoGroup": "Tier1 blocked: JWT has no usable mcp_groups, so no Server authorization matched",
+        "tier1ServerDenied": "Tier1 blocked: Agent role does not match target MCP Server (cross-domain)",
+        "tier2BlockedByTier1": "Tier2 not executed: request was blocked earlier at Tier1 (Server level)",
+        "tier2ToolDenied": "Tier2 blocked: role is not allowed to call this Tool (tool allowlist miss)"
+      },
+      "health": {
+        "vsOk": "VS reachable ({{detail}})",
+        "vsDown": "VS down ({{detail}})",
+        "backendOk": "{{id}} OK ({{target}})",
+        "backendDown": "{{id}} DOWN ({{target}})",
+        "checkFailed": "Health check failed"
+      },
+      "timeline": {
+        "steps": {
+          "token": "Request token from APM OAuth AS (ROPC)",
+          "gateway": "Call F5 gateway with Bearer (JWT) + X-Mcp-Target-Server",
+          "decision": "Tier1 decision (Server level)",
+          "mcp": "Backend response (authorized MCP or deny stub)"
+        },
+        "tokenOk": "JWT obtained; mcp_groups = {{groups}}",
+        "tokenFail": "Token fetch failed: {{error}}",
+        "gatewayCalled": "Called target {{target}}, HTTP {{status}}",
+        "gatewaySkipped": "Gateway not reached (token step failed)",
+        "decisionAllow": "APM Ending={{ending}} → Pool Assign {{pool}} (role matches target Server)",
+        "decisionFailClose": "APM Ending={{ending}} → Pool Assign {{pool}} (fail-close; HTTP {{status}}). Policy did not use Deny ending",
+        "decisionDeny": "APM Ending=Allow → pool_mcp_ctl_deny (HTTP {{status}})",
+        "decisionUnknown": "No decision yet",
+        "mcpOk": "Forwarded to authorized MCP Server; initialize responded",
+        "mcpFailClose": "Forwarded to fail-close pool {{pool}}; stub returned HTTP {{status}}",
+        "mcpDenied": "Forwarded to fail-close pool; business MCP Server not reached",
+        "mcpSkipped": "Skipped"
+      },
+      "notes": {
+        "explain": [
+          "Business “deny” here means fail-close: the session is still Allowed, but only into the reject pool—unauthorized MCP Servers are never reached.",
+          "Tier 1 governs tool-domain / MCP Server access, while Tier 2 enforces per-tool authorization inside the domain.",
+          "Ops admin and ops readonly share Server-level access; finer differences are reserved for later.",
+          "Simulated Agent identity is independent of the Demo login user—safe to switch for comparison.",
+          "This demo uses static OAuth client registration (a pre-created APM Client Application). In production, Agent/App counts grow quickly—prefer Dynamic Client Registration instead of registering each client by hand."
+        ],
+        "dcrNote": "For production, prefer dynamic Agent client registration. See the F5 Community article:",
+        "dcrLinkLabel": "Stop Registering AI Agents and Apps by Hand — Explore Dynamic Client Registration",
+        "dcrLinkUrl": "https://community.f5.com/kb/technicalarticles/stop-registering-ai-agents-and-apps-by-hand---explore-dynamic-client-registratio/346866#community-346866-mcetoc_1jronog87_6",
+        "opsTip": "VS 172.16.30.125:9010 · Token http://172.16.30.125:9009/f5-oauth2/v1/token · backends 172.16.40.122:9001/9002 · deny stub :9003"
+      }
     },
     "security": {
       "title": "LLM Security",

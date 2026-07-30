@@ -39,7 +39,14 @@ python -m uvicorn main:app --host 0.0.0.0 --port 8090
 
 ### Docker 镜像（交付）
 
-仅打包 Adapter 运行时（不含 Prometheus / Grafana / 测试脚本）。在 **linux/amd64** 构建机编译、代理与日志轮转说明见 **[DOCKER.md](DOCKER.md)**。
+仅打包 Adapter 运行时（不含测试脚本）。在 **linux/amd64** 构建机编译、代理与日志轮转说明见 **[DOCKER.md](DOCKER.md)**。
+
+同机一并拉起 Adapter + Prometheus + Grafana：
+
+```bash
+cd adapter_service
+docker compose -f docker-compose.stack.yaml up -d --build
+```
 ## 环境变量
 
 - `ADAPTER_PRICING_RULES_PATH`：价格规则文件路径（默认 `./pricing_rules.json`）
