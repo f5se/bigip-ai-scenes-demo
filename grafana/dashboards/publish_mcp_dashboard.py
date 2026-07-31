@@ -19,6 +19,11 @@ FILTER = 'tenant_id=~"$tenant_id", agent_identity=~"$agent_identity", tool_name=
 TOOL_FILTER = f"mcp_tool_calls_total{{{FILTER}}}"
 TOOL_FILTER_SUCCESS = f'mcp_tool_calls_total{{{FILTER}, status="success"}}'
 LATENCY_FILTER = FILTER
+RBAC_FILTER = (
+    'tenant_id=~"$tenant_id", agent_identity=~"$agent_identity", '
+    'mcp_role=~"$mcp_role", tool_name=~"$tool_name"'
+)
+RBAC_DENIALS = f"mcp_rbac_denials_total{{{RBAC_FILTER}}}"
 
 
 def ds() -> dict:
@@ -237,6 +242,39 @@ def table_panel(title: str, expr: str, x: int, y: int, w: int = 24, h: int = 8) 
     }
 
 
+def rbac_table_panel(title: str, expr: str, x: int, y: int, w: int = 12, h: int = 8) -> dict:
+    return {
+        "type": "table",
+        "title": title,
+        "gridPos": {"h": h, "w": w, "x": x, "y": y},
+        "datasource": ds(),
+        "targets": [prom_target(expr, instant=True, fmt="table")],
+        "options": {"showHeader": True},
+        "fieldConfig": {
+            "defaults": {"custom": {"align": "auto", "filterable": True}},
+            "overrides": [],
+        },
+        "transformations": [
+            {"id": "labelsToFields", "options": {"mode": "columns"}},
+            {
+                "id": "organize",
+                "options": {
+                    "excludeByName": {"Time": True, "__name__": True},
+                    "renameByName": {
+                        "agent_identity": "Agent",
+                        "mcp_role": "Role",
+                        "deny_reason": "Deny Reason",
+                        "tool_name": "Tool",
+                        "message_type": "Message Type",
+                        "Value": "Count",
+                        "Value #A": "Count",
+                    },
+                },
+            },
+        ],
+    }
+
+
 def heatmap_panel(
     title: str,
     expr: str,
@@ -407,6 +445,60 @@ def build_dashboard() -> dict:
         ]
     )
     y += 8
+
+    # Role-based RBAC denials (tier1_server_acl / tier2_tool_acl from audit iRule)
+    panels.append(row_panel("RBAC 访问控制拒绝（按 Role）", y))
+    y += 1
+    panels.extend(
+        [
+            timeseries_panel(
+                "RBAC 拒绝趋势 (agent / role / reason)",
+                f"sum by (agent_identity, mcp_role, deny_reason) (rate({RBAC_DENIALS}[1m]))",
+                0,
+                y,
+                12,
+                8,
+                "{{agent_identity}} / {{mcp_role}} / {{deny_reason}}",
+                "reqps",
+            ),
+            rbac_table_panel(
+                "RBAC 拒绝明细（按 agent / role）",
+                f"sum by (agent_identity, mcp_role, deny_reason, tool_name, message_type) ({RBAC_DENIALS})",
+                12,
+                y,
+                12,
+                8,
+            ),
+            pie_panel(
+                "拒绝原因分布 (deny_reason)",
+                f"sum by (deny_reason) ({RBAC_DENIALS})",
+                0,
+                y + 8,
+                8,
+                8,
+                "{{deny_reason}}",
+            ),
+            pie_panel(
+                "拒绝按 Role 分布",
+                f"sum by (mcp_role) ({RBAC_DENIALS})",
+                8,
+                y + 8,
+                8,
+                8,
+                "{{mcp_role}}",
+            ),
+            stat_panel(
+                "RBAC 拒绝总数",
+                f"sum({RBAC_DENIALS})",
+                16,
+                y + 8,
+                8,
+                "short",
+                [{"color": "green", "value": None}, {"color": "orange", "value": 1}],
+            ),
+        ]
+    )
+    y += 16
 
     panels.append(row_panel("MCP 消息类型与生命周期", y))
     y += 1
@@ -581,8 +673,8 @@ def build_dashboard() -> dict:
             "id": None,
             "uid": DASHBOARD_UID,
             "title": "MCP Tools 调用洞察",
-            "description": "F5 MCP Tools Insight — 工具调用、Agent/Tenant、Sampling/Elicitation、会话与错误率",
-            "tags": ["mcp", "f5", "insight", "tools"],
+            "description": "F5 MCP Tools Insight — 工具调用、Agent/Role RBAC、Sampling/Elicitation、会话与错误率",
+            "tags": ["mcp", "f5", "insight", "tools", "rbac"],
             "timezone": "browser",
             "schemaVersion": 39,
             "version": 1,
@@ -610,6 +702,11 @@ def build_dashboard() -> dict:
                         "agent_identity",
                         'label_values(mcp_tool_calls_total{tenant_id=~"$tenant_id"}, agent_identity)',
                         "Agent",
+                    ),
+                    template_var(
+                        "mcp_role",
+                        'label_values(mcp_rbac_denials_total{tenant_id=~"$tenant_id"}, mcp_role)',
+                        "Role",
                     ),
                     template_var(
                         "tool_name",

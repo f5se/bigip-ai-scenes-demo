@@ -502,7 +502,35 @@
       },
       "tabs": {
         "tier1": "Tier1：Server 级访问",
-        "tier2": "Tier2：Tool 级访问"
+        "tier2": "Tier2：Tool 级访问",
+        "sim": "拒绝流量模拟（Grafana）"
+      },
+      "sim": {
+        "title": "自动生成 Tier1 / Tier2 拒绝流量",
+        "intro": "本页用于持续随机发起「预期会被网关拒绝」的 MCP 请求，把带 mcp_role / deny_reason 的审计事件送入 Adapter，从而让 Grafana「MCP Tools 调用洞察」中的 RBAC 面板有可演示数据。不会故意发起放行请求；可设定时长，也可随时手动停止。",
+        "casesTitle": "将随机覆盖的拒绝场景",
+        "cases": {
+          "t1CrossDomainOpsFinance": "Tier1：ops-admin → finance（跨域，预期 deny_reason=tier1_server_acl）",
+          "t1GuestOps": "Tier1：guest → ops（无 mcp_groups，预期 tier1_server_acl）",
+          "t1FinanceOps": "Tier1：finance → ops（跨域，预期 tier1_server_acl）",
+          "t1GuestFinance": "Tier1：guest → finance（无组，预期 tier1_server_acl）",
+          "t2ReadonlyRestart": "Tier2：ops-readonly 调 restart_service（Tool ACL，预期 deny_reason=tier2_tool_acl）"
+        },
+        "durationMinutes": "持续时长（分钟）",
+        "start": "开始自动化模拟",
+        "stop": "停止模拟",
+        "openGrafana": "打开 Grafana",
+        "linkHint": "Grafana：{{url}} · 看板 MCP Tools 调用洞察 →「RBAC 访问控制拒绝（按 Role）」",
+        "alreadyRunning": "拒绝流量模拟已在运行中",
+        "requests": "已发起",
+        "denied": "已拒绝",
+        "remaining": "剩余",
+        "table": {
+          "time": "时间",
+          "case": "场景",
+          "decision": "决策",
+          "status": "HTTP"
+        }
       },
       "tools": {
         "queryAlert": "query_alert（只读）",

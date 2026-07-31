@@ -1,4 +1,4 @@
-"""FastAPI routes for MCP Tools Control (Tier 1) demo."""
+"""FastAPI routes for MCP Tools Control (Tier 1 / Tier 2) demo."""
 
 from __future__ import annotations
 
@@ -10,6 +10,7 @@ from pydantic import BaseModel, Field
 
 from backend.app.config import MCP_CONTROL_DEMO
 from backend.app.mcp_control_runner import McpControlRunner
+from backend.app.mcp_control_traffic_sim import mcp_control_traffic_simulator
 from backend.app.proxy import validate_target
 
 router = APIRouter(tags=["mcp-control"])
@@ -20,6 +21,10 @@ class McpControlRunRequest(BaseModel):
     target_server_id: str = Field(default="ops")
     scenario: str = Field(default="tier1")
     tool_name: str | None = Field(default=None)
+
+
+class McpControlTrafficStartRequest(BaseModel):
+    duration_minutes: int = Field(default=10, ge=1, le=180)
 
 
 def _public_config() -> dict[str, Any]:
@@ -126,3 +131,23 @@ async def mcp_control_health() -> dict[str, Any]:
                 }
 
     return result
+
+
+@router.get("/api/demo/mcp-tools-control/traffic/status")
+async def mcp_control_traffic_status() -> dict[str, Any]:
+    return mcp_control_traffic_simulator.status()
+
+
+@router.post("/api/demo/mcp-tools-control/traffic/start")
+async def mcp_control_traffic_start(req: McpControlTrafficStartRequest) -> dict[str, Any]:
+    try:
+        return await mcp_control_traffic_simulator.start(req.duration_minutes)
+    except HTTPException as exc:
+        if exc.status_code == 409:
+            raise HTTPException(status_code=409, detail=exc.detail) from exc
+        raise
+
+
+@router.post("/api/demo/mcp-tools-control/traffic/stop")
+async def mcp_control_traffic_stop() -> dict[str, Any]:
+    return await mcp_control_traffic_simulator.stop()

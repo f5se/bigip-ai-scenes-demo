@@ -501,7 +501,35 @@
       },
       "tabs": {
         "tier1": "Tier1: Server-level access",
-        "tier2": "Tier2: Tool-level access"
+        "tier2": "Tier2: Tool-level access",
+        "sim": "Deny traffic sim (Grafana)"
+      },
+      "sim": {
+        "title": "Auto-generate Tier1 / Tier2 deny traffic",
+        "intro": "This tab continuously and randomly issues MCP requests that are expected to be denied by the gateway, so audit events with mcp_role / deny_reason reach the Adapter and populate the Grafana MCP Tools Insight RBAC panels. It does not intentionally send allow cases. Set a duration, or stop manually at any time.",
+        "casesTitle": "Deny scenarios that will be randomly covered",
+        "cases": {
+          "t1CrossDomainOpsFinance": "Tier1: ops-admin → finance (cross-domain, expect deny_reason=tier1_server_acl)",
+          "t1GuestOps": "Tier1: guest → ops (no mcp_groups, expect tier1_server_acl)",
+          "t1FinanceOps": "Tier1: finance → ops (cross-domain, expect tier1_server_acl)",
+          "t1GuestFinance": "Tier1: guest → finance (no groups, expect tier1_server_acl)",
+          "t2ReadonlyRestart": "Tier2: ops-readonly calls restart_service (tool ACL, expect deny_reason=tier2_tool_acl)"
+        },
+        "durationMinutes": "Duration (minutes)",
+        "start": "Start automated simulation",
+        "stop": "Stop simulation",
+        "openGrafana": "Open Grafana",
+        "linkHint": "Grafana: {{url}} · dashboard MCP Tools Insight → “RBAC denials by Role”",
+        "alreadyRunning": "Deny traffic simulation is already running",
+        "requests": "Sent",
+        "denied": "Denied",
+        "remaining": "Remaining",
+        "table": {
+          "time": "Time",
+          "case": "Case",
+          "decision": "Decision",
+          "status": "HTTP"
+        }
       },
       "tools": {
         "queryAlert": "query_alert (read-only)",

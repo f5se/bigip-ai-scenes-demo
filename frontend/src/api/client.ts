@@ -1509,3 +1509,81 @@ export async function runMcpControl(body: {
   }
   return res.json();
 }
+
+export type McpControlTrafficCase = {
+  id: string;
+  scenario: string;
+  agent_id: string;
+  target_server_id: string;
+  tool_name?: string | null;
+  expected_deny_reason?: string;
+};
+
+export type McpControlTrafficStatus = {
+  running: boolean;
+  duration_minutes: number;
+  started_at: string | null;
+  ends_at: string | null;
+  elapsed_seconds: number;
+  remaining_seconds: number;
+  cases?: McpControlTrafficCase[];
+  stats: {
+    requests: number;
+    denied: number;
+    unexpected_allow: number;
+    failed: number;
+    by_case: Record<string, number>;
+    last_error: string | null;
+    last_case_id: string | null;
+    last_agent: string | null;
+    last_target: string | null;
+    last_tool: string | null;
+    last_decision: string | null;
+    last_http_status: number | null;
+    recent: Array<{
+      case_id: string;
+      agent_id: string;
+      target_server_id: string;
+      tool_name?: string | null;
+      scenario: string;
+      expected_deny_reason?: string;
+      decision: string;
+      http_status: number | null;
+      error: string | null;
+      at: string;
+    }>;
+  };
+};
+
+export async function fetchMcpControlTrafficStatus(): Promise<McpControlTrafficStatus> {
+  const res = await authFetch("/api/demo/mcp-tools-control/traffic/status");
+  if (!res.ok) throw new Error("Failed to load MCP control traffic status");
+  return res.json();
+}
+
+export async function startMcpControlTrafficSim(
+  durationMinutes: number
+): Promise<McpControlTrafficStatus> {
+  const res = await authFetch("/api/demo/mcp-tools-control/traffic/start", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ duration_minutes: durationMinutes }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    const detail = (err as { detail?: unknown }).detail;
+    if (typeof detail === "object" && detail && "message" in (detail as object)) {
+      throw new Error(String((detail as { message: string }).message));
+    }
+    throw new Error(
+      typeof detail === "string" ? detail : "Failed to start MCP control traffic sim"
+    );
+  }
+  return res.json();
+}
+
+export async function stopMcpControlTrafficSim(): Promise<McpControlTrafficStatus> {
+  const res = await authFetch("/api/demo/mcp-tools-control/traffic/stop", { method: "POST" });
+  if (!res.ok) throw new Error("Failed to stop MCP control traffic sim");
+  return res.json();
+}
