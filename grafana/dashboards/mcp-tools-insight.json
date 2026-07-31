@@ -115,6 +115,25 @@
               "$__all"
             ]
           }
+        },
+        {
+          "name": "mcp_role",
+          "type": "query",
+          "label": "mcp_role",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "dfp3flzrl70n4d"
+          },
+          "query": "label_values(mcp_rbac_denials_total{tenant_id=~\"$tenant_id\"}, mcp_role)",
+          "includeAll": true,
+          "multi": true,
+          "allValue": ".*",
+          "current": {
+            "text": "All",
+            "value": "$__all"
+          },
+          "refresh": 2,
+          "sort": 1
         }
       ]
     },
@@ -1853,6 +1872,280 @@
                 },
                 {
                   "color": "red",
+                  "value": 1
+                }
+              ]
+            }
+          },
+          "overrides": []
+        }
+      },
+      {
+        "type": "timeseries",
+        "title": "RBAC 拒绝趋势 (agent / role / reason)",
+        "id": 901,
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 89
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "dfp3flzrl70n4d"
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfp3flzrl70n4d"
+            },
+            "expr": "sum by (agent_identity, mcp_role, deny_reason) (rate(mcp_rbac_denials_total{tenant_id=~\"$tenant_id\", agent_identity=~\"$agent_identity\", mcp_role=~\"$mcp_role\", tool_name=~\"$tool_name\"}[1m]))",
+            "legendFormat": "{{agent_identity}} / {{mcp_role}} / {{deny_reason}}",
+            "refId": "A",
+            "instant": false,
+            "range": true
+          }
+        ],
+        "options": {
+          "legend": {
+            "displayMode": "table",
+            "placement": "bottom",
+            "calcs": [
+              "lastNotNull",
+              "sum"
+            ]
+          },
+          "tooltip": {
+            "mode": "multi",
+            "sort": "desc"
+          }
+        },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "reqps",
+            "custom": {
+              "drawStyle": "line",
+              "lineInterpolation": "smooth",
+              "fillOpacity": 15,
+              "stacking": {
+                "mode": "none"
+              }
+            }
+          },
+          "overrides": []
+        }
+      },
+      {
+        "type": "table",
+        "title": "RBAC 拒绝明细（按 agent / role）",
+        "id": 902,
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 89
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "dfp3flzrl70n4d"
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfp3flzrl70n4d"
+            },
+            "expr": "sum by (agent_identity, mcp_role, deny_reason, tool_name, message_type) (mcp_rbac_denials_total{tenant_id=~\"$tenant_id\", agent_identity=~\"$agent_identity\", mcp_role=~\"$mcp_role\", tool_name=~\"$tool_name\"})",
+            "legendFormat": "",
+            "refId": "A",
+            "instant": true,
+            "range": false,
+            "format": "table"
+          }
+        ],
+        "options": {
+          "showHeader": true
+        },
+        "transformations": [
+          {
+            "id": "labelsToFields",
+            "options": {
+              "mode": "columns"
+            }
+          },
+          {
+            "id": "organize",
+            "options": {
+              "excludeByName": {
+                "Time": true,
+                "__name__": true
+              },
+              "renameByName": {
+                "agent_identity": "Agent",
+                "mcp_role": "Role",
+                "deny_reason": "Deny Reason",
+                "tool_name": "Tool",
+                "message_type": "Message Type",
+                "Value": "Count"
+              }
+            }
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "custom": {
+              "align": "auto"
+            }
+          },
+          "overrides": []
+        }
+      },
+      {
+        "type": "piechart",
+        "title": "拒绝原因分布 (deny_reason)",
+        "id": 903,
+        "gridPos": {
+          "h": 8,
+          "w": 8,
+          "x": 0,
+          "y": 97
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "dfp3flzrl70n4d"
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfp3flzrl70n4d"
+            },
+            "expr": "sum by (deny_reason) (mcp_rbac_denials_total{tenant_id=~\"$tenant_id\", agent_identity=~\"$agent_identity\", mcp_role=~\"$mcp_role\"})",
+            "legendFormat": "{{deny_reason}}",
+            "refId": "A",
+            "instant": true,
+            "range": false
+          }
+        ],
+        "options": {
+          "legend": {
+            "displayMode": "table",
+            "placement": "right",
+            "values": [
+              "value",
+              "percent"
+            ]
+          },
+          "pieType": "donut",
+          "reduceOptions": {
+            "calcs": [
+              "lastNotNull"
+            ],
+            "fields": "",
+            "values": false
+          }
+        }
+      },
+      {
+        "type": "piechart",
+        "title": "拒绝按 Role 分布",
+        "id": 904,
+        "gridPos": {
+          "h": 8,
+          "w": 8,
+          "x": 8,
+          "y": 97
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "dfp3flzrl70n4d"
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfp3flzrl70n4d"
+            },
+            "expr": "sum by (mcp_role) (mcp_rbac_denials_total{tenant_id=~\"$tenant_id\", agent_identity=~\"$agent_identity\", mcp_role=~\"$mcp_role\"})",
+            "legendFormat": "{{mcp_role}}",
+            "refId": "A",
+            "instant": true,
+            "range": false
+          }
+        ],
+        "options": {
+          "legend": {
+            "displayMode": "table",
+            "placement": "right",
+            "values": [
+              "value",
+              "percent"
+            ]
+          },
+          "pieType": "donut",
+          "reduceOptions": {
+            "calcs": [
+              "lastNotNull"
+            ],
+            "fields": "",
+            "values": false
+          }
+        }
+      },
+      {
+        "type": "stat",
+        "title": "RBAC 拒绝总数",
+        "id": 905,
+        "gridPos": {
+          "h": 8,
+          "w": 8,
+          "x": 16,
+          "y": 97
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "dfp3flzrl70n4d"
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfp3flzrl70n4d"
+            },
+            "expr": "sum(mcp_rbac_denials_total{tenant_id=~\"$tenant_id\", agent_identity=~\"$agent_identity\", mcp_role=~\"$mcp_role\"})",
+            "legendFormat": "",
+            "refId": "A",
+            "instant": true,
+            "range": false
+          }
+        ],
+        "options": {
+          "reduceOptions": {
+            "calcs": [
+              "lastNotNull"
+            ],
+            "fields": "",
+            "values": false
+          },
+          "orientation": "auto",
+          "textMode": "auto",
+          "colorMode": "value",
+          "graphMode": "area"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short",
+            "decimals": 0,
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                },
+                {
+                  "color": "orange",
                   "value": 1
                 }
               ]

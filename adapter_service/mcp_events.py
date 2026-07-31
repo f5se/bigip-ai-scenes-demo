@@ -38,6 +38,8 @@ class McpLogEvent(BaseModel):
     jsonrpc_id: str = ""
     params_summary: str = ""
     error_info: str = ""
+    mcp_role: str = ""
+    deny_reason: str = ""
     mcp_protocol_version: str = ""
     http_method: str = "POST"
     pool_member: str = ""

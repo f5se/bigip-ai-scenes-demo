@@ -1,0 +1,12 @@
+proc script::init {} {
+}
+
+proc script::run {} {
+    set fd [open "/var/tmp/ir_mcp_audit_logger.tcl" r]
+    set body [read $fd]
+    close $fd
+    eval "tmsh::modify ltm rule ir_mcp_audit_logger { $body }"
+}
+
+proc script::help {} {
+}

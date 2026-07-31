@@ -64,6 +64,11 @@ MCP_ERRORS_TOTAL = Counter(
     "MCP errors by message type.",
     ("message_type", "tool_name", "agent_identity", "tenant_id"),
 )
+MCP_RBAC_DENIALS_TOTAL = Counter(
+    "mcp_rbac_denials_total",
+    "MCP RBAC / policy denials inferred from audit events.",
+    ("agent_identity", "mcp_role", "deny_reason", "tool_name", "tenant_id", "message_type"),
+)
 MCP_EVENTS_PARSE_FAILURES = Counter(
     "mcp_adapter_parse_failures_total",
     "MCP events dropped due to parse/validation errors.",
@@ -144,3 +149,14 @@ def record_mcp_event(payload: dict[str, Any]) -> None:
 
     if status == "error":
         MCP_ERRORS_TOTAL.labels(message_type, tool if tool != "-" else "unknown", agent, tenant).inc()
+        deny_reason = str(payload.get("deny_reason") or "").strip()
+        if deny_reason:
+            role = _label(payload.get("mcp_role"), "-")
+            MCP_RBAC_DENIALS_TOTAL.labels(
+                agent,
+                role,
+                deny_reason,
+                tool if tool != "-" else "unknown",
+                tenant,
+                message_type,
+            ).inc()

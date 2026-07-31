@@ -1,68 +1,27 @@
-# ir_mcp_audit_logger — MCP Tools Insight 审计采集（iRuleLX 外发版）
-# 修复说明：
-#   1. SSE_RESPONSE / HTTP_RESPONSE_RELEASE 均内联日志，不用 call proc
-#      → proc 内 ILX::call/notify 无 flow context 会静默失败
-#      → SSE_RESPONSE 用 call proc 触发检查器 ltmEventCategoryHierarchy(SSE) bug
-#   2. 所有 ILX::notify 替代 ILX::call：日志投递无需等待响应，不阻塞 TMM
-#   3. SSE data 字段改用正确命令 SSE::field get data（SSE::data 命令不存在）
-#   4. JSON_REQUEST：所有可选键（method/id/params）先用 keys 再 get；先 switch 再解析 id
-#   5. 可选键用 JSON::object keys 判断后再 get，避免 catch 吞错导致 message_type=unknown
-#   6. string match 模式统一用花括号，Content-Type 匹配加引号保护
-
-# proc 仅用于拼装 JSON 字符串并返回，不执行任何 ILX 操作
-proc build_mcp_log_json { event_type trace_id session_id agent_id tenant_id
-                          client_ip tool_name msg_id message_type params_summary
-                          latency_ms error_info pool_member http_method
-                          sse_event_count sse_sampling_count sse_elicitation_count } {
-    set ts [clock format [clock seconds] -format "%Y-%m-%dT%H:%M:%SZ" -gmt true]
-    regsub -all {\\} $params_summary {\\\\} params_summary
-    regsub -all {"} $params_summary {\"} params_summary
-    regsub -all {\\} $error_info {\\\\} error_info
-    regsub -all {"} $error_info {\"} error_info
-    regsub -all {\\} $tool_name {\\\\} tool_name
-    regsub -all {"} $tool_name {\"} tool_name
-    set status "success"
-    if { $error_info ne "" } { set status "error" }
-    return "\{\"schema_version\":\"$static::SCHEMA_VERSION\",\
-\"event_type\":\"$event_type\",\
-\"event_time\":\"$ts\",\
-\"trace_id\":\"$trace_id\",\
-\"mcp_session_id\":\"$session_id\",\
-\"agent_identity\":\"$agent_id\",\
-\"tenant_id\":\"$tenant_id\",\
-\"client_ip\":\"$client_ip\",\
-\"message_type\":\"$message_type\",\
-\"tool_name\":\"$tool_name\",\
-\"jsonrpc_id\":\"$msg_id\",\
-\"params_summary\":\"$params_summary\",\
-\"latency_ms\":$latency_ms,\
-\"status\":\"$status\",\
-\"error_info\":\"$error_info\",\
-\"mcp_protocol_version\":\"2025-11-25\",\
-\"http_method\":\"$http_method\",\
-\"pool_member\":\"$pool_member\",\
-\"sse_event_count\":$sse_event_count,\
-\"sse_sampling_count\":$sse_sampling_count,\
-\"sse_elicitation_count\":$sse_elicitation_count\}"
-}
+# ir_mcp_audit_logger - MCP Tools Insight audit (iRuleLX notify)
+# Notes:
+#   1. SSE_RESPONSE / HTTP_RESPONSE_RELEASE inline logs (no call proc for ILX)
+#   2. ILX::notify fire-and-forget (do not block TMM)
+#   3. SSE::field get data for SSE payload
+#   4. JSON_REQUEST: keys-guard optional fields before JSON::object get
+#   5. Extract mcp_role from JWT; infer deny_reason on fail-close (403 / :9003)
+#      without changing ir_mcp_tool_rbac_ltm
 
 when RULE_INIT {
     set static::SCHEMA_VERSION "mcp_v1"
     set static::LOG_PARAMS_SUMMARY 1
     set static::MAX_PARAMS_LEN 512
     set static::LOG_SSE_EVENTS 1
+    # deny stub member port for fail-close pool_mcp_ctl_deny
+    set static::MCP_DENY_STUB_PORT "9003"
 }
 
 when HTTP_REQUEST {
     set mcp_http_method [HTTP::method]
-    # 仅审计 MCP JSON-RPC POST；跳过 GET /health（Demo 健康检查、F5 monitor 等）
+    # audit MCP JSON-RPC POST only; skip GET /health
     if { $mcp_http_method ne "POST" } { return }
 
-    # ILX::init 每次请求重新获取句柄，不做 static:: 缓存。
-    # 理由：ILX::init 只是查找已运行 Node.js 进程的引用，开销极低（内存查表）。
-    # 若用 static:: 缓存，sdmd 重启后旧句柄失效，ILX::notify 将持续失败（Bug ID 502213）。
-    # ILX::init 第一参数是 Plugin 名（ilx plugin 对象），不是 Workspace 名
-    # Plugin 需单独创建：tmsh create ilx plugin mcp_audit_lx_plugin from-workspace mcp_audit_lx_workspace
+    # ILX::init every request (avoid stale handle after sdmd restart, Bug ID 502213)
     set static::ILX_HANDLE [ILX::init mcp_audit_lx_plugin mcp_audit_ext]
     set mcp_trace_id "mcp-[clock clicks -milliseconds]-[expr {int(rand()*99999)}]"
     set mcp_req_start_ms [clock clicks -milliseconds]
@@ -84,6 +43,24 @@ when HTTP_REQUEST {
     set mcp_sse_elicitation_count 0
     set mcp_final_result_error ""
     set mcp_resp_type "json"
+    set mcp_role ""
+    set mcp_deny_reason ""
+
+    # Extract mcp_role from Authorization Bearer JWT (audit only; no verify)
+    set auth [HTTP::header value "Authorization"]
+    if { [string match -nocase {Bearer *} $auth] } {
+        set jwt [string trim [string range $auth 7 end]]
+        set parts [split $jwt "."]
+        if { [llength $parts] >= 2 } {
+            set seg [lindex $parts 1]
+            set pad_n [expr { (4 - ([string length $seg] % 4)) % 4 }]
+            set seg "$seg[string repeat = $pad_n]"
+            set seg [string map {- + _ /} $seg]
+            if { ![catch { set payload [b64decode $seg] }] } {
+                regexp {"mcp_role"\s*:\s*"([^"]*)"} $payload -> mcp_role
+            }
+        }
+    }
 }
 
 when JSON_REQUEST {
@@ -95,7 +72,7 @@ when JSON_REQUEST {
         set jobj [JSON::get $root object]
         set jobj_keys [JSON::object keys $jobj]
 
-        # method 可选：JSON-RPC 响应（Sampling/Elicitation 回包）只有 id+result，无 method
+        # method optional: client response to sampling/elicitation has id+result only
         set mcp_jsonrpc_method ""
         if { [lsearch -exact $jobj_keys method] >= 0 } {
             set _mn [JSON::object get $jobj "method"]
@@ -104,7 +81,6 @@ when JSON_REQUEST {
             }
         }
 
-        # 必须先 switch 再解析 id：通知无 id；响应无 method — 均须 keys 守卫，否则 get 抛错 → catch → unknown
         switch -glob $mcp_jsonrpc_method {
             "initialize"             { set mcp_message_type "lifecycle.initialize" }
             "notifications/initialized" { set mcp_message_type "lifecycle.initialized" }
@@ -149,7 +125,6 @@ when JSON_REQUEST {
             }
         }
 
-        # id 可选：通知类请求无 id
         set mcp_jsonrpc_id ""
         if { [lsearch -exact $jobj_keys id] >= 0 } {
             set _in [JSON::object get $jobj "id"]
@@ -177,7 +152,6 @@ when HTTP_RESPONSE {
         set mcp_session_id $mcp_new_session_id
     }
     set ct [HTTP::header value "Content-Type"]
-    # 花括号保护模式，避免 Content-Type 含空格时被错误分词
     if { [string match {*text/event-stream*} $ct] } {
         set mcp_resp_type "sse_stream"
     } else {
@@ -186,11 +160,6 @@ when HTTP_RESPONSE {
 }
 
 when SSE_RESPONSE {
-    # 注意1：不使用 call proc（规避 ltmEventCategoryHierarchy(SSE) 检查器 bug）
-    # 注意2：使用 ILX::notify 代替 ILX::call，fire-and-forget，不阻塞 TMM
-    # 注意3：MCP Server json.dumps 输出为 "method": "xxx"（冒号后有空格），
-    #        勿用 *"method":"sampling* 无空格模式，否则匹配失败、sse_sampling_count 恒为 0
-    # 方向：sampling/createMessage、elicitation/create 为 Server→Client 反向请求（见开发计划 §4）
     if { !$static::LOG_SSE_EVENTS } { return }
     incr mcp_sse_event_count
     set sse_data [SSE::field get data]
@@ -198,12 +167,15 @@ when SSE_RESPONSE {
 
     set _sse_jsonrpc_id ""
     regexp {"id"\s*:\s*([0-9]+)} $sse_data -> _sse_jsonrpc_id
+    set _role $mcp_role
+    regsub -all {\\} $_role {\\\\} _role
+    regsub -all {"} $_role {\"} _role
 
     if { [string match {*"method"*"sampling/createMessage"*} $sse_data] } {
         incr mcp_sse_sampling_count
-        set _sampling_ps "server→client,sampling/createMessage"
+        set _sampling_ps "server->client,sampling/createMessage"
         if { [regexp {"maxTokens"\s*:\s*([0-9]+)} $sse_data -> _mt] } {
-            set _sampling_ps "server→client,maxTokens=$_mt,sampling/createMessage"
+            set _sampling_ps "server->client,maxTokens=$_mt,sampling/createMessage"
         }
         regsub -all {\\} $_sampling_ps {\\\\} _sampling_ps
         regsub -all {"} $_sampling_ps {\"} _sampling_ps
@@ -222,6 +194,8 @@ when SSE_RESPONSE {
 \"latency_ms\":0,\
 \"status\":\"success\",\
 \"error_info\":\"\",\
+\"mcp_role\":\"$_role\",\
+\"deny_reason\":\"\",\
 \"mcp_protocol_version\":\"2025-11-25\",\
 \"http_method\":\"$mcp_http_method\",\
 \"pool_member\":\"$mcp_pool_member\",\
@@ -232,9 +206,9 @@ when SSE_RESPONSE {
 
     } elseif { [string match {*"method"*"elicitation/create"*} $sse_data] } {
         incr mcp_sse_elicitation_count
-        set _elic_ps "server→client,elicitation/create"
+        set _elic_ps "server->client,elicitation/create"
         if { [regexp {"mode"\s*:\s*"([^"]+)"} $sse_data -> _em] } {
-            set _elic_ps "server→client,mode=$_em,elicitation/create"
+            set _elic_ps "server->client,mode=$_em,elicitation/create"
         }
         regsub -all {\\} $_elic_ps {\\\\} _elic_ps
         regsub -all {"} $_elic_ps {\"} _elic_ps
@@ -253,6 +227,8 @@ when SSE_RESPONSE {
 \"latency_ms\":0,\
 \"status\":\"success\",\
 \"error_info\":\"\",\
+\"mcp_role\":\"$_role\",\
+\"deny_reason\":\"\",\
 \"mcp_protocol_version\":\"2025-11-25\",\
 \"http_method\":\"$mcp_http_method\",\
 \"pool_member\":\"$mcp_pool_member\",\
@@ -262,7 +238,6 @@ when SSE_RESPONSE {
         catch { ILX::notify $static::ILX_HANDLE send_mcp_log $_log_json }
 
     } elseif { [regexp {"id"\s*:\s*[0-9]+} $sse_data] && ![string match {*"method"*} $sse_data] } {
-        # 最终响应（有 id、无 method）：计算延迟并发送完成日志
         set mcp_latency_ms [expr {[clock clicks -milliseconds] - $mcp_req_start_ms}]
         if { [string match {*"error"*} $sse_data] } {
             set mcp_final_result_error "sse_error"
@@ -291,6 +266,8 @@ when SSE_RESPONSE {
 \"latency_ms\":$mcp_latency_ms,\
 \"status\":\"$_status\",\
 \"error_info\":\"$mcp_final_result_error\",\
+\"mcp_role\":\"$_role\",\
+\"deny_reason\":\"\",\
 \"mcp_protocol_version\":\"2025-11-25\",\
 \"http_method\":\"$mcp_http_method\",\
 \"pool_member\":\"$mcp_pool_member\",\
@@ -302,19 +279,37 @@ when SSE_RESPONSE {
 }
 
 when HTTP_RESPONSE_RELEASE {
-    # 仅 POST 的 MCP 请求；GET /health 等已在 HTTP_REQUEST 跳过，此处双保险
     if { $mcp_http_method ne "POST" } { return }
-    # SSE 请求的完成日志已在 SSE_RESPONSE 的最终响应分支中发送，此处跳过
     if { $mcp_resp_type eq "sse_stream" } { return }
-    # 非 SSE（notifications 的 202、DELETE 的 204、JSON 直接响应）：内联发送完成日志
     set mcp_latency_ms [expr {[clock clicks -milliseconds] - $mcp_req_start_ms}]
     if { [HTTP::status] >= 400 } { set mcp_final_result_error "http_[HTTP::status]" }
+
+    # Infer deny_reason without changing Tier2 iRule:
+    # fail-close deny stub returns HTTP 403 and/or selects *:9003
+    set mcp_deny_reason ""
+    set _is_fail_close 0
+    if { $mcp_final_result_error eq "http_403" } { set _is_fail_close 1 }
+    if { [string match "*:$static::MCP_DENY_STUB_PORT" $mcp_pool_member] } { set _is_fail_close 1 }
+    if { $_is_fail_close } {
+        if { $mcp_message_type eq "tool.call" } {
+            set mcp_deny_reason "tier2_tool_acl"
+        } else {
+            set mcp_deny_reason "tier1_server_acl"
+        }
+    }
+
     set _ps $mcp_params_summary
     regsub -all {\\} $_ps {\\\\} _ps
     regsub -all {"} $_ps {\"} _ps
     set _tn $mcp_tool_name
     regsub -all {\\} $_tn {\\\\} _tn
     regsub -all {"} $_tn {\"} _tn
+    set _role $mcp_role
+    regsub -all {\\} $_role {\\\\} _role
+    regsub -all {"} $_role {\"} _role
+    set _deny $mcp_deny_reason
+    regsub -all {\\} $_deny {\\\\} _deny
+    regsub -all {"} $_deny {\"} _deny
     set _status [expr { $mcp_final_result_error ne "" ? "error" : "success" }]
     set _log_json "\{\"schema_version\":\"$static::SCHEMA_VERSION\",\
 \"event_type\":\"mcp_request_completed\",\
@@ -331,6 +326,8 @@ when HTTP_RESPONSE_RELEASE {
 \"latency_ms\":$mcp_latency_ms,\
 \"status\":\"$_status\",\
 \"error_info\":\"$mcp_final_result_error\",\
+\"mcp_role\":\"$_role\",\
+\"deny_reason\":\"$_deny\",\
 \"mcp_protocol_version\":\"2025-11-25\",\
 \"http_method\":\"$mcp_http_method\",\
 \"pool_member\":\"$mcp_pool_member\",\
