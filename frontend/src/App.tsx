@@ -15,6 +15,7 @@ import { MaxTokensPage } from "@/pages/MaxTokensPage";
 import { McpToolsInsightPage } from "@/pages/McpToolsInsightPage";
 import { McpToolsControlPage } from "@/pages/McpToolsControlPage";
 import { SystemPromptPage } from "@/pages/SystemPromptPage";
+import { DemoUsagePage } from "@/pages/DemoUsagePage";
 
 export default function App() {
   return (
@@ -23,6 +24,7 @@ export default function App() {
         <Routes>
           <Route element={<AppShell />}>
             <Route path="/" element={<HomePage />} />
+            <Route path="/admin/usage" element={<DemoUsagePage />} />
 
             <Route path="/scene/llm-router" element={<SceneOverviewPage sceneId="llm-router" />} />
             <Route path="/scene/llm-router/model-routing" element={<ModelRoutingPage />} />

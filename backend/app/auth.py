@@ -335,32 +335,73 @@ def install_auth(app: FastAPI) -> None:
         if not username or not password:
             raise HTTPException(status_code=400, detail="username and password are required")
 
+        from backend.app.demo_usage_audit import append_login_event
+
+        client_ip = _client_ip(request)
+        user_agent = (request.headers.get("user-agent") or "").strip()
         client_key = _login_client_key(request, username)
         remain = _check_login_lock(client_key)
         if remain > 0:
+            append_login_event(
+                event="login_failed",
+                username=username,
+                client_ip=client_ip,
+                reason="locked",
+                user_agent=user_agent,
+            )
             raise HTTPException(status_code=429, detail=f"too many failed attempts, retry after {remain}s")
 
         structured = load_structured_settings()
         users = get_enabled_users(structured)
         user_item = users.get(username)
         if not user_item or not verify_password(password, user_item.get("password_hash", "")):
-            if _register_login_failure(client_key):
+            locked_now = _register_login_failure(client_key)
+            append_login_event(
+                event="login_failed",
+                username=username,
+                client_ip=client_ip,
+                reason="lockout" if locked_now else "invalid_credentials",
+                user_agent=user_agent,
+            )
+            if locked_now:
                 raise HTTPException(status_code=429, detail=f"too many failed attempts, retry after {LOGIN_LOCK_SECONDS}s")
             raise HTTPException(status_code=401, detail="invalid username or password")
 
         _clear_login_failure(client_key)
         ttl = _to_int(structured.get("auth", {}).get("session_ttl_seconds", 86400), 86400, 300, 604800)
-        sid = create_session(username, ttl, _client_ip(request))
+        sid = create_session(username, ttl, client_ip)
+        append_login_event(
+            event="login",
+            username=username,
+            client_ip=client_ip,
+            session_id=sid,
+            user_agent=user_agent,
+        )
         resp = JSONResponse({"status": "ok", "username": username, "redirect_url": return_to})
         _set_session_cookie(resp, sid, ttl)
         return resp
 
     @app.post("/api/logout")
     async def api_logout(request: Request):
+        from backend.app.demo_usage_audit import append_login_event
+
         sid = request.cookies.get(SESSION_COOKIE_NAME)
+        username = ""
+        client_ip = _client_ip(request)
         if sid:
             with SESSIONS_LOCK:
-                SESSIONS.pop(sid, None)
+                sess = SESSIONS.pop(sid, None)
+                if sess:
+                    username = str(sess.get("username") or "")
+                    client_ip = str(sess.get("client_ip") or client_ip)
+        if username:
+            append_login_event(
+                event="logout",
+                username=username,
+                client_ip=client_ip,
+                session_id=sid or "",
+                user_agent=(request.headers.get("user-agent") or "").strip(),
+            )
         resp = JSONResponse({"status": "ok"})
         _delete_session_cookie(resp)
         return resp

@@ -83,6 +83,10 @@ uvicorn backend.app.main:app --host 0.0.0.0 --port 8080
 
 浏览器打开：[http://localhost:8080](http://localhost:8080)
 
+默认用 `settings.json` 中的账号登录。`admin` 侧栏可见 **使用统计**（`/admin/usage`）：登录审计、IP 城市、路由级场景热度与停留时长。
+
+GeoIP 城市库文件：`static/ip/GeoLite2-City.mmdb`（本地文件，默认 gitignore；可从既有 Guard-test 工程复制）。审计 JSONL 写在 `data/demo_usage/`。
+
 生产/演示机 systemd 部署见 **[DEPLOY_UBUNTU.md](DEPLOY_UBUNTU.md)**（用户 `myf5`，含 Git 推送检查清单）。
 
 ### 开发模式
@@ -651,6 +655,8 @@ uvicorn main:app --host 0.0.0.0 --port 8090
 | GET      | `/api/demo/mcp-tools-control/config`   | MCP Tools 管控配置（Agent/Server 选项）              |
 | POST     | `/api/demo/mcp-tools-control/run`      | MCP Tools 管控执行（Tier1/Tier2）                   |
 | GET      | `/api/demo/mcp-tools-control/health`   | MCP Tools 管控健康检查                              |
+| POST     | `/api/demo/usage`                      | 前端上报场景 enter/leave/heartbeat（需登录）             |
+| GET      | `/api/demo/usage/stats`                | 登录与场景使用统计聚合（仅 admin）                        |
 | POST     | `/api/proxy/chat/completions`          | 通用 OpenAI 兼容代理                               |
 
 
@@ -685,6 +691,8 @@ uvicorn main:app --host 0.0.0.0 --port 8090
 llm_router_demo_App/
 ├── environment.yml              # Conda 环境
 ├── backend/app/
+│   ├── auth.py                  # Cookie 会话登录
+│   ├── demo_usage_audit.py      # 登录/场景使用审计（JSONL + GeoIP）
 │   ├── main.py                  # FastAPI 入口
 │   ├── config.py                # 环境变量 + 路由/演示规则
 │   ├── proxy.py                 # VS 代理（SSRF 防护）
@@ -699,10 +707,12 @@ llm_router_demo_App/
 │   ├── max_tokens_demo.py       # max_tokens 策略
 │   ├── mcp_control_demo.py      # MCP Tools 管控 API
 │   └── mcp_control_runner.py    # MCP Tools 管控执行器（Token + MCP 调用）
+├── data/demo_usage/             # 审计 JSONL（本地，gitignore）
+├── static/ip/GeoLite2-City.mmdb # MaxMind 城市库（本地，gitignore）
 ├── adapter_service/             # 结构化日志 → Prometheus（独立进程）
 ├── frontend/src/
 │   ├── scenes/manifest.ts       # 场景/子场景路由定义
-│   ├── pages/                   # 各子场景页面
+│   ├── pages/                   # 各子场景页面（含 DemoUsagePage）
 │   └── components/              # 交互演示组件
 ├── deploy.sh                    # F5 Model Router 部署参考（简化版）
 ├── README_irulelx.md            # iRuleLX 技术说明（同步 ../llm_router）

@@ -3,6 +3,7 @@ import { Outlet, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { fetchAuthMe, logout } from "@/api/client";
 import { shouldShowMemberGuard } from "@/constants/memberGuard";
+import { useDemoUsageTracking } from "@/hooks/useDemoUsageTracking";
 import { AppBrand } from "./AppBrand";
 import { DeepseekMemberGuardBanner } from "./DeepseekMemberGuardBanner";
 import { Sidebar } from "./Sidebar";
@@ -14,6 +15,7 @@ export function AppShell() {
   const [fullscreen, setFullscreen] = useState(false);
   const [username, setUsername] = useState<string | null>(null);
   const showMemberGuard = shouldShowMemberGuard(location.pathname);
+  useDemoUsageTracking(Boolean(username));
 
   useEffect(() => {
     fetchAuthMe()
@@ -25,7 +27,7 @@ export function AppShell() {
 
   return (
     <div className="flex min-h-screen">
-      <Sidebar collapsed={fullscreen} />
+      <Sidebar collapsed={fullscreen} username={username} />
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="flex items-center justify-between border-b border-slate-800 bg-slate-900/80 px-6 py-3 backdrop-blur">
           <div className="flex items-center gap-4">

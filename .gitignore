@@ -37,6 +37,10 @@ frontend/tsconfig.tsbuildinfo
 # --- Local scratch (do not publish) ---
 temp-dev.txt
 
+# Demo usage audit logs + MaxMind GeoIP DB (copy GeoLite2-City.mmdb into static/ip/)
+data/demo_usage/
+static/ip/GeoLite2-City.mmdb
+
 # Machine-local adapter stack (Prometheus/Grafana ports vary by host)
 adapter_service/docker-compose.yaml
 

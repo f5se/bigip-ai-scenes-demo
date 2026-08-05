@@ -1587,3 +1587,145 @@ export async function stopMcpControlTrafficSim(): Promise<McpControlTrafficStatu
   if (!res.ok) throw new Error("Failed to stop MCP control traffic sim");
   return res.json();
 }
+
+export type DemoUsageEventPayload = {
+  event: "scene_enter" | "scene_leave" | "scene_heartbeat";
+  path: string;
+  scene_id: string;
+  sub_feature_id: string | null;
+  dwell_ms?: number;
+  elapsed_ms?: number;
+  client_ts?: string;
+};
+
+export async function postDemoUsageEvent(payload: DemoUsageEventPayload): Promise<void> {
+  try {
+    await authFetch("/api/demo/usage", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+  } catch {
+    // Usage tracking must not interrupt the demo UI.
+  }
+}
+
+export function postDemoUsageBeacon(payload: DemoUsageEventPayload): void {
+  try {
+    const body = JSON.stringify(payload);
+    if (typeof navigator !== "undefined" && typeof navigator.sendBeacon === "function") {
+      const blob = new Blob([body], { type: "application/json" });
+      const ok = navigator.sendBeacon("/api/demo/usage", blob);
+      if (ok) return;
+    }
+    void postDemoUsageEvent(payload);
+  } catch {
+    // ignore
+  }
+}
+
+export type DemoUsageStats = {
+  timezone: string;
+  range: string;
+  start: string;
+  end: string;
+  filter_username?: string;
+  available_users?: string[];
+  geoip_available: boolean;
+  invalid_lines: number;
+  logins: {
+    total: number;
+    unique_users: number;
+    failed_total: number;
+    by_user: Array<{ username: string; count: number }>;
+    by_city: Array<{ city: string; count: number }>;
+    daily_trend: Array<{ date: string; count: number }>;
+    hour_distribution: Array<{ hour: number; count: number }>;
+    recent: Array<{
+      ts: string;
+      username: string;
+      client_ip: string;
+      city: string;
+      session_id: string;
+    }>;
+    failed_recent?: Array<{
+      ts: string;
+      username: string;
+      client_ip: string;
+      city: string;
+      reason: string;
+    }>;
+    failed_by_user?: Array<{
+      username: string;
+      count: number;
+      last_ts: string;
+      last_ip: string;
+      last_city: string;
+      never_succeeded: boolean;
+      reasons: Array<{ reason: string; count: number }>;
+    }>;
+  };
+  scenes: {
+    total_enters: number;
+    heat: Array<{
+      label: string;
+      scene_id: string;
+      sub_feature_id: string | null;
+      enters: number;
+    }>;
+    dwell: Array<{
+      label: string;
+      scene_id: string;
+      sub_feature_id: string | null;
+      count: number;
+      avg_ms: number | null;
+      median_ms: number | null;
+      p90_ms: number | null;
+      total_ms: number;
+    }>;
+    daily_trend: Array<{ date: string; count: number }>;
+    by_user?: Array<{
+      username: string;
+      total_enters: number;
+      heat: Array<{
+        label: string;
+        scene_id: string;
+        sub_feature_id: string | null;
+        enters: number;
+      }>;
+      dwell: Array<{
+        label: string;
+        scene_id: string;
+        sub_feature_id: string | null;
+        count: number;
+        avg_ms: number | null;
+        median_ms: number | null;
+        p90_ms: number | null;
+        total_ms: number;
+      }>;
+    }>;
+  };
+};
+
+export async function fetchDemoUsageStats(params: {
+  range?: string;
+  include_admin?: boolean;
+  start?: string;
+  end?: string;
+  username?: string;
+}): Promise<DemoUsageStats> {
+  const q = new URLSearchParams();
+  q.set("range", params.range || "7d");
+  if (params.include_admin === false) q.set("include_admin", "false");
+  if (params.start) q.set("start", params.start);
+  if (params.end) q.set("end", params.end);
+  if (params.username) q.set("username", params.username);
+  const res = await authFetch(`/api/demo/usage/stats?${q.toString()}`);
+  if (res.status === 403) throw new Error("admin only");
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    const detail = (err as { detail?: string }).detail;
+    throw new Error(typeof detail === "string" ? detail : "Failed to load usage stats");
+  }
+  return res.json();
+}

@@ -344,25 +344,68 @@ export const MERMAID_DIAGRAMS: Record<string, string> = {
   Error --> Dash`,
 
   trafficMgmt: `flowchart TB
-  Client[Client JSON] --> EntryVS[Entry VS iRuleLX]
-  EntryVS --> Router[model/context/agent routing + retry]
-  Router -->|ILXHttpRequest X-LLM-Target-Pool| LayeredVS[Layered VS TBLB iRule]
-  LayeredVS -->|POST /scheduler/select| Scheduler[TBLB Scheduler]
-  Scheduler --> Metrics[vLLM/SGLang metrics]
-  LayeredVS -->|pool member pin| Members[Inference Pool Members]
-  LayeredVS -->|LB_FAILED hybrid| LayeredVS`,
-  trafficMgmtBiz: `flowchart LR
-  Apps[多业务系统] --> Entry[F5 统一 LLM 网关]
-  Entry --> Router[LLM Router 业务选池]
-  Router --> TBLB[TBLB 池内智能调度]
-  TBLB --> Cluster[同一模型下多套 GPU 实例]
-  Cluster --> Value[更低首包时延 更高 GPU 利用率]`,
-  trafficMgmtBizEn: `flowchart LR
-  Apps[Business applications] --> Entry[F5 Unified LLM Gateway]
-  Entry --> Router[LLM Router pool selection]
-  Router --> TBLB[TBLB intelligent member pick]
-  TBLB --> Cluster[Multiple GPU instances per model]
-  Cluster --> Value[Lower TTFT and better GPU utilization]`,
+  subgraph llm [LLM Optimization and Control]
+    Client[Client JSON] --> EntryVS[Entry VS]
+    EntryVS --> Layer0[iRule Layer0<br/>model allowlist + max_tokens]
+    Layer0 -->|pass| Router[iRuleLX model/context/agent + retry]
+    Router -->|ILXHttpRequest X-LLM-Target-Pool| LayeredVS[Layered VS TBLB iRule]
+    LayeredVS -->|POST /scheduler/select| Scheduler[TBLB Scheduler]
+    Scheduler --> Metrics[vLLM/SGLang metrics]
+    LayeredVS -->|member pin| Members[Inference Pool Members]
+  end
+  subgraph mcp [MCP Tools Control]
+    Agent[Agent / Demo] --> OAuth[APM OAuth AS JWT]
+    OAuth --> MCPVS[MCP Gateway VS]
+    MCPVS --> Tier1[Tier1 Scope + Server ACL]
+    Tier1 -->|allow| Tier2[Tier2 JSON_REQUEST<br/>role-tool allowlist]
+    Tier1 -->|deny| Deny[pool_mcp_ctl_deny]
+    Tier2 -->|allow| MCPSrv[ops / finance MCP Servers]
+    Tier2 -->|deny| Deny
+  end`,
+  trafficMgmtBiz: `flowchart TB
+  Apps[业务应用 / Copilot / Agent] --> GW[F5 统一网关]
+
+  subgraph Opt[推理资源优化]
+    GW --> Router[LLM Router 选池]
+    Router --> TBLB[TBLB 池内智能调度]
+    TBLB --> GPU[同一模型多套 GPU 实例]
+  end
+
+  subgraph ReqCtrl[LLM 请求策略管控]
+    GW --> Model[模型黑白名单准入]
+    GW --> Tokens[max_tokens 上限校验]
+    Model -->|未授权| Block1[拒绝]
+    Tokens -->|超限| Block2[拒绝]
+  end
+
+  subgraph McpCtrl[MCP 工具调用管控]
+    Agents[运维 / 财务 / 访客 Agent] --> MCPGW[MCP 统一入口<br/>先认身份 · 再定权限]
+    MCPGW -->|Tier1 工具域| Domains[运维域 / 财务域]
+    Domains -->|Tier2 Tool ACL| Tools[最小权限工具集]
+    MCPGW -->|跨域或越权| Closed[Fail-close 拒绝]
+  end`,
+  trafficMgmtBizEn: `flowchart TB
+  Apps[Apps / Copilot / Agent] --> GW[F5 Unified Gateway]
+
+  subgraph Opt[Inference optimization]
+    GW --> Router[LLM Router pool pick]
+    Router --> TBLB[TBLB in-pool scheduling]
+    TBLB --> GPU[Multiple GPUs per model]
+  end
+
+  subgraph ReqCtrl[LLM request policy]
+    GW --> Model[Model allow/block admission]
+    GW --> Tokens[max_tokens ceiling check]
+    Model -->|Unauthorized| Block1[Reject]
+    Tokens -->|Over limit| Block2[Reject]
+  end
+
+  subgraph McpCtrl[MCP tool-call control]
+    Agents[Ops / Finance / Guest agents] --> MCPGW[MCP entry<br/>Identity first · then rights]
+    MCPGW -->|Tier1 domain| Domains[Ops / Finance domains]
+    Domains -->|Tier2 Tool ACL| Tools[Least-privilege tools]
+    MCPGW -->|Cross-domain or over-priv| Closed[Fail closed]
+  end`,
 
   tblb: `flowchart TB
   subgraph plugin [Entry iRuleLX layered-gateway]
@@ -405,11 +448,39 @@ export const MERMAID_DIAGRAMS: Record<string, string> = {
   StdLB --> GPU3[Inference instances]`,
 
   security: `flowchart TB
-  Client --> VS[VS]
-  VS --> ILX[iRuleLX]
-  ILX --> Prompt[System prompt hardening]
-  ILX --> Guard[Guardrails]
-  Guard --> Backend[Backend LLM]`,
+  subgraph sp [System Prompt Hardening]
+    C1[Client] --> SPVS[VS + JSON Profile]
+    SPVS --> IR[iRule JSON_REQUEST<br/>admin / user / final_guardrails wrapper]
+    IR --> Mock[Mock LLM demo-model]
+  end
+  subgraph gr [Guardrail OOB]
+    C2[Client / Copilot] --> GRVS[vs_guardrail_oob_gateway]
+    GRVS -->|SIDEBAND POST /scans| Egress[vs_guardrail_ssl_egress]
+    Egress -->|HTTPS + SNI| Calypso[Calypso AI Guardrail]
+    Calypso -->|outcome| GRVS
+    GRVS -->|passed| LLM[Default LLM Pool]
+    GRVS -->|flagged| Reject[Policy reject JSON]
+  end`,
+  securityBiz: `flowchart TB
+  Apps[Copilot / 业务应用] --> Entry[F5 统一 LLM 入口]
+
+  Entry --> SP[System Prompt 加固<br/>强制企业指令 + nonce 防注入]
+  Entry --> GR[Guardrail 旁路扫描<br/>内容安全策略校验]
+
+  SP --> LLM[推理模型集群]
+  GR -->|合规：放行| LLM
+  GR -->|违规：当场拒绝| Apps
+  LLM --> Apps`,
+  securityBizEn: `flowchart TB
+  Apps[Copilot / business apps] --> Entry[F5 Unified LLM Entry]
+
+  Entry --> SP[System prompt hardening<br/>Enterprise instructions + nonce anti-injection]
+  Entry --> GR[Guardrail sideband scan<br/>Content safety policy]
+
+  SP --> LLM[Inference cluster]
+  GR -->|Compliant: allow| LLM
+  GR -->|Violation: reject now| Apps
+  LLM --> Apps`,
 
   systemPrompt: `sequenceDiagram
   participant C as Client

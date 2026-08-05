@@ -59,6 +59,7 @@ from backend.app.system_prompt import (
     preview_wrap,
 )
 from backend.app.auth import install_auth
+from backend.app.demo_usage_audit import router as demo_usage_router
 from backend.app.grafana_login import build_grafana_open_response
 from backend.app.runtime_config import get_grafana_url, grafana_auto_login_enabled
 
@@ -78,6 +79,7 @@ app.add_middleware(
 install_auth(app)
 app.include_router(mcp_insight_router)
 app.include_router(mcp_control_router)
+app.include_router(demo_usage_router)
 
 
 class Target(BaseModel):
