@@ -1,0 +1,24 @@
+proc script::init {} {
+}
+
+proc script::run {} {
+    # ir_mcp_tools_control_rbac_v2026 is optional (LTM Tier1 fallback).
+    # Lab :9021 uses APM ap_mcp_tools_control_rs instead — still load the file
+    # so it exists if someone needs a no-APM VS later.
+    set names [list \
+        ir_mcp_audit_logger_v2026 \
+        ir_mcp_tools_control_rbac_v2026 \
+        ir_mcp_tool_rbac_ltm_v2026]
+    foreach name $names {
+        set fd [open "/var/tmp/${name}.tcl" r]
+        set body [read $fd]
+        close $fd
+        if { [catch { eval "tmsh::create ltm rule $name { $body }" } err] } {
+            eval "tmsh::modify ltm rule $name { $body }"
+        }
+        puts "loaded $name"
+    }
+}
+
+proc script::help {} {
+}

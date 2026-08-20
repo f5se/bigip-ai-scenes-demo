@@ -23,8 +23,10 @@ from backend.app.mcp_server.prompts import PROMPT_DEFINITIONS, get_prompt
 from backend.app.mcp_server.resources import RESOURCE_DEFINITIONS, read_resource
 from backend.app.mcp_server.session import SessionState, sessions
 from backend.app.mcp_server.tools import TOOL_DEFINITIONS, execute_tool
+from backend.app.mcp_protocol import PROTOCOL_2026, list_cache_fields, input_required_result
 
 app = FastAPI(title="IT-Ops MCP Server", version="1.0.0")
+PROTOCOL_VERSION_2026 = PROTOCOL_2026
 
 _id_counter = itertools.count(1000)
 
@@ -35,16 +37,34 @@ def _next_server_id() -> int:
 
 @app.get("/health")
 async def health() -> dict[str, Any]:
-    return {"status": "ok", "sessions": sessions.count}
+    return {
+        "status": "ok",
+        "sessions": sessions.count,
+        "supported_protocol_versions": [PROTOCOL_VERSION, PROTOCOL_VERSION_2026],
+    }
 
 
 def _session_from_request(request: Request) -> SessionState | None:
     return sessions.get(request.headers.get("Mcp-Session-Id"))
 
 
+def _header_protocol_version(request: Request) -> str:
+    return (
+        request.headers.get("MCP-Protocol-Version")
+        or request.headers.get("mcp-protocol-version")
+        or ""
+    )
+
+
 @app.post("/mcp")
 async def mcp_post(request: Request) -> Response:
     body = await request.json()
+    if _header_protocol_version(request) == PROTOCOL_VERSION_2026:
+        return await _handle_v2026(request, body)
+    return await _handle_legacy(request, body)
+
+
+async def _handle_legacy(request: Request, body: dict[str, Any]) -> Response:
     session = _session_from_request(request)
     method = body.get("method")
     msg_id = body.get("id")
@@ -171,6 +191,141 @@ async def _tools_call_stream(body: dict[str, Any], session: SessionState):
         yield sse_message(
             build_tool_result(msg_id, "等待 Client 响应超时（sampling/elicitation）", is_error=True)
         )
+
+
+def _json_ok(payload: dict[str, Any]) -> JSONResponse:
+    return JSONResponse(payload, headers={"X-Accel-Buffering": "no"})
+
+
+def _responses_by_id(params: dict[str, Any]) -> dict[str, Any]:
+    items = params.get("inputResponses") or []
+    if not isinstance(items, list):
+        return {}
+    out: dict[str, Any] = {}
+    for item in items:
+        if isinstance(item, dict) and item.get("id"):
+            out[str(item["id"])] = item
+    return out
+
+
+async def _handle_v2026(_request: Request, body: dict[str, Any]) -> Response:
+    """Stateless 2026-07-28 path: no session, optional discover, MRTR for mid-call input."""
+    method = body.get("method")
+    msg_id = body.get("id")
+    params = body.get("params") if isinstance(body.get("params"), dict) else {}
+
+    if method in (None, "") and "result" in body:
+        return JSONResponse(
+            json_rpc_error(msg_id, -32600, "Client JSON-RPC responses are not used on 2026-07-28; retry with inputResponses"),
+            status_code=400,
+        )
+
+    if method in ("initialize", "server/discover"):
+        result = {
+            "protocolVersion": PROTOCOL_VERSION_2026,
+            "capabilities": SERVER_CAPABILITIES,
+            "serverInfo": SERVER_INFO,
+        }
+        result.update(list_cache_fields())
+        return _json_ok(json_rpc_result(msg_id, result))
+
+    if method == "notifications/initialized":
+        return Response(status_code=202)
+
+    if method == "tools/list":
+        payload = {"tools": TOOL_DEFINITIONS}
+        payload.update(list_cache_fields())
+        return _json_ok(json_rpc_result(msg_id, payload))
+
+    if method == "prompts/list":
+        payload = {"prompts": PROMPT_DEFINITIONS}
+        payload.update(list_cache_fields())
+        return _json_ok(json_rpc_result(msg_id, payload))
+
+    if method == "resources/list":
+        payload = {"resources": RESOURCE_DEFINITIONS}
+        payload.update(list_cache_fields())
+        return _json_ok(json_rpc_result(msg_id, payload))
+
+    if method == "prompts/get":
+        try:
+            messages = get_prompt(params.get("name", ""), params.get("arguments") or {})
+        except ValueError as exc:
+            return JSONResponse(json_rpc_error(msg_id, -32602, str(exc)), status_code=400)
+        return _json_ok(json_rpc_result(msg_id, {"messages": messages}))
+
+    if method == "resources/read":
+        uri = params.get("uri", "")
+        try:
+            contents = read_resource(uri)
+        except ValueError as exc:
+            return JSONResponse(json_rpc_error(msg_id, -32602, str(exc)), status_code=400)
+        return _json_ok(json_rpc_result(msg_id, {"contents": contents}))
+
+    if method == "tools/call":
+        return await _tools_call_v2026(body)
+
+    if method == "ping":
+        return _json_ok(json_rpc_result(msg_id, {}))
+
+    return JSONResponse(json_rpc_error(msg_id, -32601, f"Method not found: {method}"), status_code=404)
+
+
+async def _tools_call_v2026(body: dict[str, Any]) -> Response:
+    msg_id = body.get("id")
+    params = body.get("params") if isinstance(body.get("params"), dict) else {}
+    tool_name = str(params.get("name") or "")
+    args = params.get("arguments") or {}
+    answered = _responses_by_id(params)
+
+    try:
+        if tool_name == "restart_service" and "elicitation-1" not in answered:
+            elic = build_elicitation_request("elicitation-1", tool_name)
+            return _json_ok(
+                input_required_result(
+                    msg_id,
+                    [
+                        {
+                            "id": "elicitation-1",
+                            "method": "elicitation/create",
+                            "params": elic.get("params") or {},
+                        }
+                    ],
+                )
+            )
+        if tool_name == "restart_service":
+            elic_result = answered["elicitation-1"].get("result") or {}
+            if elic_result.get("action") != "accept":
+                return _json_ok(build_tool_result(msg_id, "用户拒绝变更操作", is_error=True))
+
+        tool_text = await execute_tool(tool_name, args)
+
+        if tool_name == "query_alert" and "sampling-1" not in answered:
+            sampling = build_sampling_request(
+                "sampling-1",
+                f"根据以下告警数据提供处置建议：\n{tool_text}",
+            )
+            return _json_ok(
+                input_required_result(
+                    msg_id,
+                    [
+                        {
+                            "id": "sampling-1",
+                            "method": "sampling/createMessage",
+                            "params": sampling.get("params") or {},
+                        }
+                    ],
+                )
+            )
+        if tool_name == "query_alert":
+            sampling_result = answered["sampling-1"].get("result") or {}
+            ai_text = (sampling_result.get("content") or {}).get("text", "")
+            if ai_text:
+                tool_text = f"{tool_text}\n\n[AI分析建议]: {ai_text}"
+
+        return _json_ok(build_tool_result(msg_id, tool_text))
+    except ValueError as exc:
+        return _json_ok(build_tool_result(msg_id, str(exc), is_error=True))
 
 
 @app.delete("/mcp")

@@ -16,10 +16,12 @@
 | **场景二：Observability** | Tokens 用量统计                  | `/scene/observability/tokens`            | ✅ 模拟流量 + Grafana 跳转               |
 |                       | 模型 Metrics                   | `/scene/observability/metrics`           | ✅ 模拟流量 + Grafana 跳转               |
 |                       | MCP 工具调用洞察                   | `/scene/observability/mcp-tools-insight` | ✅ 完整 MCP 会话 + Grafana 跳转          |
+|                       | MCP Insight V2026-07-28          | `/scene/observability/mcp-tools-insight-v2026-07-28` | ✅ 并行菜单；默认 VS `:9020`；旧 Insight 不改 |
 | **场景三：Traffic MGMT**  | LLM Router + TBLB            | `/scene/traffic-mgmt/tblb`               | ✅ 成员分布测试                          |
 |                       | 模型黑白名单                       | `/scene/traffic-mgmt/model-allowlist`    | ✅ 完整交互（TMOS v21 JSON Profile）     |
 |                       | max_tokens 上限                | `/scene/traffic-mgmt/max-tokens-limit`   | ✅ 完整交互（TMOS v21 JSON Profile）     |
 |                       | MCP 工具调用管控                   | `/scene/traffic-mgmt/mcp-tools-control`  | ✅ 完整交互（TMOS v21 JSON Profile+APM） |
+|                       | MCP Tools Control V2026-07-28    | `/scene/traffic-mgmt/mcp-tools-control-v2026-07-28` | ✅ 并行菜单；默认 VS `:9021`；OAuth 复用旧流程 |
 | **场景四：Security**      | System prompt 加固             | `/scene/security/system-prompt`          | ✅ 完整交互（TMOS v21 JSON Profile）     |
 |                       | 护栏接入                         | `/scene/security/guardrails`             | ✅ 完整交互                            |
 
@@ -33,6 +35,8 @@
 > | Subagent 演示                                    | `172.16.30.121:8000` | iRuleLX `subagent_router_ext`                                       |
 > | 护栏（Guardrails）                                 | `172.16.30.120:8000` | OOB 旁路扫描网关                                                          |
 > | System prompt / 模型准入 / max_tokens              | `172.16.30.124:8000` | JSON Profile + `ir_openai_api.tcl`；Mock LLM `demo-model` @ **8011** |
+> | MCP Insight / Tools Control（旧协议）               | `172.16.30.125:9000` / `:9010` | 会话态 MCP 2025-11-25；OAuth `:9009` |
+> | MCP Insight / Tools Control V2026-07-28           | `172.16.30.125:9020` / `:9021` | 无会话 MCP 2026-07-28；OAuth 复用 `:9009` |
 >
 
 ---
@@ -358,7 +362,7 @@ curl -iX POST http://172.16.30.121:8000/v1/chat/completions \
 
 **测试方法**
 
-1. 启动 MCP Server（默认 `:9001`）、Adapter（`:8090`）与 Demo 后端（`:8080`）；F5 联调时挂载 `ir_mcp_audit_logger` 并设置 `emit_audit_without_f5=false`。
+1. 启动 MCP Server（默认 `:9001`）、Adapter（`:8090`）与 Demo 后端（`:8080`）；F5 联调时旧菜单挂 `ir_mcp_audit_logger`，新菜单挂独立的 `ir_mcp_audit_logger_v2026`；并设置 `emit_audit_without_f5=false`。
 2. 进入 **MCP Tools 调用 Insight**，配置 MCP Gateway VS（如 `172.16.30.125:9000`）或本地直连 MCP Server（`127.0.0.1:9001`）。
 3. 点击 **运行完整 MCP 会话** 或选择单项 Scenario（tools/call、sampling、elicitation 等），观察左侧 JSON-RPC 时间线。
 4. 可选 **启动持续模拟**，在设定时长内轮询不同 Tenant/Agent/Scenario 填充 Grafana。
@@ -369,6 +373,7 @@ curl -iX POST http://172.16.30.121:8000/v1/chat/completions \
 - 路由：`/scene/observability/mcp-tools-insight`（旧路径 `/scene/traffic-mgmt/mcp-tools-insight` 自动重定向）。
 - 与 LLM Observability 共用 Adapter + Prometheus + Grafana 架构；LLM 看板可通过链接跳转 MCP 看板。
 - 本地无 F5 时设置 `emit_audit_without_f5=true`，由 Demo 后端 Runner 模拟 iRule 审计输出。
+- 并行新协议菜单见下文 **MCP Insight V2026-07-28**；本页默认 VS `:9000` 行为保持不变。
 
 **相关配置**
 
@@ -379,6 +384,24 @@ curl -iX POST http://172.16.30.121:8000/v1/chat/completions \
 | 环境变量      | `LLM_DEMO_MCP_INSIGHT_VS_HOST` 等 | 覆盖默认 VS 与 Adapter 地址                       |
 | 部署指南      | `MCP-F5-DEPLOY-GUIDE.md`         | F5 VS、iRule、iRuleLX 联调步骤                   |
 
+
+---
+
+### 场景二 · MCP Insight V2026-07-28
+
+**能力**：与旧 Insight 相同的业务演示（谁在调哪些工具），但 Runner 走 MCP `2026-07-28`：无 `Mcp-Session-Id`、请求带头 `Mcp-Method`/`Mcp-Name`、中途输入用 MRTR。默认 VS **`172.16.30.125:9020`**。Grafana 使用独立 UID `mcp-tools-insight-v2026-07-28`，**不改**旧看板。
+
+**测试方法**
+
+1. 旧菜单先跑一遍，确认 `:9000` 零回归。
+2. 进入 **MCP Insight V2026-07-28**，确认 Host/Port 为 `172.16.30.125:9020`。
+3. 运行完整会话：时间线第一条应为 `server/discover`，展开可见新 HTTP 头；结束时不应出现 `DELETE /mcp`。
+4. 打开 Grafana UID `mcp-tools-insight-v2026-07-28`。
+
+**文档**
+
+- [docs/mcp-protocol-demo-diff-2025-vs-2026.md](docs/mcp-protocol-demo-diff-2025-vs-2026.md) — Demo 实际发出的报文/头部/链接差异
+- [docs/mcp-2026-f5-implementation-guide.md](docs/mcp-2026-f5-implementation-guide.md) — F5 并行 VS / iRule 要点
 
 ---
 
@@ -492,8 +515,8 @@ curl -iX POST http://172.16.30.124:8000/v1/chat/completions \
 
 **能力**：基于 BIG-IP APM + MCP Profile 实现两层访问控制演示。
 
-- **Tier 1（Server 级）**：按 `mcp_groups` 与 `X-Mcp-Target-Server` 决定是否可访问 `ops`/`finance` MCP Server。
-- **Tier 2（Tool 级）**：当前采用 **路径 C**（LTM `JSON_REQUEST` 内直接执行 `mcp_role/tool_name` ACL，未命中 fail-close 到 deny pool）。
+- **Tier 1（Server 级）**：Live Demo 走 **APM** Access Profile `ap_mcp_tools_control_rs`（`mcp_groups` × `X-Mcp-Target-Server`）。`ir_mcp_tools_control_rbac` / `_v2026` 仅是无 APM 时的 LTM 备用，现场 VS **不挂**。
+- **Tier 2（Tool 级）**：路径 C（LTM `JSON_REQUEST`）。旧协议从 JSON `params.name` 取工具名；新协议 **优先 HTTP 头 `Mcp-Name`**，头为空再回退 JSON。未命中 `dg_mcp_tool_allow` 则 fail-close 到 `pool_mcp_ctl_deny`。
 
 **测试方法**
 
@@ -516,7 +539,7 @@ curl -iX POST http://172.16.30.124:8000/v1/chat/completions \
 | API       | `/api/demo/mcp-tools-control/*`      | 配置拉取、执行演示、健康检查 |
 | 部署文档      | `deploy/f5/MCP-TOOLS-CONTROL-*.md`   | APM 对象、Tier1/Tier2 策略与验证手册 |
 
-> MCP 工具调用洞察位于 **场景二 Observability**（`/scene/observability/mcp-tools-insight`）。
+> MCP 工具调用洞察位于 **场景二 Observability**（`/scene/observability/mcp-tools-insight`）。并行新协议菜单为 `/scene/traffic-mgmt/mcp-tools-control-v2026-07-28`（VS `:9021`，**复用** `:9010` 的 Access Profile `ap_mcp_tools_control_rs` 与 `pool_mcp_ctl_*`，OAuth 不变）。报文差异见 [docs/mcp-protocol-demo-diff-2025-vs-2026.md](docs/mcp-protocol-demo-diff-2025-vs-2026.md)。
 
 ---
 
@@ -655,6 +678,9 @@ uvicorn main:app --host 0.0.0.0 --port 8090
 | GET      | `/api/demo/mcp-tools-control/config`   | MCP Tools 管控配置（Agent/Server 选项）              |
 | POST     | `/api/demo/mcp-tools-control/run`      | MCP Tools 管控执行（Tier1/Tier2）                   |
 | GET      | `/api/demo/mcp-tools-control/health`   | MCP Tools 管控健康检查                              |
+| GET      | `/api/demo/mcp-insight-v2026/config`   | 新协议 Insight 配置（默认 `:9020`）                 |
+| GET      | `/api/demo/mcp-insight-v2026/wire-examples` | 新旧协议 HTTP/JSON 样例                        |
+| GET      | `/api/demo/mcp-tools-control-v2026/config` | 新协议 Tools 管控配置（默认 `:9021`）           |
 | POST     | `/api/demo/usage`                      | 前端上报场景 enter/leave/heartbeat（需登录）             |
 | GET      | `/api/demo/usage/stats`                | 登录与场景使用统计聚合（仅 admin）                        |
 | POST     | `/api/proxy/chat/completions`          | 通用 OpenAI 兼容代理                               |

@@ -12,6 +12,17 @@ type Props = {
   availableClassName?: string;
 };
 
+function renderTitleWithVersion(title: string) {
+  const m = title.match(/^(.*)\s(V2026-07-28)$/);
+  if (!m) return <span>{title}</span>;
+  return (
+    <span className="inline-flex items-baseline gap-1">
+      <span>{m[1]}</span>
+      <span className="text-[10px] text-slate-500">{m[2]}</span>
+    </span>
+  );
+}
+
 export function SubFeatureName({
   titleKey,
   versionBadge,
@@ -29,7 +40,7 @@ export function SubFeatureName({
 
   return (
     <span className={`inline-flex flex-wrap items-center gap-1 ${titleClassName}`}>
-      <span>{t(titleKey)}</span>
+      {renderTitleWithVersion(t(titleKey))}
       {versionBadge ? (
         <span className={badgeClassName}>{t(effectiveBadgeKey)}</span>
       ) : null}

@@ -12,12 +12,27 @@ import {
   type McpTrafficStatus,
 } from "@/api/client";
 import { McpMessageTimeline } from "./McpMessageTimeline";
+import { McpProtocolDiffPanel } from "./McpProtocolDiffPanel";
 
 const PREFIX = "scenes.mcpToolsInsight";
 
-export function McpInsightDemo() {
+type McpInsightDemoProps = {
+  i18nPrefix?: string;
+  apiBasePath?: string;
+  streamPath?: string;
+  protocolVersionLabel?: string;
+  showProtocolDiff?: boolean;
+};
+
+export function McpInsightDemo({
+  i18nPrefix = PREFIX,
+  apiBasePath,
+  streamPath,
+  protocolVersionLabel,
+  showProtocolDiff = false,
+}: McpInsightDemoProps) {
   const { t } = useTranslation();
-  const { openUrl: grafanaUrl } = useGrafanaConfig();
+  const { openUrl: grafanaUrl, baseUrl: grafanaBaseUrl } = useGrafanaConfig();
   const [config, setConfig] = useState<McpInsightConfig | null>(null);
   const [host, setHost] = useState("127.0.0.1");
   const [port, setPort] = useState(9001);
@@ -46,12 +61,12 @@ export function McpInsightDemo() {
 
   const optionLabel = useCallback(
     (group: "agents" | "tenants" | "scenarios", id: string) =>
-      t(`${PREFIX}.${group}.${id}`, { defaultValue: id }),
-    [t]
+      t(`${i18nPrefix}.${group}.${id}`, { defaultValue: id }),
+    [t, i18nPrefix]
   );
 
   useEffect(() => {
-    fetchMcpInsightConfig()
+    fetchMcpInsightConfig(apiBasePath)
       .then((c) => {
         setConfig(c);
         const vs = c.default_vs as { host: string; port: number };
@@ -59,18 +74,22 @@ export function McpInsightDemo() {
         setPort(vs.port);
       })
       .catch((e) => setError(String(e)));
-  }, []);
+  }, [apiBasePath]);
 
   const checkHealth = useCallback(async () => {
     try {
-      const h = await fetchMcpInsightHealth(host, port);
-      const mcp = h.mcp_server.ok ? t(`${PREFIX}.healthMcpOk`) : t(`${PREFIX}.healthMcpDown`);
-      const ad = h.adapter.ok ? t(`${PREFIX}.healthAdapterOk`) : t(`${PREFIX}.healthAdapterDown`);
+      const h = await fetchMcpInsightHealth(host, port, apiBasePath);
+      const mcp = h.mcp_server.ok
+        ? t(`${i18nPrefix}.healthMcpOk`)
+        : t(`${i18nPrefix}.healthMcpDown`);
+      const ad = h.adapter.ok
+        ? t(`${i18nPrefix}.healthAdapterOk`)
+        : t(`${i18nPrefix}.healthAdapterDown`);
       setHealth(`${mcp} · ${ad}`);
     } catch {
-      setHealth(t(`${PREFIX}.healthCheckFailed`));
+      setHealth(t(`${i18nPrefix}.healthCheckFailed`));
     }
-  }, [host, port, t]);
+  }, [host, port, t, apiBasePath, i18nPrefix]);
 
   useEffect(() => {
     void checkHealth();
@@ -78,12 +97,12 @@ export function McpInsightDemo() {
 
   const refreshTrafficStatus = useCallback(async () => {
     try {
-      const s = await fetchMcpTrafficStatus();
+      const s = await fetchMcpTrafficStatus(apiBasePath);
       setTrafficStatus(s);
     } catch {
       setTrafficStatus((prev) => prev ?? null);
     }
-  }, []);
+  }, [apiBasePath]);
 
   useEffect(() => {
     void refreshTrafficStatus();
@@ -103,27 +122,28 @@ export function McpInsightDemo() {
       const s = await startMcpTrafficSim(
         { host, port },
         durationMinutes,
-        runnerEmitAudit ? true : undefined
+        runnerEmitAudit ? true : undefined,
+        apiBasePath
       );
       setTrafficStatus(s);
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       setTrafficError(
         msg === "mcp_traffic_sim_already_running"
-          ? t(`${PREFIX}.continuous.alreadyRunning`)
+          ? t(`${i18nPrefix}.continuous.alreadyRunning`)
           : msg
       );
       await refreshTrafficStatus();
     } finally {
       setTrafficLoading(false);
     }
-  }, [config, host, port, durationMinutes, refreshTrafficStatus, t]);
+  }, [config, host, port, durationMinutes, refreshTrafficStatus, t, apiBasePath, i18nPrefix]);
 
   const stopContinuous = useCallback(async () => {
     setTrafficLoading(true);
     setTrafficError(null);
     try {
-      const s = await stopMcpTrafficSim();
+      const s = await stopMcpTrafficSim(apiBasePath);
       setTrafficStatus(s);
       void checkHealth();
     } catch (e) {
@@ -131,12 +151,12 @@ export function McpInsightDemo() {
     } finally {
       setTrafficLoading(false);
     }
-  }, [checkHealth]);
+  }, [checkHealth, apiBasePath]);
 
   const runStream = useCallback(
   async (scenarioId: string) => {
     if (!config) {
-      setError(t(`${PREFIX}.configLoading`));
+      setError(t(`${i18nPrefix}.configLoading`));
       return;
     }
 
@@ -162,7 +182,8 @@ export function McpInsightDemo() {
       params.set("emit_audit", "true");
     }
 
-    const es = new EventSource(`/api/demo/mcp-insight/run-stream?${params.toString()}`);
+    const streamEndpoint = streamPath ?? `${apiBasePath ?? "/api/demo/mcp-insight"}/run-stream`;
+    const es = new EventSource(`${streamEndpoint}?${params.toString()}`);
 
     es.onmessage = (e) => {
       try {
@@ -224,16 +245,16 @@ export function McpInsightDemo() {
       if (es.readyState === EventSource.CLOSED) return;
       try {
         const data = JSON.parse((e as MessageEvent).data) as { error?: string };
-        setError(data.error ?? t(`${PREFIX}.streamError`, { host, port }));
+        setError(data.error ?? t(`${i18nPrefix}.streamError`, { host, port }));
       } catch {
-        setError(t(`${PREFIX}.streamError`, { host, port }));
+        setError(t(`${i18nPrefix}.streamError`, { host, port }));
       }
       es.close();
       setSessionComplete(true);
       setRunning(false);
     });
   },
-  [agent, tenant, host, port, checkHealth, config, t]);
+  [agent, tenant, host, port, checkHealth, config, t, i18nPrefix, apiBasePath, streamPath]);
 
   const f5AuditMode =
     config?.audit_delivery === "f5" || config?.emit_audit_without_f5 === false;
@@ -245,9 +266,19 @@ export function McpInsightDemo() {
     !f5AuditMode && (running || sessionComplete || auditSummary !== null);
 
   const scenarios = (config?.scenarios as { id: string; label: string }[]) ?? [];
+  const grafanaHref =
+    showProtocolDiff && config?.grafana_dashboard_uid
+      ? `${grafanaBaseUrl}/d/${config.grafana_dashboard_uid}`
+      : grafanaUrl;
 
   return (
     <div className="space-y-4">
+      {showProtocolDiff ? (
+        <McpProtocolDiffPanel
+          i18nPrefix={i18nPrefix}
+          protocolVersionLabel={protocolVersionLabel}
+        />
+      ) : null}
       {error ? (
         <div className="rounded border border-rose-500/50 bg-rose-500/10 px-3 py-2 text-sm text-rose-200">
           {error}
@@ -256,7 +287,7 @@ export function McpInsightDemo() {
 
       <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
         <label className="block text-xs text-slate-400">
-          {t(`${PREFIX}.labels.agent`)}
+          {t(`${i18nPrefix}.labels.agent`)}
           <select
             className="mt-1 w-full rounded border border-slate-600 bg-slate-900 px-2 py-1.5 text-sm"
             value={agent}
@@ -271,7 +302,7 @@ export function McpInsightDemo() {
           </select>
         </label>
         <label className="block text-xs text-slate-400">
-          {t(`${PREFIX}.labels.tenant`)}
+          {t(`${i18nPrefix}.labels.tenant`)}
           <select
             className="mt-1 w-full rounded border border-slate-600 bg-slate-900 px-2 py-1.5 text-sm"
             value={tenant}
@@ -286,7 +317,7 @@ export function McpInsightDemo() {
           </select>
         </label>
         <label className="block text-xs text-slate-400">
-          {t(`${PREFIX}.labels.mcpHost`)}
+          {t(`${i18nPrefix}.labels.mcpHost`)}
           <input
             className="mt-1 w-full rounded border border-slate-600 bg-slate-900 px-2 py-1.5 text-sm"
             value={host}
@@ -295,7 +326,7 @@ export function McpInsightDemo() {
           />
         </label>
         <label className="block text-xs text-slate-400">
-          {t(`${PREFIX}.labels.port`)}
+          {t(`${i18nPrefix}.labels.port`)}
           <input
             type="number"
             className="mt-1 w-full rounded border border-slate-600 bg-slate-900 px-2 py-1.5 text-sm"
@@ -315,22 +346,22 @@ export function McpInsightDemo() {
           onClick={() => void runStream("full")}
           className="rounded-md bg-cyan-600 px-4 py-2 text-sm font-medium text-white hover:bg-cyan-500 disabled:opacity-50"
         >
-          {t(`${PREFIX}.runFull`)}
+          {t(`${i18nPrefix}.runFull`)}
         </button>
       </div>
 
       <div className="rounded-lg border border-cyan-700/40 bg-slate-950/60 p-4 space-y-3">
         <div>
           <p className="text-sm font-medium text-cyan-300">
-            {t(`${PREFIX}.continuous.title`)}
+            {t(`${i18nPrefix}.continuous.title`)}
           </p>
           <p className="mt-1 text-xs text-slate-400">
-            {t(`${PREFIX}.continuous.subtitle`)}
+            {t(`${i18nPrefix}.continuous.subtitle`)}
           </p>
         </div>
         <div className="flex flex-wrap items-end gap-3">
           <label className="block min-w-[120px] text-xs text-slate-400">
-            {t(`${PREFIX}.continuous.durationMinutes`)}
+            {t(`${i18nPrefix}.continuous.durationMinutes`)}
             <input
               type="number"
               min={1}
@@ -348,7 +379,7 @@ export function McpInsightDemo() {
               disabled={trafficLoading}
               className="rounded-md border border-rose-500/60 bg-rose-500/10 px-4 py-2 text-sm font-medium text-rose-300 hover:bg-rose-500/20 disabled:opacity-50"
             >
-              {t(`${PREFIX}.continuous.stop`)}
+              {t(`${i18nPrefix}.continuous.stop`)}
             </button>
           ) : (
             <button
@@ -357,30 +388,30 @@ export function McpInsightDemo() {
               disabled={busy || !config || trafficLoading}
               className="rounded-md bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-500 disabled:opacity-50"
             >
-              {t(`${PREFIX}.continuous.start`)}
+              {t(`${i18nPrefix}.continuous.start`)}
             </button>
           )}
           <a
-            href={grafanaUrl}
+            href={grafanaHref}
             target="_blank"
             rel="noreferrer"
             className="inline-flex items-center rounded-md border border-cyan-500/60 bg-cyan-500/10 px-4 py-2 text-sm font-medium text-cyan-300 transition hover:bg-cyan-500/20"
           >
-            {t(`${PREFIX}.openGrafana`)}
+            {t(`${i18nPrefix}.openGrafana`)}
           </a>
         </div>
         {trafficRunning && trafficStatus?.stats ? (
           <div className="grid grid-cols-2 gap-2 text-xs text-slate-400 sm:grid-cols-4">
             <span>
-              {t(`${PREFIX}.continuous.sessions`)}:{" "}
+              {t(`${i18nPrefix}.continuous.sessions`)}:{" "}
               {trafficStatus.stats.sessions}
             </span>
             <span>
-              {t(`${PREFIX}.continuous.toolCalls`)}:{" "}
+              {t(`${i18nPrefix}.continuous.toolCalls`)}:{" "}
               {trafficStatus.stats.tool_calls}
             </span>
             <span>
-              {t(`${PREFIX}.continuous.remaining`)}:{" "}
+              {t(`${i18nPrefix}.continuous.remaining`)}:{" "}
               {trafficStatus.remaining_seconds}s
             </span>
             {trafficStatus.stats.last_agent ? (
@@ -415,10 +446,14 @@ export function McpInsightDemo() {
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <McpMessageTimeline events={events} running={running} />
+        <McpMessageTimeline
+          events={events}
+          running={running}
+          showMrtrLabels={showProtocolDiff}
+        />
         <div className="rounded-lg border border-cyan-800/40 bg-slate-950/60 p-3 text-sm">
           <p className="mb-2 font-medium text-cyan-300">
-            {t(`${PREFIX}.statsTitle`)}
+            {t(`${i18nPrefix}.statsTitle`)}
           </p>
           {stats ? (
             <ul className="space-y-1 font-mono text-xs text-slate-300">
@@ -429,7 +464,7 @@ export function McpInsightDemo() {
             </ul>
           ) : (
             <p className="text-xs text-slate-500">
-              {t(`${PREFIX}.statsEmpty`)}
+              {t(`${i18nPrefix}.statsEmpty`)}
             </p>
           )}
           {showAuditPanel ? (
@@ -445,36 +480,36 @@ export function McpInsightDemo() {
               }`}
             >
               <p className="font-medium">
-                {t(`${PREFIX}.auditTitle`)}
+                {t(`${i18nPrefix}.auditTitle`)}
               </p>
               {running && !auditSummary ? (
                 <p className="mt-1 font-mono animate-pulse">
-                  {t(`${PREFIX}.auditPosting`)}
+                  {t(`${i18nPrefix}.auditPosting`)}
                 </p>
               ) : auditSummary ? (
                 <p className="mt-1 font-mono">
                   {auditSummary.accepted}/{auditSummary.total}{" "}
-                  {t(`${PREFIX}.auditDelivered`)}
+                  {t(`${i18nPrefix}.auditDelivered`)}
                   {auditSummary.failed > 0
-                    ? ` · ${auditSummary.failed} ${t(`${PREFIX}.auditFailed`)}`
+                    ? ` · ${auditSummary.failed} ${t(`${i18nPrefix}.auditFailed`)}`
                     : ""}
                 </p>
               ) : sessionComplete ? (
                 <p className="mt-1 font-mono text-slate-400">
-                  {t(`${PREFIX}.auditNone`)}
+                  {t(`${i18nPrefix}.auditNone`)}
                 </p>
               ) : null}
               <p className="mt-1 truncate text-[10px] opacity-80">{adapterUrl}</p>
               {auditSummary && auditSummary.failed > 0 ? (
                 <p className="mt-1 text-[10px] opacity-90">
-                  {t(`${PREFIX}.auditFailedHint`)}
+                  {t(`${i18nPrefix}.auditFailedHint`)}
                 </p>
               ) : null}
             </div>
           ) : null}
           {!f5AuditMode ? (
             <p className="mt-4 text-xs text-slate-500">
-              {t(`${PREFIX}.auditHint`)}
+              {t(`${i18nPrefix}.auditHint`)}
             </p>
           ) : null}
         </div>

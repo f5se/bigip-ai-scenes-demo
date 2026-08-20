@@ -30,6 +30,7 @@ def classify_message_type(method: str | None, body: dict[str, Any]) -> str:
         return "unknown"
     mapping = {
         "initialize": "lifecycle.initialize",
+        "server/discover": "lifecycle.discover",
         "notifications/initialized": "lifecycle.initialized",
         "tools/list": "discovery.tools_list",
         "tools/call": "tool.call",
@@ -64,6 +65,7 @@ def build_audit_event(
     sse_sampling_count: int = 0,
     sse_elicitation_count: int = 0,
     sse_event_count: int = 0,
+    mcp_protocol_version: str = "2025-11-25",
 ) -> dict[str, Any]:
     return {
         "schema_version": SCHEMA_VERSION,
@@ -81,7 +83,7 @@ def build_audit_event(
         "latency_ms": round(latency_ms, 2),
         "status": status,
         "error_info": error_info,
-        "mcp_protocol_version": "2025-11-25",
+        "mcp_protocol_version": mcp_protocol_version or "2025-11-25",
         "http_method": http_method,
         "pool_member": pool_member,
         "sse_event_count": sse_event_count,

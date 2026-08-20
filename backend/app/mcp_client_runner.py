@@ -16,6 +16,12 @@ from backend.app.mcp_audit import (
     params_summary_for_request,
     post_audit_events,
 )
+from backend.app.mcp_protocol import (
+    PROTOCOL_LEGACY,
+    attach_request_meta,
+    http_headers,
+    is_stateless,
+)
 
 EventCallback = Callable[[dict[str, Any]], Awaitable[None] | None]
 
@@ -35,6 +41,7 @@ class MCPClientRunner:
         adapter_events_url: str | None = None,
         emit_audit: bool = True,
         pool_member: str = "direct:9001",
+        protocol_version: str = PROTOCOL_LEGACY,
     ) -> None:
         self.url = target_url.rstrip("/")
         if not self.url.endswith("/mcp"):
@@ -46,7 +53,7 @@ class MCPClientRunner:
         self.emit_audit = emit_audit
         self.pool_member = pool_member
         self.session_id: str | None = None
-        self.protocol_version = "2025-11-25"
+        self.protocol_version = protocol_version
         self.msg_counter = 0
         self.events: list[dict[str, Any]] = []
         self._on_event: EventCallback | None = None
@@ -68,17 +75,14 @@ class MCPClientRunner:
         self.msg_counter += 1
         return self.msg_counter
 
-    def build_headers(self) -> dict[str, str]:
-        headers = {
-            "Content-Type": "application/json",
-            "Accept": "application/json, text/event-stream",
-            "MCP-Protocol-Version": self.protocol_version,
-            "X-Agent-Identity": self.agent_identity,
-            "X-Tenant-Id": self.tenant,
-        }
-        if self.session_id:
-            headers["Mcp-Session-Id"] = self.session_id
-        return headers
+    def build_headers(self, payload: dict[str, Any] | None = None) -> dict[str, str]:
+        return http_headers(
+            protocol_version=self.protocol_version,
+            agent_identity=self.agent_identity,
+            tenant_id=self.tenant,
+            payload=payload,
+            session_id=None if is_stateless(self.protocol_version) else self.session_id,
+        )
 
     async def _emit(self, event: dict[str, Any]) -> None:
         self.events.append(event)
@@ -95,20 +99,57 @@ class MCPClientRunner:
         phase: str = "operation",
         summary: str | None = None,
         highlight: str | None = None,
+        headers: dict[str, str] | None = None,
+        mrtr: bool | None = None,
+        mrtr_mode: str | None = None,
+        mrtr_for: str | None = None,
     ) -> None:
         method = msg.get("method")
-        await self._emit(
-            {
-                "ts": _utc_iso(),
-                "direction": direction,
-                "phase": phase,
-                "method": method or ("response" if "result" in msg else "notification"),
-                "summary": summary or self._summarize_msg(msg),
-                "jsonrpc_id": msg.get("id"),
-                "highlight": highlight,
-                "msg": msg,
-            }
-        )
+        event: dict[str, Any] = {
+            "ts": _utc_iso(),
+            "direction": direction,
+            "phase": phase,
+            "method": method or ("response" if "result" in msg else "notification"),
+            "summary": summary or self._summarize_msg(msg),
+            "jsonrpc_id": msg.get("id"),
+            "highlight": highlight,
+            "msg": msg,
+        }
+        if mrtr:
+            event["mrtr"] = True
+            if mrtr_mode:
+                event["mrtr_mode"] = mrtr_mode
+            if mrtr_for:
+                event["mrtr_for"] = mrtr_for
+        if headers:
+            event["headers"] = headers
+        await self._emit(event)
+
+    @staticmethod
+    def _mrtr_meta_from_response(data: dict[str, Any]) -> dict[str, str | bool]:
+        result = data.get("result")
+        if not isinstance(result, dict) or result.get("resultType") != "input_required":
+            return {}
+        methods: list[str] = []
+        for req in result.get("inputRequests") or []:
+            if isinstance(req, dict) and req.get("method"):
+                methods.append(str(req["method"]))
+        meta: dict[str, str | bool] = {"mrtr": True, "mrtr_mode": "input_required"}
+        if methods:
+            meta["mrtr_for"] = ", ".join(methods)
+        return meta
+
+    @staticmethod
+    def _mrtr_meta_from_client_payload(
+        payload: dict[str, Any], *, mrtr_response_for: list[str] | None = None
+    ) -> dict[str, str | bool]:
+        params = payload.get("params") or {}
+        if "inputResponses" not in params:
+            return {}
+        meta: dict[str, str | bool] = {"mrtr": True, "mrtr_mode": "input_response"}
+        if mrtr_response_for:
+            meta["mrtr_for"] = ", ".join(mrtr_response_for)
+        return meta
 
     @staticmethod
     def _summarize_msg(msg: dict[str, Any]) -> str:
@@ -160,6 +201,7 @@ class MCPClientRunner:
                 sse_sampling_count=sse_sampling,
                 sse_elicitation_count=sse_elicitation,
                 sse_event_count=sse_events,
+                mcp_protocol_version=self.protocol_version,
             )
         )
 
@@ -189,7 +231,18 @@ class MCPClientRunner:
         await self._emit_audit_progress()
         return results
 
-    async def post(self, payload: dict[str, Any]) -> Any:
+    async def post(
+        self,
+        payload: dict[str, Any],
+        *,
+        mrtr_response_for: list[str] | None = None,
+    ) -> Any:
+        payload = attach_request_meta(
+            payload,
+            protocol_version=self.protocol_version,
+            client_info=self._client_info(),
+        )
+        headers = self.build_headers(payload)
         trace_id = new_trace_id()
         t0 = time.perf_counter()
         sse_sampling = 0
@@ -198,17 +251,35 @@ class MCPClientRunner:
         status = "success"
         error_info = ""
 
-        await self._record("client→server", payload, phase=self._phase_for(payload))
+        client_mrtr = self._mrtr_meta_from_client_payload(
+            payload, mrtr_response_for=mrtr_response_for
+        )
+        client_summary: str | None = None
+        if client_mrtr.get("mrtr_mode") == "input_response":
+            params = payload.get("params") or {}
+            tool = params.get("name", "")
+            for_part = client_mrtr.get("mrtr_for", "inputRequests")
+            client_summary = f"tools/call({tool}) + inputResponses → {for_part}"
+        await self._record(
+            "client→server",
+            payload,
+            phase=self._phase_for(payload),
+            headers=headers,
+            summary=client_summary,
+            **client_mrtr,
+        )
 
         async with httpx.AsyncClient() as client:
             async with client.stream(
                 "POST",
                 self.url,
                 content=json.dumps(payload, ensure_ascii=False).encode("utf-8"),
-                headers=self.build_headers(),
+                headers=headers,
                 timeout=60.0,
             ) as resp:
-                if "mcp-session-id" in {k.lower() for k in resp.headers}:
+                if not is_stateless(self.protocol_version) and "mcp-session-id" in {
+                    k.lower() for k in resp.headers
+                }:
                     for k, v in resp.headers.items():
                         if k.lower() == "mcp-session-id":
                             self.session_id = v
@@ -260,11 +331,99 @@ class MCPClientRunner:
                     body=payload,
                 )
                 await self.flush_audit()
+                if isinstance(data, dict):
+                    server_mrtr = self._mrtr_meta_from_response(data)
+                    server_summary: str | None = None
+                    if server_mrtr.get("mrtr_mode") == "input_required":
+                        for_part = server_mrtr.get("mrtr_for", "")
+                        server_summary = f"resultType=input_required ({for_part})"
+                    await self._record(
+                        "server→client", data, summary=server_summary, **server_mrtr
+                    )
+                    data = await self._maybe_complete_mrtr(payload, data)
                 return data
+
+    async def _maybe_complete_mrtr(
+        self, original: dict[str, Any], data: dict[str, Any]
+    ) -> dict[str, Any]:
+        if not is_stateless(self.protocol_version):
+            return data
+        result = data.get("result")
+        if not isinstance(result, dict) or result.get("resultType") != "input_required":
+            return data
+        requests = result.get("inputRequests") or []
+        responses: list[dict[str, Any]] = []
+        mrtr_methods: list[str] = []
+        for req in requests:
+            if not isinstance(req, dict):
+                continue
+            method = req.get("method")
+            if not method:
+                continue
+            mrtr_methods.append(str(method))
+            req_id = req.get("id")
+            req_summary = f"MRTR inputRequests: {method}"
+            if req_id:
+                req_summary = f"{req_summary} (id={req_id})"
+            if method == "sampling/createMessage":
+                self._stats["sampling"] += 1
+                await self._record(
+                    "server→client",
+                    req,
+                    highlight="sampling",
+                    summary=req_summary,
+                    mrtr=True,
+                    mrtr_mode="input_required",
+                    mrtr_for=str(method),
+                )
+                responses.append(
+                    {
+                        "id": req.get("id"),
+                        "result": {
+                            "role": "assistant",
+                            "content": {
+                                "type": "text",
+                                "text": "[模拟AI分析] 建议优先处理 CPU/内存异常，重启相关实例并在 15 分钟内确认恢复。",
+                            },
+                            "model": "mock-llm-v1",
+                            "stopReason": "endTurn",
+                        },
+                    }
+                )
+            elif method == "elicitation/create":
+                self._stats["elicitation"] += 1
+                await self._record(
+                    "server→client",
+                    req,
+                    highlight="elicitation",
+                    summary=req_summary,
+                    mrtr=True,
+                    mrtr_mode="input_required",
+                    mrtr_for=str(method),
+                )
+                responses.append(
+                    {
+                        "id": req.get("id"),
+                        "result": {
+                            "action": "accept",
+                            "content": self._auto_fill_elicitation(req.get("params") or {}),
+                        },
+                    }
+                )
+        retry = {
+            "jsonrpc": "2.0",
+            "id": self.next_id(),
+            "method": original.get("method"),
+            "params": {
+                **(original.get("params") or {}),
+                "inputResponses": responses,
+            },
+        }
+        return await self.post(retry, mrtr_response_for=mrtr_methods or None)
 
     def _phase_for(self, payload: dict[str, Any]) -> str:
         method = payload.get("method")
-        if method == "initialize":
+        if method in ("initialize", "server/discover", "notifications/initialized"):
             return "lifecycle"
         if method in ("tools/list", "prompts/list", "resources/list"):
             return "discovery"
@@ -435,6 +594,16 @@ class MCPClientRunner:
         }
 
     async def ensure_session(self) -> None:
+        if is_stateless(self.protocol_version):
+            await self.post(
+                {
+                    "jsonrpc": "2.0",
+                    "id": self.next_id(),
+                    "method": "server/discover",
+                    "params": {},
+                }
+            )
+            return
         if self.session_id:
             return
         await self.post(
@@ -443,7 +612,7 @@ class MCPClientRunner:
                 "id": self.next_id(),
                 "method": "initialize",
                 "params": {
-                    "protocolVersion": "2025-11-25",
+                    "protocolVersion": self.protocol_version,
                     "capabilities": {"sampling": {}, "elicitation": {"form": {}, "url": {}}},
                     "clientInfo": self._client_info(),
                 },
@@ -506,9 +675,11 @@ class MCPClientRunner:
             else:
                 raise ValueError(f"Unknown scenario: {scenario_id}")
         finally:
-            if self.session_id:
+            if self.session_id and not is_stateless(self.protocol_version):
                 closed_session_id = self.session_id
                 await self.post_delete()
+            elif is_stateless(self.protocol_version):
+                closed_session_id = "stateless"
 
         await self.flush_audit()
         self._stats["duration_ms"] = int((time.perf_counter() - self._session_start) * 1000)

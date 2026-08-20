@@ -14,6 +14,8 @@ import { ModelAllowlistPage } from "@/pages/ModelAllowlistPage";
 import { MaxTokensPage } from "@/pages/MaxTokensPage";
 import { McpToolsInsightPage } from "@/pages/McpToolsInsightPage";
 import { McpToolsControlPage } from "@/pages/McpToolsControlPage";
+import { McpToolsInsightV20260728Page } from "@/pages/McpToolsInsightV20260728Page";
+import { McpToolsControlV20260728Page } from "@/pages/McpToolsControlV20260728Page";
 import { SystemPromptPage } from "@/pages/SystemPromptPage";
 import { DemoUsagePage } from "@/pages/DemoUsagePage";
 
@@ -49,6 +51,10 @@ export default function App() {
               element={<McpToolsInsightPage />}
             />
             <Route
+              path="/scene/observability/mcp-tools-insight-v2026-07-28"
+              element={<McpToolsInsightV20260728Page />}
+            />
+            <Route
               path="/scene/traffic-mgmt/mcp-tools-insight"
               element={<Navigate to="/scene/observability/mcp-tools-insight" replace />}
             />
@@ -66,6 +72,10 @@ export default function App() {
             <Route
               path="/scene/traffic-mgmt/mcp-tools-control"
               element={<McpToolsControlPage />}
+            />
+            <Route
+              path="/scene/traffic-mgmt/mcp-tools-control-v2026-07-28"
+              element={<McpToolsControlV20260728Page />}
             />
             <Route
               path="/scene/traffic-mgmt/mcp-gateway"

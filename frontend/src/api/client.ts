@@ -1294,8 +1294,37 @@ export type McpStreamEvent = {
   summary?: string;
   jsonrpc_id?: number | string;
   highlight?: string | null;
+  mrtr?: boolean;
+  mrtr_mode?: "input_required" | "input_response" | string;
+  mrtr_for?: string;
   msg?: Record<string, unknown>;
+  headers?: Record<string, string>;
 };
+
+export type McpWireExample = {
+  http: string;
+  json: Record<string, unknown> | null;
+};
+
+export type McpWireExamples = {
+  legacy_tools_call: McpWireExample;
+  v2026_tools_call: McpWireExample;
+  legacy_initialize: McpWireExample;
+  v2026_discover: McpWireExample;
+  spec_links: {
+    spec: string;
+    blog: string;
+    legacy_spec?: string;
+    streamable_http: string;
+    mrtr: string;
+  };
+};
+
+export async function fetchMcpWireExamples(): Promise<McpWireExamples> {
+  const res = await authFetch("/api/demo/mcp-insight-v2026/wire-examples");
+  if (!res.ok) throw new Error("Failed to load MCP wire examples");
+  return res.json();
+}
 
 export type McpInsightConfig = {
   default_vs: Target;
@@ -1315,18 +1344,28 @@ export type McpInsightHealth = {
   adapter: { ok: boolean; url: string; detail: string | null };
 };
 
-export async function fetchMcpInsightConfig(): Promise<McpInsightConfig> {
-  const res = await authFetch("/api/demo/mcp-insight/config");
+function resolveMcpDemoBase(basePath: string | undefined, fallback: string): string {
+  return (basePath && basePath.trim()) || fallback;
+}
+
+export async function fetchMcpInsightConfig(basePath?: string): Promise<McpInsightConfig> {
+  const base = resolveMcpDemoBase(basePath, "/api/demo/mcp-insight");
+  const res = await authFetch(`${base}/config`);
   if (!res.ok) throw new Error("Failed to load MCP insight config");
   return res.json();
 }
 
-export async function fetchMcpInsightHealth(host: string, port: number): Promise<McpInsightHealth> {
+export async function fetchMcpInsightHealth(
+  host: string,
+  port: number,
+  basePath?: string
+): Promise<McpInsightHealth> {
+  const base = resolveMcpDemoBase(basePath, "/api/demo/mcp-insight");
   const params = new URLSearchParams({
     target_host: host,
     target_port: String(port),
   });
-  const res = await authFetch(`/api/demo/mcp-insight/health?${params.toString()}`);
+  const res = await authFetch(`${base}/health?${params.toString()}`);
   if (!res.ok) throw new Error("MCP health check failed");
   return res.json();
 }
@@ -1337,8 +1376,9 @@ export async function runMcpInsightSession(body: {
   tenant?: string;
   scenario?: string;
   emit_audit?: boolean;
-}): Promise<Record<string, unknown>> {
-  const res = await authFetch("/api/demo/mcp-insight/run", {
+}, basePath?: string): Promise<Record<string, unknown>> {
+  const base = resolveMcpDemoBase(basePath, "/api/demo/mcp-insight");
+  const res = await authFetch(`${base}/run`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -1380,8 +1420,9 @@ export type McpTrafficStatus = {
   };
 };
 
-export async function fetchMcpTrafficStatus(): Promise<McpTrafficStatus> {
-  const res = await authFetch("/api/demo/mcp-insight/traffic/status");
+export async function fetchMcpTrafficStatus(basePath?: string): Promise<McpTrafficStatus> {
+  const base = resolveMcpDemoBase(basePath, "/api/demo/mcp-insight");
+  const res = await authFetch(`${base}/traffic/status`);
   if (!res.ok) throw new Error("Failed to load MCP traffic sim status");
   return res.json();
 }
@@ -1389,9 +1430,11 @@ export async function fetchMcpTrafficStatus(): Promise<McpTrafficStatus> {
 export async function startMcpTrafficSim(
   target: Target,
   durationMinutes: number,
-  emitAudit?: boolean
+  emitAudit?: boolean,
+  basePath?: string
 ): Promise<McpTrafficStatus> {
-  const res = await authFetch("/api/demo/mcp-insight/traffic/start", {
+  const base = resolveMcpDemoBase(basePath, "/api/demo/mcp-insight");
+  const res = await authFetch(`${base}/traffic/start`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -1415,8 +1458,9 @@ export async function startMcpTrafficSim(
   return res.json();
 }
 
-export async function stopMcpTrafficSim(): Promise<McpTrafficStatus> {
-  const res = await authFetch("/api/demo/mcp-insight/traffic/stop", { method: "POST" });
+export async function stopMcpTrafficSim(basePath?: string): Promise<McpTrafficStatus> {
+  const base = resolveMcpDemoBase(basePath, "/api/demo/mcp-insight");
+  const res = await authFetch(`${base}/traffic/stop`, { method: "POST" });
   if (!res.ok) throw new Error("MCP traffic sim stop failed");
   return res.json();
 }
@@ -1480,14 +1524,16 @@ export type McpControlHealth = {
   oauth_token_url?: string;
 };
 
-export async function fetchMcpControlConfig(): Promise<McpControlConfig> {
-  const res = await authFetch("/api/demo/mcp-tools-control/config");
+export async function fetchMcpControlConfig(basePath?: string): Promise<McpControlConfig> {
+  const base = resolveMcpDemoBase(basePath, "/api/demo/mcp-tools-control");
+  const res = await authFetch(`${base}/config`);
   if (!res.ok) throw new Error("Failed to load MCP control config");
   return res.json();
 }
 
-export async function fetchMcpControlHealth(): Promise<McpControlHealth> {
-  const res = await authFetch("/api/demo/mcp-tools-control/health");
+export async function fetchMcpControlHealth(basePath?: string): Promise<McpControlHealth> {
+  const base = resolveMcpDemoBase(basePath, "/api/demo/mcp-tools-control");
+  const res = await authFetch(`${base}/health`);
   if (!res.ok) throw new Error("MCP control health check failed");
   return res.json();
 }
@@ -1497,8 +1543,9 @@ export async function runMcpControl(body: {
   target_server_id: string;
   scenario?: "tier1" | "tier2";
   tool_name?: string;
-}): Promise<McpControlRunResult> {
-  const res = await authFetch("/api/demo/mcp-tools-control/run", {
+}, basePath?: string): Promise<McpControlRunResult> {
+  const base = resolveMcpDemoBase(basePath, "/api/demo/mcp-tools-control");
+  const res = await authFetch(`${base}/run`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -1555,16 +1602,21 @@ export type McpControlTrafficStatus = {
   };
 };
 
-export async function fetchMcpControlTrafficStatus(): Promise<McpControlTrafficStatus> {
-  const res = await authFetch("/api/demo/mcp-tools-control/traffic/status");
+export async function fetchMcpControlTrafficStatus(
+  basePath?: string
+): Promise<McpControlTrafficStatus> {
+  const base = resolveMcpDemoBase(basePath, "/api/demo/mcp-tools-control");
+  const res = await authFetch(`${base}/traffic/status`);
   if (!res.ok) throw new Error("Failed to load MCP control traffic status");
   return res.json();
 }
 
 export async function startMcpControlTrafficSim(
-  durationMinutes: number
+  durationMinutes: number,
+  basePath?: string
 ): Promise<McpControlTrafficStatus> {
-  const res = await authFetch("/api/demo/mcp-tools-control/traffic/start", {
+  const base = resolveMcpDemoBase(basePath, "/api/demo/mcp-tools-control");
+  const res = await authFetch(`${base}/traffic/start`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ duration_minutes: durationMinutes }),
@@ -1582,8 +1634,11 @@ export async function startMcpControlTrafficSim(
   return res.json();
 }
 
-export async function stopMcpControlTrafficSim(): Promise<McpControlTrafficStatus> {
-  const res = await authFetch("/api/demo/mcp-tools-control/traffic/stop", { method: "POST" });
+export async function stopMcpControlTrafficSim(
+  basePath?: string
+): Promise<McpControlTrafficStatus> {
+  const base = resolveMcpDemoBase(basePath, "/api/demo/mcp-tools-control");
+  const res = await authFetch(`${base}/traffic/stop`, { method: "POST" });
   if (!res.ok) throw new Error("Failed to stop MCP control traffic sim");
   return res.json();
 }

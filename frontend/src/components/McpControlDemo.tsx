@@ -13,6 +13,7 @@ import {
   type McpControlTrafficStatus,
 } from "@/api/client";
 import { McpControlResultTimeline } from "./McpControlResultTimeline";
+import { McpProtocolDiffPanel } from "./McpProtocolDiffPanel";
 
 const PREFIX = "scenes.mcpToolsControl";
 
@@ -24,7 +25,19 @@ type RunParams = {
   toolName: string;
 };
 
-export function McpControlDemo() {
+type McpControlDemoProps = {
+  apiBasePath?: string;
+  showProtocolDiff?: boolean;
+  protocolVersionLabel?: string;
+  showSimTab?: boolean;
+};
+
+export function McpControlDemo({
+  apiBasePath,
+  showProtocolDiff = false,
+  protocolVersionLabel,
+  showSimTab = true,
+}: McpControlDemoProps) {
   const { t } = useTranslation();
   const { openUrl: grafanaUrl, baseUrl: grafanaBaseUrl } = useGrafanaConfig();
   const [config, setConfig] = useState<McpControlConfig | null>(null);
@@ -79,18 +92,18 @@ export function McpControlDemo() {
   );
 
   useEffect(() => {
-    fetchMcpControlConfig()
+    fetchMcpControlConfig(apiBasePath)
       .then((c) => {
         setConfig(c);
         if (c.agent_identities[0]) setAgentId(c.agent_identities[0].id);
         if (c.target_servers[0]) setTargetServerId(c.target_servers[0].id);
       })
       .catch((e) => setError(String(e)));
-  }, []);
+  }, [apiBasePath]);
 
   const checkHealth = useCallback(async () => {
     try {
-      const h = await fetchMcpControlHealth();
+      const h = await fetchMcpControlHealth(apiBasePath);
       const vs = h.vs.ok
         ? t(`${PREFIX}.health.vsOk`, { detail: h.vs.detail ?? "" })
         : t(`${PREFIX}.health.vsDown`, { detail: h.vs.detail ?? "" });
@@ -105,7 +118,7 @@ export function McpControlDemo() {
     } catch {
       setHealth(t(`${PREFIX}.health.checkFailed`));
     }
-  }, [t]);
+  }, [t, apiBasePath]);
 
   useEffect(() => {
     void checkHealth();
@@ -113,12 +126,12 @@ export function McpControlDemo() {
 
   const refreshTrafficStatus = useCallback(async () => {
     try {
-      const s = await fetchMcpControlTrafficStatus();
+      const s = await fetchMcpControlTrafficStatus(apiBasePath);
       setTrafficStatus(s);
     } catch {
       setTrafficStatus((prev) => prev ?? null);
     }
-  }, []);
+  }, [apiBasePath]);
 
   useEffect(() => {
     void refreshTrafficStatus();
@@ -141,7 +154,7 @@ export function McpControlDemo() {
           target_server_id: params.targetServerId,
           scenario: params.activeTab,
           ...(params.activeTab === "tier2" ? { tool_name: params.toolName } : {}),
-        });
+        }, apiBasePath);
         setResult(r);
       } catch (e) {
         setError(String(e));
@@ -150,7 +163,7 @@ export function McpControlDemo() {
         void checkHealth();
       }
     },
-    [checkHealth]
+    [checkHealth, apiBasePath]
   );
 
   const quickCases = useMemo(() => {
@@ -227,7 +240,7 @@ export function McpControlDemo() {
     setTrafficLoading(true);
     setTrafficError(null);
     try {
-      const s = await startMcpControlTrafficSim(durationMinutes);
+      const s = await startMcpControlTrafficSim(durationMinutes, apiBasePath);
       setTrafficStatus(s);
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
@@ -240,13 +253,13 @@ export function McpControlDemo() {
     } finally {
       setTrafficLoading(false);
     }
-  }, [durationMinutes, refreshTrafficStatus, t]);
+  }, [durationMinutes, refreshTrafficStatus, t, apiBasePath]);
 
   const stopContinuous = useCallback(async () => {
     setTrafficLoading(true);
     setTrafficError(null);
     try {
-      const s = await stopMcpControlTrafficSim();
+      const s = await stopMcpControlTrafficSim(apiBasePath);
       setTrafficStatus(s);
       void checkHealth();
     } catch (e) {
@@ -254,10 +267,16 @@ export function McpControlDemo() {
     } finally {
       setTrafficLoading(false);
     }
-  }, [checkHealth]);
+  }, [checkHealth, apiBasePath]);
 
   return (
     <div className="space-y-4">
+      {showProtocolDiff ? (
+        <McpProtocolDiffPanel
+          i18nPrefix={PREFIX}
+          protocolVersionLabel={protocolVersionLabel}
+        />
+      ) : null}
       {error ? (
         <div className="rounded border border-rose-500/50 bg-rose-500/10 px-3 py-2 text-sm text-rose-200">
           {error}
@@ -285,15 +304,17 @@ export function McpControlDemo() {
         >
           {t(`${PREFIX}.tabs.tier2`)}
         </button>
-        <button
-          type="button"
-          onClick={() => setActiveTab("sim")}
-          className={`rounded px-3 py-1.5 text-xs ${
-            activeTab === "sim" ? "bg-cyan-600 text-white" : "text-slate-300 hover:bg-slate-800"
-          }`}
-        >
-          {t(`${PREFIX}.tabs.sim`)}
-        </button>
+        {showSimTab ? (
+          <button
+            type="button"
+            onClick={() => setActiveTab("sim")}
+            className={`rounded px-3 py-1.5 text-xs ${
+              activeTab === "sim" ? "bg-cyan-600 text-white" : "text-slate-300 hover:bg-slate-800"
+            }`}
+          >
+            {t(`${PREFIX}.tabs.sim`)}
+          </button>
+        ) : null}
       </div>
 
       {isSimTab ? (

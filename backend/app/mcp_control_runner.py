@@ -13,6 +13,7 @@ from typing import Any
 import httpx
 
 from backend.app.config import MCP_CONTROL_DEMO
+from backend.app.mcp_protocol import attach_request_meta, is_stateless, mcp_name_for_payload
 
 
 def _b64url(data: bytes) -> str:
@@ -57,8 +58,8 @@ def mint_demo_jwt(*, sub: str, mcp_groups: str, mcp_role: str, secret: str, ttl_
     return f"{h}.{p}.{sig}"
 
 
-def _agent_by_id(agent_id: str) -> dict[str, Any]:
-    agents = MCP_CONTROL_DEMO["agent_identities"]
+def _agent_by_id(agent_id: str, profile: dict[str, Any]) -> dict[str, Any]:
+    agents = profile["agent_identities"]
     assert isinstance(agents, list)
     for a in agents:
         assert isinstance(a, dict)
@@ -72,16 +73,18 @@ def _is_allowed_status(status_code: int) -> bool:
 
 
 class McpControlRunner:
-    def __init__(self, agent_id: str, target_server_id: str):
-        self.agent = _agent_by_id(agent_id)
+    def __init__(self, agent_id: str, target_server_id: str, profile: dict[str, Any] | None = None):
+        self.profile = profile or MCP_CONTROL_DEMO
+        self.agent = _agent_by_id(agent_id, self.profile)
         self.target_server_id = target_server_id
-        vs = MCP_CONTROL_DEMO["default_vs"]
+        vs = self.profile["default_vs"]
         assert isinstance(vs, dict)
         self.vs_host = str(vs["host"])
         self.vs_port = int(vs["port"])
         self.vs_url = f"http://{self.vs_host}:{self.vs_port}/mcp"
-        self.token_url = str(MCP_CONTROL_DEMO.get("oauth_token_url") or "")
-        self.token_mode = str(MCP_CONTROL_DEMO.get("token_mode") or "demo_local")
+        self.token_url = str(self.profile.get("oauth_token_url") or "")
+        self.token_mode = str(self.profile.get("token_mode") or "demo_local")
+        self.protocol_version = str(self.profile.get("protocol_version") or "2025-11-25")
 
     async def fetch_jwt(self) -> dict[str, Any]:
         if self.token_mode == "apm_ropc":
@@ -112,7 +115,7 @@ class McpControlRunner:
         password_env = str(self.agent.get("password_env") or "")
         password = os.environ.get(password_env, "")
         client_secret = os.environ.get(
-            str(MCP_CONTROL_DEMO.get("client_secret_env") or "MCP_CONTROL_CLIENT_SECRET"),
+            str(self.profile.get("client_secret_env") or "MCP_CONTROL_CLIENT_SECRET"),
             "",
         )
         if not password:
@@ -127,7 +130,7 @@ class McpControlRunner:
                     "grant_type": "password",
                     "username": str(self.agent["localdb_username"]),
                     "password": password,
-                    "client_id": str(MCP_CONTROL_DEMO["client_id"]),
+                    "client_id": str(self.profile["client_id"]),
                     "client_secret": client_secret,
                 },
                 headers={"Content-Type": "application/x-www-form-urlencoded"},
@@ -152,12 +155,20 @@ class McpControlRunner:
         *,
         session_id: str | None = None,
     ) -> dict[str, Any]:
-        headers = self._build_gateway_headers(access_token, session_id=session_id)
+        payload = attach_request_meta(
+            payload,
+            protocol_version=self.protocol_version,
+            client_info={"name": str(self.agent["id"]), "version": "1.0.0"},
+        )
+        headers = self._build_gateway_headers(
+            access_token, session_id=session_id, payload=payload
+        )
 
         # tools/call can trigger server-initiated sampling/elicitation. Handle them
         # by posting JSON-RPC result messages back to the same MCP session.
         if payload.get("method") == "tools/call":
-            return await self._call_gateway_tools_bidirectional(headers=headers, payload=payload)
+            result = await self._call_gateway_tools_bidirectional(headers=headers, payload=payload)
+            return await self._maybe_mrtr_retry(access_token, payload, result, session_id=session_id)
 
         timeout = httpx.Timeout(connect=8.0, read=8.0, write=8.0, pool=8.0)
         async with httpx.AsyncClient(timeout=timeout, follow_redirects=False) as client:
@@ -201,6 +212,7 @@ class McpControlRunner:
         access_token: str,
         *,
         session_id: str | None = None,
+        payload: dict[str, Any] | None = None,
     ) -> dict[str, str]:
         headers = {
             "Authorization": f"Bearer {access_token}",
@@ -210,9 +222,14 @@ class McpControlRunner:
             "Clientless-Mode": "1",
             "Content-Type": "application/json",
             "Accept": "application/json, text/event-stream",
-            "MCP-Protocol-Version": "2025-11-25",
+            "MCP-Protocol-Version": self.protocol_version,
         }
-        if session_id:
+        if is_stateless(self.protocol_version) and payload:
+            headers["Mcp-Method"] = str(payload.get("method") or "unknown")
+            name = mcp_name_for_payload(payload)
+            if name:
+                headers["Mcp-Name"] = name
+        elif session_id:
             headers["Mcp-Session-Id"] = session_id
         return headers
 
@@ -335,19 +352,22 @@ class McpControlRunner:
                     "mcp_final_seen": final_seen,
                 }
 
-    @staticmethod
-    def _apm_route(gateway_result: dict[str, Any], target_server_id: str) -> dict[str, Any] | None:
+    def _apm_route(self, gateway_result: dict[str, Any], target_server_id: str) -> dict[str, Any] | None:
         mcp_allowed = bool(gateway_result.get("allowed"))
         if mcp_allowed:
+            pool = str(
+                self.profile.get(f"pool_{target_server_id}")
+                or f"pool_mcp_ctl_{target_server_id}"
+            )
             return {
                 "ending": "Allow",
-                "pool": f"pool_mcp_ctl_{target_server_id}",
+                "pool": pool,
                 "pool_role": "authorized",
             }
         if gateway_result.get("status_code") is not None:
             return {
                 "ending": "Allow",
-                "pool": "pool_mcp_ctl_deny",
+                "pool": str(self.profile.get("pool_deny") or "pool_mcp_ctl_deny"),
                 "pool_role": "fail_close",
             }
         return None
@@ -363,16 +383,25 @@ class McpControlRunner:
         claims = decode_jwt_claims(access_token) if access_token else {}
         mcp_groups = claims.get("mcp_groups", claims.get("groups"))
 
-        init_payload = {
-            "jsonrpc": "2.0",
-            "id": 1,
-            "method": "initialize",
-            "params": {
-                "protocolVersion": "2025-11-25",
-                "capabilities": {},
-                "clientInfo": {"name": str(self.agent["id"]), "version": "1.0.0"},
-            },
-        }
+        init_payload: dict[str, Any]
+        if is_stateless(self.protocol_version):
+            init_payload = {
+                "jsonrpc": "2.0",
+                "id": 1,
+                "method": "server/discover",
+                "params": {},
+            }
+        else:
+            init_payload = {
+                "jsonrpc": "2.0",
+                "id": 1,
+                "method": "initialize",
+                "params": {
+                    "protocolVersion": self.protocol_version,
+                    "capabilities": {},
+                    "clientInfo": {"name": str(self.agent["id"]), "version": "1.0.0"},
+                },
+            }
         init_result = await self.call_gateway(access_token, init_payload)
 
         gateway_result = init_result
@@ -395,7 +424,11 @@ class McpControlRunner:
             gateway_result = await self.call_gateway(
                 access_token,
                 tool_payload,
-                session_id=str(init_result.get("mcp_session_id") or ""),
+                session_id=(
+                    None
+                    if is_stateless(self.protocol_version)
+                    else str(init_result.get("mcp_session_id") or "")
+                ),
             )
 
         mcp_allowed = bool(gateway_result.get("allowed"))
@@ -421,3 +454,48 @@ class McpControlRunner:
             "apm_route": self._apm_route(gateway_result, self.target_server_id),
             "vs": {"host": self.vs_host, "port": self.vs_port},
         }
+
+    async def _maybe_mrtr_retry(
+        self,
+        access_token: str,
+        original: dict[str, Any],
+        result: dict[str, Any],
+        *,
+        session_id: str | None,
+    ) -> dict[str, Any]:
+        if not is_stateless(self.protocol_version):
+            return result
+        preview = str(result.get("body_preview") or "")
+        if "input_required" not in preview:
+            return result
+        try:
+            start = preview.find("{")
+            data = json.loads(preview[start:]) if start >= 0 else {}
+        except json.JSONDecodeError:
+            return result
+        inner = data.get("result") if isinstance(data, dict) else None
+        if not isinstance(inner, dict) or inner.get("resultType") != "input_required":
+            return result
+        responses: list[dict[str, Any]] = []
+        for req in inner.get("inputRequests") or []:
+            if not isinstance(req, dict):
+                continue
+            method = req.get("method")
+            if method == "sampling/createMessage":
+                responses.append({"id": req.get("id"), "result": self._auto_sampling_result()})
+            elif method == "elicitation/create":
+                responses.append(
+                    {
+                        "id": req.get("id"),
+                        "result": self._auto_elicitation_result(req.get("params") or {}),
+                    }
+                )
+        params = dict(original.get("params") or {})
+        params["inputResponses"] = responses
+        retry = {
+            "jsonrpc": "2.0",
+            "id": int(original.get("id") or 2) + 10,
+            "method": original.get("method"),
+            "params": params,
+        }
+        return await self.call_gateway(access_token, retry, session_id=session_id)

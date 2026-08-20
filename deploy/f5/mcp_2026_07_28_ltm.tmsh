@@ -1,0 +1,59 @@
+# MCP 2026-07-28 parallel VS. Does NOT modify :9000 / :9010 objects.
+#
+# Reuse with legacy (matches live vs_mcp_tools_control / vs_mcp_insight):
+#   - OAuth AS              http://172.16.30.125:9009/f5-oauth2/v1/token
+#   - Access Profile        ap_mcp_tools_control_rs  (Tier 1; oauth-resource-server)
+#   - Pools                 pool_mcp_insight_server,
+#                           pool_mcp_ctl_ops / pool_mcp_ctl_finance / pool_mcp_ctl_deny
+#   - Data Group            dg_mcp_tool_allow
+#   - iRule                 ir_mcp_target_capture
+#   - Profiles              aimcp, mcp_http_profile, mcp_json_profile, mcp_sse_profile,
+#                           f5-tcp-lan; Tools VS also rba + websso (APM companions)
+#   - iRuleLX plugin        mcp_audit_lx_plugin / mcp_audit_ext (audit notify only)
+#
+# New / independent:
+#   - VS :9020 / :9021
+#   - iRules ir_mcp_audit_logger_v2026, ir_mcp_tool_rbac_ltm_v2026
+#   - persist none  (do NOT attach mcp_persistence_profile)
+#
+# Do NOT attach ir_mcp_tools_control_rbac_v2026 on :9021 when using APM
+# (that iRule is a no-APM Tier1 fallback only; live demo uses APM).
+
+tmsh create ltm virtual vs_mcp_insight_v2026_07_28 \
+    destination 172.16.30.125:9020 \
+    ip-protocol tcp \
+    pool pool_mcp_insight_server \
+    profiles add {
+        f5-tcp-lan { }
+        mcp_http_profile { }
+        mcp_json_profile { context http }
+        mcp_sse_profile { context http }
+        aimcp { }
+    } \
+    persist none \
+    rules { ir_mcp_audit_logger_v2026 } \
+    source-address-translation { type automap } \
+    translate-address enabled \
+    translate-port enabled
+
+tmsh create ltm virtual vs_mcp_tools_control_v2026_07_28 \
+    destination 172.16.30.125:9021 \
+    ip-protocol tcp \
+    pool pool_mcp_ctl_ops \
+    profiles add {
+        f5-tcp-lan { }
+        mcp_http_profile { }
+        mcp_json_profile { context http }
+        mcp_sse_profile { context http }
+        aimcp { }
+        ap_mcp_tools_control_rs { }
+        rba { }
+        websso { }
+    } \
+    persist none \
+    rules { ir_mcp_target_capture ir_mcp_tool_rbac_ltm_v2026 ir_mcp_audit_logger_v2026 } \
+    source-address-translation { type automap } \
+    translate-address enabled \
+    translate-port enabled
+
+tmsh save sys config

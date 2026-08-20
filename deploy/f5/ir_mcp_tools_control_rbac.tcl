@@ -1,5 +1,12 @@
-# ir_mcp_tools_control_rbac — Tier 1 Server ACL via JWT mcp_groups + X-Mcp-Target-Server
-# Deny path uses pool_mcp_ctl_deny (403 stub) because HTTP::respond conflicts with JSON/SSE/AIMCP profiles.
+# ir_mcp_tools_control_rbac — OPTIONAL LTM-only Tier 1 (no APM)
+#
+# Live Demo (:9010 / :9021) does NOT use this iRule. Tier 1 is APM Access
+# Profile ap_mcp_tools_control_rs (OAuth RS + Pool Assign).
+#
+# Use this file only when the VS has no APM: HTTP_REQUEST reads JWT mcp_groups
+# + X-Mcp-Target-Server and assigns pool_mcp_ctl_ops / _finance / _deny.
+# Do NOT attach together with APM (both would set pool).
+# Deny uses pool_mcp_ctl_deny because HTTP::respond conflicts with JSON/SSE/AIMCP.
 
 proc mcp_b64url_decode {s} {
     set pad [expr {(4 - ([string length $s] % 4)) % 4}]

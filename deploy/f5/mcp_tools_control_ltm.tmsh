@@ -34,7 +34,7 @@ tmsh create ltm virtual vs_mcp_tools_control \
         mcp_json_profile { context http }
         mcp_sse_profile { context http }
         aimcp { }
-        mcp_irulelx_profile { }
+        ap_mcp_tools_control_rs { }
     } \
     persist add { mcp_persistence_profile { default yes } } \
     rules { ir_mcp_target_capture ir_mcp_audit_logger } \

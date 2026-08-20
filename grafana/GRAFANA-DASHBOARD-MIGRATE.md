@@ -15,6 +15,7 @@
 | F5 BIG-IP LLM Observability | `f5-bigip-llm-v2` | `grafana/dashboards/f5-bigip-llm-v2.json` |
 | LLM Subagent Routing | `llm-subagent-routing-v2` | `grafana/dashboards/llm-subagent-routing-v2.json` |
 | MCP Tools Insight | `mcp-tools-insight` | `grafana/dashboards/mcp-tools-insight.json` |
+| MCP Insight V2026-07-28 | `mcp-tools-insight-v2026-07-28` | `grafana/dashboards/mcp-tools-insight-v2026-07-28.json` |
 
 ---
 
@@ -42,7 +43,7 @@ export GRAFANA_USER="<GRAFANA_USERNAME>"
 export GRAFANA_PASSWORD="YOUR_PASSWORD"
 
 # 按看板 UID 导出完整 dashboard JSON
-for uid in f5-bigip-llm-v2 llm-subagent-routing-v2 mcp-tools-insight; do
+for uid in f5-bigip-llm-v2 llm-subagent-routing-v2 mcp-tools-insight mcp-tools-insight-v2026-07-28; do
   curl -sS -u "${GRAFANA_USER}:${GRAFANA_PASSWORD}" \
     "${GRAFANA_URL}/api/dashboards/uid/${uid}" \
     | python3 -c "import sys,json; d=json.load(sys.stdin); json.dump(d['dashboard'], sys.stdout, ensure_ascii=False, indent=2)" \
@@ -148,6 +149,7 @@ for path in [
     "f5-bigip-llm-v2.json",
     "llm-subagent-routing-v2.json",
     "mcp-tools-insight.json",
+    "mcp-tools-insight-v2026-07-28.json",
 ]:
     with open(path, encoding="utf-8") as f:
         dash = json.load(f)
@@ -195,7 +197,7 @@ PY
 OLD_UID="dfp3flzrl70n4d"
 NEW_UID="NEW_DS_UID"   # 换成 §2.3 查到的值
 
-for f in f5-bigip-llm-v2.json llm-subagent-routing-v2.json mcp-tools-insight.json; do
+for f in f5-bigip-llm-v2.json llm-subagent-routing-v2.json mcp-tools-insight.json mcp-tools-insight-v2026-07-28.json; do
   # macOS:
   sed -i '' "s/${OLD_UID}/${NEW_UID}/g" "$f"
   # Linux:

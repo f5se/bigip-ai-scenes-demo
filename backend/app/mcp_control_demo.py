@@ -8,9 +8,12 @@ import httpx
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
-from backend.app.config import MCP_CONTROL_DEMO
+from backend.app.config import MCP_CONTROL_DEMO, MCP_CONTROL_DEMO_V2026
 from backend.app.mcp_control_runner import McpControlRunner
-from backend.app.mcp_control_traffic_sim import mcp_control_traffic_simulator
+from backend.app.mcp_control_traffic_sim import (
+    mcp_control_traffic_simulator,
+    mcp_control_traffic_simulator_v2026,
+)
 from backend.app.proxy import validate_target
 
 router = APIRouter(tags=["mcp-control"])
@@ -27,8 +30,8 @@ class McpControlTrafficStartRequest(BaseModel):
     duration_minutes: int = Field(default=10, ge=1, le=180)
 
 
-def _public_config() -> dict[str, Any]:
-    agents = MCP_CONTROL_DEMO.get("agent_identities", [])
+def _public_config(profile: dict[str, Any]) -> dict[str, Any]:
+    agents = profile.get("agent_identities", [])
     assert isinstance(agents, list)
     return {
         "agent_identities": [
@@ -36,11 +39,12 @@ def _public_config() -> dict[str, Any]:
             for a in agents
             if isinstance(a, dict)
         ],
-        "target_servers": MCP_CONTROL_DEMO.get("target_servers", []),
-        "default_vs": MCP_CONTROL_DEMO.get("default_vs"),
-        "oauth_token_url": MCP_CONTROL_DEMO.get("oauth_token_url"),
-        "token_mode": MCP_CONTROL_DEMO.get("token_mode"),
-        "client_id": MCP_CONTROL_DEMO.get("client_id"),
+        "target_servers": profile.get("target_servers", []),
+        "default_vs": profile.get("default_vs"),
+        "oauth_token_url": profile.get("oauth_token_url"),
+        "token_mode": profile.get("token_mode"),
+        "client_id": profile.get("client_id"),
+        "protocol_version": profile.get("protocol_version", "2025-11-25"),
         "matrix_hint": {
             "ops-admin-agent": ["ops"],
             "ops-readonly-agent": ["ops"],
@@ -52,13 +56,18 @@ def _public_config() -> dict[str, Any]:
 
 @router.get("/api/demo/mcp-tools-control/config")
 async def mcp_control_config() -> dict[str, Any]:
-    return _public_config()
+    return _public_config(MCP_CONTROL_DEMO)
+
+
+@router.get("/api/demo/mcp-tools-control-v2026/config")
+async def mcp_control_config_v2026() -> dict[str, Any]:
+    return _public_config(MCP_CONTROL_DEMO_V2026)
 
 
 @router.post("/api/demo/mcp-tools-control/run")
 async def mcp_control_run(req: McpControlRunRequest) -> dict[str, Any]:
     try:
-        runner = McpControlRunner(req.agent_id, req.target_server_id)
+        runner = McpControlRunner(req.agent_id, req.target_server_id, MCP_CONTROL_DEMO)
     except KeyError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
@@ -83,21 +92,48 @@ async def mcp_control_run(req: McpControlRunRequest) -> dict[str, Any]:
         ) from exc
 
 
-@router.get("/api/demo/mcp-tools-control/health")
-async def mcp_control_health() -> dict[str, Any]:
-    vs = MCP_CONTROL_DEMO.get("default_vs", {})
+@router.post("/api/demo/mcp-tools-control-v2026/run")
+async def mcp_control_run_v2026(req: McpControlRunRequest) -> dict[str, Any]:
+    try:
+        runner = McpControlRunner(req.agent_id, req.target_server_id, MCP_CONTROL_DEMO_V2026)
+    except KeyError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    try:
+        return await runner.run(scenario=req.scenario, tool_name=req.tool_name)
+    except httpx.HTTPStatusError as exc:
+        return {
+            "agent": req.agent_id,
+            "target_server": req.target_server_id,
+            "token_obtained": False,
+            "decision": "deny",
+            "error": f"OAuth token request failed: {exc.response.status_code}",
+            "error_body": exc.response.text[:400],
+            "gateway_result": None,
+        }
+    except RuntimeError as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+    except httpx.RequestError as exc:
+        raise HTTPException(
+            status_code=502,
+            detail=f"Upstream request failed: {exc}",
+        ) from exc
+
+
+async def _mcp_control_health(profile: dict[str, Any]) -> dict[str, Any]:
+    vs = profile.get("default_vs", {})
     assert isinstance(vs, dict)
     vs_host = str(vs.get("host", "127.0.0.1"))
     vs_port = int(vs.get("port", 9010))
     validate_target(vs_host, vs_port)
 
-    backends = MCP_CONTROL_DEMO.get("backend_servers", [])
+    backends = profile.get("backend_servers", [])
     assert isinstance(backends, list)
 
     result: dict[str, Any] = {
         "vs": {"host": vs_host, "port": vs_port, "ok": False, "detail": None},
         "backends": {},
-        "oauth_token_url": MCP_CONTROL_DEMO.get("oauth_token_url"),
+        "oauth_token_url": profile.get("oauth_token_url"),
     }
 
     async with httpx.AsyncClient(timeout=3.0, follow_redirects=False) as client:
@@ -133,6 +169,16 @@ async def mcp_control_health() -> dict[str, Any]:
     return result
 
 
+@router.get("/api/demo/mcp-tools-control/health")
+async def mcp_control_health() -> dict[str, Any]:
+    return await _mcp_control_health(MCP_CONTROL_DEMO)
+
+
+@router.get("/api/demo/mcp-tools-control-v2026/health")
+async def mcp_control_health_v2026() -> dict[str, Any]:
+    return await _mcp_control_health(MCP_CONTROL_DEMO_V2026)
+
+
 @router.get("/api/demo/mcp-tools-control/traffic/status")
 async def mcp_control_traffic_status() -> dict[str, Any]:
     return mcp_control_traffic_simulator.status()
@@ -151,3 +197,23 @@ async def mcp_control_traffic_start(req: McpControlTrafficStartRequest) -> dict[
 @router.post("/api/demo/mcp-tools-control/traffic/stop")
 async def mcp_control_traffic_stop() -> dict[str, Any]:
     return await mcp_control_traffic_simulator.stop()
+
+
+@router.get("/api/demo/mcp-tools-control-v2026/traffic/status")
+async def mcp_control_traffic_status_v2026() -> dict[str, Any]:
+    return mcp_control_traffic_simulator_v2026.status()
+
+
+@router.post("/api/demo/mcp-tools-control-v2026/traffic/start")
+async def mcp_control_traffic_start_v2026(req: McpControlTrafficStartRequest) -> dict[str, Any]:
+    try:
+        return await mcp_control_traffic_simulator_v2026.start(req.duration_minutes)
+    except HTTPException as exc:
+        if exc.status_code == 409:
+            raise HTTPException(status_code=409, detail=exc.detail) from exc
+        raise
+
+
+@router.post("/api/demo/mcp-tools-control-v2026/traffic/stop")
+async def mcp_control_traffic_stop_v2026() -> dict[str, Any]:
+    return await mcp_control_traffic_simulator_v2026.stop()

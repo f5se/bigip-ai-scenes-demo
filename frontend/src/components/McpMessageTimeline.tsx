@@ -5,18 +5,21 @@ import type { McpStreamEvent } from "@/api/client";
 type Props = {
   events: McpStreamEvent[];
   running: boolean;
+  showMrtrLabels?: boolean;
 };
 
 const HIGHLIGHT_CLASS: Record<string, string> = {
   sampling: "border-orange-500/40 bg-orange-500/5",
   elicitation: "border-violet-500/40 bg-violet-500/5",
   logging: "border-slate-500/40 bg-slate-800/30",
+  mrtr: "border-amber-500/40 bg-amber-500/5",
 };
 
 const HIGHLIGHT_BADGE: Record<string, string> = {
   sampling: "bg-orange-500/20 text-orange-300 ring-orange-500/30",
   elicitation: "bg-violet-500/20 text-violet-300 ring-violet-500/30",
   logging: "bg-slate-500/20 text-slate-300 ring-slate-500/30",
+  mrtr: "bg-amber-500/20 text-amber-300 ring-amber-500/30",
 };
 
 const DIR_ACCENT: Record<string, string> = {
@@ -50,7 +53,7 @@ function ChevronIcon({ open }: { open: boolean }) {
   );
 }
 
-function JsonPanel({ json, direction }: { json: string; direction?: string }) {
+function JsonPanel({ json, direction, title = "JSON Payload" }: { json: string; direction?: string; title?: string }) {
   const isClient = direction === "client→server";
   return (
     <div
@@ -68,7 +71,7 @@ function JsonPanel({ json, direction }: { json: string; direction?: string }) {
         }`}
       >
         <span className="inline-block h-1.5 w-1.5 rounded-full bg-current opacity-80" />
-        JSON Payload
+        {title}
       </div>
       <pre className="max-h-52 overflow-auto p-3 text-[11px] leading-relaxed text-slate-200">
         <code>{json}</code>
@@ -79,9 +82,32 @@ function JsonPanel({ json, direction }: { json: string; direction?: string }) {
 
 const PREFIX = "scenes.mcpToolsInsight";
 
-export function McpMessageTimeline({ events, running }: Props) {
+export function McpMessageTimeline({ events, running, showMrtrLabels = false }: Props) {
   const { t } = useTranslation();
   const [expanded, setExpanded] = useState<Set<number>>(() => new Set());
+
+  const mrtrModeLabel = useCallback(
+    (mode?: string) => {
+      if (mode === "input_required") return t(`${PREFIX}.timelineMrtrInputRequired`);
+      if (mode === "input_response") return t(`${PREFIX}.timelineMrtrInputResponse`);
+      return mode ?? "";
+    },
+    [t],
+  );
+
+  const mrtrForLabel = useCallback(
+    (forMethods?: string) => {
+      if (!forMethods) return "";
+      if (forMethods.includes("sampling/createMessage")) {
+        return t(`${PREFIX}.timelineMrtrForSampling`);
+      }
+      if (forMethods.includes("elicitation/create")) {
+        return t(`${PREFIX}.timelineMrtrForElicitation`);
+      }
+      return forMethods;
+    },
+    [t],
+  );
 
   const toggle = useCallback((idx: number) => {
     setExpanded((prev) => {
@@ -110,7 +136,9 @@ export function McpMessageTimeline({ events, running }: Props) {
         ) : (
           events.map((ev, idx) => {
             const isOpen = expanded.has(idx);
-            const hl = ev.highlight ? HIGHLIGHT_CLASS[ev.highlight] : "border-slate-700/30 bg-slate-900/40";
+            const showMrtr = showMrtrLabels && ev.mrtr;
+            const hlKey = showMrtr ? "mrtr" : ev.highlight;
+            const hl = hlKey ? HIGHLIGHT_CLASS[hlKey] : "border-slate-700/30 bg-slate-900/40";
             const dirClass =
               ev.direction === "client→server"
                 ? "text-cyan-400"
@@ -119,7 +147,8 @@ export function McpMessageTimeline({ events, running }: Props) {
                   : "text-slate-400";
             const accent = DIR_ACCENT[ev.direction ?? ""] ?? "from-slate-500 to-slate-400";
             const jsonText = formatJson(ev.msg);
-            const canExpand = jsonText != null;
+            const headerText = formatJson(ev.headers);
+            const canExpand = jsonText != null || headerText != null;
 
             return (
               <div
@@ -158,7 +187,31 @@ export function McpMessageTimeline({ events, running }: Props) {
                       <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
                         <span className="text-slate-500">{ev.ts?.slice(11, 19) ?? "--:--:--"}</span>
                         <span className={dirClass}>{ev.direction ?? "?"}</span>
-                        {ev.highlight ? (
+                        {showMrtr ? (
+                          <span
+                            className={`rounded px-1.5 py-0.5 text-[10px] font-medium uppercase ring-1 ${HIGHLIGHT_BADGE.mrtr}`}
+                          >
+                            MRTR
+                          </span>
+                        ) : null}
+                        {showMrtr && ev.mrtr_mode ? (
+                          <span className="rounded bg-amber-950/50 px-1.5 py-0.5 text-[10px] font-medium text-amber-200 ring-1 ring-amber-500/25">
+                            {mrtrModeLabel(ev.mrtr_mode)}
+                          </span>
+                        ) : null}
+                        {showMrtr && ev.mrtr_for ? (
+                          <span className="rounded bg-slate-800/80 px-1.5 py-0.5 text-[10px] text-amber-100/90">
+                            {mrtrForLabel(ev.mrtr_for)}
+                          </span>
+                        ) : null}
+                        {showMrtr && ev.highlight ? (
+                          <span
+                            className={`rounded px-1.5 py-0.5 text-[10px] font-medium uppercase ring-1 ${HIGHLIGHT_BADGE[ev.highlight] ?? ""}`}
+                          >
+                            {ev.highlight}
+                          </span>
+                        ) : null}
+                        {!showMrtr && ev.highlight ? (
                           <span
                             className={`rounded px-1.5 py-0.5 text-[10px] font-medium uppercase ring-1 ${HIGHLIGHT_BADGE[ev.highlight] ?? ""}`}
                           >
@@ -172,9 +225,10 @@ export function McpMessageTimeline({ events, running }: Props) {
                       <p className="mt-0.5 text-slate-200">{ev.summary ?? ev.method}</p>
                     </div>
                   </div>
-                  {isOpen && jsonText ? (
-                    <div className="pl-7 pt-1 transition-all duration-200 ease-out">
-                      <JsonPanel json={jsonText} direction={ev.direction} />
+                  {isOpen && (jsonText || headerText) ? (
+                    <div className="space-y-2 pl-7 pt-1 transition-all duration-200 ease-out">
+                      {headerText ? <JsonPanel json={headerText} direction={ev.direction} title="HTTP Headers" /> : null}
+                      {jsonText ? <JsonPanel json={jsonText} direction={ev.direction} /> : null}
                     </div>
                   ) : null}
                 </div>

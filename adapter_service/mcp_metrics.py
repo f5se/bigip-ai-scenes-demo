@@ -78,6 +78,11 @@ MCP_DUPLICATE_DROPS_TOTAL = Counter(
     "mcp_adapter_duplicate_drops_total",
     "MCP events dropped due to duplicate trace_id.",
 )
+MCP_PROTOCOL_REQUESTS_TOTAL = Counter(
+    "mcp_protocol_requests_total",
+    "MCP requests labeled by protocol revision (additive; does not change legacy mcp_* series).",
+    ("protocol_version", "message_type", "agent_identity", "tenant_id", "status", "server_target"),
+)
 
 
 def _label(value: Any, default: str = "unknown") -> str:
@@ -95,6 +100,12 @@ def record_mcp_event(payload: dict[str, Any]) -> None:
     latency = float(payload.get("latency_ms") or 0)
 
     MCP_MESSAGES_TOTAL.labels(message_type, agent, tenant).inc()
+
+    protocol_version = _label(payload.get("mcp_protocol_version"), "unknown")
+    server_target = _label(payload.get("pool_member"), "unknown")
+    MCP_PROTOCOL_REQUESTS_TOTAL.labels(
+        protocol_version, message_type, agent, tenant, status, server_target
+    ).inc()
 
     if event_type == "mcp_sse_sampling_request":
         MCP_SAMPLING_REQUESTS_TOTAL.labels(agent, tool if tool != "-" else "unknown", tenant).inc()

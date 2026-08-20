@@ -95,7 +95,8 @@ class McpTrafficStats:
 
 
 class McpTrafficSimulator:
-    def __init__(self) -> None:
+    def __init__(self, protocol_version: str = "2025-11-25") -> None:
+        self.protocol_version = protocol_version
         self._lock = asyncio.Lock()
         self._task: asyncio.Task[None] | None = None
         self.running = False
@@ -222,6 +223,7 @@ class McpTrafficSimulator:
             adapter_events_url=self.adapter_url if self.emit_audit else None,
             emit_audit=self.emit_audit,
             pool_member=pool_member,
+            protocol_version=self.protocol_version,
         )
 
     async def _run_loop(self) -> None:
@@ -256,3 +258,4 @@ class McpTrafficSimulator:
 
 
 mcp_traffic_simulator = McpTrafficSimulator()
+mcp_traffic_simulator_v2026 = McpTrafficSimulator(protocol_version="2026-07-28")

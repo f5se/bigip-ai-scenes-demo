@@ -12,6 +12,7 @@ from typing import Any
 from fastapi import HTTPException
 
 from backend.app.mcp_control_runner import McpControlRunner
+from backend.app.config import MCP_CONTROL_DEMO_V2026
 
 MIN_GAP_SEC = 2.0
 MAX_GAP_SEC = 6.0
@@ -134,7 +135,10 @@ class McpControlTrafficStats:
 
 
 class McpControlTrafficSimulator:
-    def __init__(self) -> None:
+    def __init__(self, profile: dict[str, Any] | None = None) -> None:
+        from backend.app.config import MCP_CONTROL_DEMO
+
+        self.profile = profile or MCP_CONTROL_DEMO
         self._lock = asyncio.Lock()
         self._task: asyncio.Task[None] | None = None
         self.running = False
@@ -231,7 +235,9 @@ class McpControlTrafficSimulator:
         return random.choices(DENY_CASES, weights=weights, k=1)[0]
 
     async def _run_one(self, case: dict[str, Any]) -> None:
-        runner = McpControlRunner(str(case["agent_id"]), str(case["target_server_id"]))
+        runner = McpControlRunner(
+            str(case["agent_id"]), str(case["target_server_id"]), self.profile
+        )
         tool_name = case.get("tool_name")
         try:
             result = await runner.run(
@@ -279,3 +285,4 @@ class McpControlTrafficSimulator:
 
 
 mcp_control_traffic_simulator = McpControlTrafficSimulator()
+mcp_control_traffic_simulator_v2026 = McpControlTrafficSimulator(MCP_CONTROL_DEMO_V2026)
